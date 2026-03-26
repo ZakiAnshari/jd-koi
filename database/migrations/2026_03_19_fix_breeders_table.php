@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,8 +12,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop the existing breeders table
-        Schema::dropIfExists('breeders');
+        // Drop the existing breeders table with CASCADE to handle dependencies
+        DB::statement('DROP TABLE IF EXISTS breeders CASCADE');
         
         // Recreate the breeders table with only name_breeder
         Schema::create('breeders', function (Blueprint $table) {
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('breeders');
+        DB::statement('DROP TABLE IF EXISTS breeders CASCADE');
     }
 };

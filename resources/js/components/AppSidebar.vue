@@ -53,11 +53,12 @@ const mainNavItems: NavItem[] = [
         href: usersIndex(),
         icon: User,
     },
-    {
-        title: 'Sales',
-        href: '/sales',
-        icon: BarChart3,
-    },
+    // Sales menu hidden per request
+    // {
+    //     title: 'Sales',
+    //     href: '/sales',
+    //     icon: BarChart3,
+    // },
 
 ];
 
