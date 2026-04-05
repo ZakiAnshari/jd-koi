@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         StockMovement::observe(StockMovementObserver::class);
+
+        if (app()->isProduction()) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 
     /**
@@ -43,14 +47,15 @@ class AppServiceProvider extends ServiceProvider
 
         DB::prohibitDestructiveCommands(false);
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
+        Password::defaults(
+            fn(): ?Password => app()->isProduction()
+                ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-            : null,
+                : null,
         );
     }
 }
