@@ -3,7 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,15 +52,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/sales-reports',
     },
 ]
-
-// ─── SweetAlert Helper (prevent scrollbar hiding) ───────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
 
 // ─── DataTable State ────────────────────────────────────
 const search = ref('')
@@ -173,7 +164,7 @@ const submit = () => {
     form.post('/sales-reports', {
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data laporan penjualan berhasil ditambahkan.',
@@ -184,7 +175,7 @@ const submit = () => {
             showModal.value = false
         },
         onError: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'error',
                 title: 'Gagal!',
                 text: 'Terjadi kesalahan saat menyimpan data.',
@@ -196,7 +187,7 @@ const submit = () => {
 }
 
 function confirmDelete(reportId: number, reportName: string) {
-    fireSwal({
+    useSwal().fire({
         title: 'Hapus laporan penjualan?',
         text: `Laporan "${reportName}" akan dihapus permanen.`,
         icon: 'warning',
@@ -210,7 +201,7 @@ function confirmDelete(reportId: number, reportName: string) {
             router.delete(`/sales-reports/${reportId}`, {
                 preserveScroll: true,
                 onSuccess: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'success',
                         title: 'Berhasil!',
                         text: 'Laporan penjualan berhasil dihapus.',
@@ -219,7 +210,7 @@ function confirmDelete(reportId: number, reportName: string) {
                     })
                 },
                 onError: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'error',
                         title: 'Gagal!',
                         text: 'Terjadi kesalahan saat menghapus laporan penjualan.',

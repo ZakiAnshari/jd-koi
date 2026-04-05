@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Breeder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,10 +30,13 @@ class BreedersController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name_breeder' => 'required|string|max:255',
+            'name_breeder' => 'required|string|max:255|unique:breeders,name_breeder',
+        ], [
+            'name_breeder.unique' => 'Breeder ":input" sudah ada. Tidak bisa menambahkan data yang sama.',
         ]);
 
-        Breeder::create($validated);
+        $breeder = Breeder::create($validated);
+        ActivityLog::log('create', "Menambahkan data Breeder \"{$breeder->name_breeder}\" (ID: {$breeder->id})", 'breeders');
 
         return to_route('breeders.index');
     }
@@ -53,17 +58,28 @@ class BreedersController extends Controller
     public function update(Request $request, Breeder $breeder)
     {
         $validated = $request->validate([
-            'name_breeder' => 'required|string|max:255',
+            'name_breeder' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('breeders', 'name_breeder')->ignore($breeder->id),
+            ],
+        ], [
+            'name_breeder.unique' => 'Breeder ":input" sudah ada. Tidak bisa menggunakan nama yang sama.',
         ]);
 
         $breeder->fill($validated)->save();
+        ActivityLog::log('update', "Mengubah data Breeder \"{$breeder->name_breeder}\" (ID: {$breeder->id})", 'breeders');
 
         return to_route('breeders.index');
     }
 
     public function destroy(Breeder $breeder)
     {
+        $name = $breeder->name_breeder;
+        $id = $breeder->id;
         $breeder->delete();
+        ActivityLog::log('delete', "Menghapus data Breeder \"{$name}\" (ID: {$id})", 'breeders');
 
         return to_route('breeders.index');
     }

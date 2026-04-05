@@ -10,13 +10,8 @@ return new class extends Migration
     {
         Schema::create('stocks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('koi_id')->constrained('kois')->cascadeOnDelete();
-            $table->date('date');
-            $table->integer('qty');
-            $table->decimal('price_jpy', 12, 2);
-            $table->decimal('price_idr', 12, 2);
-            $table->decimal('total_jpy', 12, 2);
-            $table->decimal('total_idr', 12, 2);
+            $table->foreignId('koi_id')->constrained()->cascadeOnDelete();
+            $table->integer('qty')->default(0);
             $table->timestamps();
         });
     }

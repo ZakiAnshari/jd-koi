@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import InputError from '@/components/InputError.vue'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import type { BreadcrumbItem } from '@/types'
 import {
     Select,
@@ -49,15 +49,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ]
 
-// ─── SweetAlert Helper ──────────────────────────────────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
-
 // ─── Form ───────────────────────────────────────────────
 const photoInputRef = ref<HTMLInputElement | null>(null)
 const photoError = ref(false)
@@ -82,11 +73,12 @@ function onPhotoChange(e: Event) {
 }
 
 const submit = () => {
+    const swal = useSwal()
     form.post(`/master-data/koi/${koi.id}?_method=PUT`, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            swal.fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data koi berhasil diperbarui.',
@@ -95,7 +87,7 @@ const submit = () => {
             })
         },
         onError: () => {
-            fireSwal({
+            swal.fire({
                 icon: 'error',
                 title: 'Gagal!',
                 text: 'Terjadi kesalahan saat memperbarui data.',

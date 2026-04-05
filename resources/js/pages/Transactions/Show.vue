@@ -9,22 +9,26 @@ type Koi = {
     name: string
 }
 
+type Customer = {
+    id: number
+    name: string
+}
+
 type Transaction = {
     id: number
     koi_id: number
+    customer_id: number
     date: string
     status: string
     qty: number
     sell_jpy: number
     sell_idr: number
-    margin: number
     fee: number
-    stock_jpy: number
-    stock_idr: number
-    sell_to: string
+    margin: number
     profit: number
     created_at: string
     koi?: Koi
+    customer?: Customer
 }
 
 const page = usePage()
@@ -33,11 +37,11 @@ const transaction = page.props.transaction as Transaction
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Transaksi Penjualan',
-        href: '/transactions',
+        href: '/penjualan',
     },
     {
         title: 'Detail',
-        href: `/transactions/${transaction.id}`,
+        href: `/penjualan/${transaction.id}`,
     },
 ]
 
@@ -66,13 +70,13 @@ function formatIDR(value: number | string | undefined): string {
                 </div>
                 <div class="flex gap-2">
                     <Link
-                        :href="`/transactions/${transaction.id}/edit`"
+                        :href="`/penjualan/${transaction.id}/edit`"
                         class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                     >
                         Edit
                     </Link>
                     <Link
-                        href="/transactions"
+                        href="/penjualan"
                         class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                     >
                         Back to list
@@ -82,7 +86,6 @@ function formatIDR(value: number | string | undefined): string {
 
             <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
                 <div class="space-y-6">
-                    <!-- Transaction Info Section -->
                     <div class="space-y-2 border-b pb-4">
                         <h3 class="text-sm font-semibold text-foreground">Informasi Transaksi</h3>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -99,8 +102,8 @@ function formatIDR(value: number | string | undefined): string {
                                 <p class="text-sm">{{ transaction.koi?.code }} - {{ transaction.koi?.name }}</p>
                             </div>
                             <div>
-                                <p class="text-xs text-muted-foreground">Pembeli</p>
-                                <p class="text-sm">{{ transaction.sell_to }}</p>
+                                <p class="text-xs text-muted-foreground">Customer</p>
+                                <p class="text-sm">{{ transaction.customer?.name }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-muted-foreground">Created</p>
@@ -109,60 +112,34 @@ function formatIDR(value: number | string | undefined): string {
                         </div>
                     </div>
 
-                    <!-- Pricing JPY Section -->
                     <div class="space-y-2 border-b pb-4">
-                        <h3 class="text-sm font-semibold text-foreground">Harga JPY (¥)</h3>
+                        <h3 class="text-sm font-semibold text-foreground">Ringkasan Harga</h3>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <p class="text-xs text-muted-foreground">Quantity</p>
+                                <p class="text-xs text-muted-foreground">Qty</p>
                                 <p class="text-sm">{{ transaction.qty }} pcs</p>
                             </div>
                             <div>
-                                <p class="text-xs text-muted-foreground">Harga Jual</p>
+                                <p class="text-xs text-muted-foreground">Sell JPY</p>
                                 <p class="text-sm">{{ formatJPY(transaction.sell_jpy) }}</p>
                             </div>
                             <div>
-                                <p class="text-xs text-muted-foreground">Nilai Stok</p>
-                                <p class="text-sm">{{ formatJPY(transaction.stock_jpy) }}</p>
+                                <p class="text-xs text-muted-foreground">Sell IDR</p>
+                                <p class="text-sm">{{ formatIDR(transaction.sell_idr) }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-muted-foreground">Fee</p>
+                                <p class="text-sm text-orange-600">{{ formatIDR(transaction.fee) }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-muted-foreground">Margin (%)</p>
                                 <p class="text-sm">{{ transaction.margin }}</p>
                             </div>
                             <div>
-                                <p class="text-xs text-muted-foreground">Fee</p>
-                                <p class="text-sm text-orange-600">{{ formatJPY(transaction.fee) }}</p>
-                            </div>
-                            <div>
                                 <p class="text-xs text-muted-foreground">Profit</p>
-                                <p class="text-sm font-semibold text-green-600">{{ formatJPY(transaction.profit) }}</p>
+                                <p class="text-sm font-semibold text-green-600">{{ formatIDR(transaction.profit) }}</p>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Pricing IDR Section -->
-                    <div class="space-y-2 border-b pb-4">
-                        <h3 class="text-sm font-semibold text-foreground">Harga IDR (Rp)</h3>
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <p class="text-xs text-muted-foreground">Harga Jual</p>
-                                <p class="text-sm">{{ formatIDR(transaction.sell_idr) }}</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-muted-foreground">Nilai Stok</p>
-                                <p class="text-sm">{{ formatIDR(transaction.stock_idr) }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Button -->
-                    <div class="flex items-center gap-4 border-t pt-6">
-                        <Link
-                            :href="`/transactions/${transaction.id}/edit`"
-                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                        >
-                            Edit Transaksi
-                        </Link>
                     </div>
                 </div>
             </div>

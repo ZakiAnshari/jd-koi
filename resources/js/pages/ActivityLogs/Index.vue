@@ -1,0 +1,333 @@
+<script setup lang="ts">
+import { Head, router, usePage } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import type { BreadcrumbItem } from '@/types'
+
+type User = {
+    id: number
+    name: string
+}
+
+type ActivityLog = {
+    id: number
+    user?: User | null
+    module: string
+    action: string
+    description: string
+    old_values?: Record<string, unknown> | null
+    new_values?: Record<string, unknown> | null
+    ip_address?: string | null
+    user_agent?: string | null
+    created_at: string
+}
+
+const page = usePage()
+const activityLogs = computed(() => (page.props.activityLogs as { data: ActivityLog[] }).data ?? [])
+const users = computed(() => (page.props.users as User[]) ?? [])
+const modules = computed(() => (page.props.modules as string[]) ?? [])
+const actions = computed(() => (page.props.actions as string[]) ?? [])
+const initialFilters = page.props.filters as {
+    module: string
+    action: string
+    user_id: string
+    from: string
+    to: string
+}
+
+const moduleFilter = ref(initialFilters.module || 'all')
+const actionFilter = ref(initialFilters.action || 'all')
+const userFilter = ref(initialFilters.user_id || 'all')
+const fromDate = ref(initialFilters.from || '')
+const toDate = ref(initialFilters.to || '')
+
+const filters = computed(() => ({
+    module: moduleFilter.value,
+    action: actionFilter.value,
+    user_id: userFilter.value,
+    from: fromDate.value,
+    to: toDate.value,
+}))
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Log Aktivitas',
+        href: '/log-aktivitas',
+    },
+]
+
+const selectedLog = ref<ActivityLog | null>(null)
+const detailOpen = ref(false)
+
+function formatLogDate(value: string) {
+    return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).format(new Date(value))
+}
+
+function badgeClass(moduleName: string) {
+    switch (moduleName) {
+        case 'Dashboard':
+            return 'bg-slate-100 text-slate-700'
+        case 'Data Koi':
+            return 'bg-emerald-100 text-emerald-700'
+        case 'Breeder':
+            return 'bg-violet-100 text-violet-700'
+        case 'Customer':
+            return 'bg-blue-100 text-blue-700'
+        case 'Pembelian':
+            return 'bg-amber-100 text-amber-700'
+        case 'Penjualan':
+            return 'bg-fuchsia-100 text-fuchsia-700'
+        case 'Stok Koi':
+            return 'bg-cyan-100 text-cyan-700'
+        case 'Autentikasi':
+            return 'bg-slate-100 text-slate-700'
+        default:
+            return 'bg-muted text-foreground'
+    }
+}
+
+function actionBadgeClass(action: string) {
+    switch (action) {
+        case 'create':
+            return 'bg-emerald-100 text-emerald-700'
+        case 'update':
+            return 'bg-blue-100 text-blue-700'
+        case 'delete':
+            return 'bg-red-100 text-red-700'
+        case 'login':
+            return 'bg-teal-100 text-teal-700'
+        case 'logout':
+            return 'bg-slate-100 text-slate-700'
+        default:
+            return 'bg-muted text-foreground'
+    }
+}
+
+function openDetails(log: ActivityLog) {
+    selectedLog.value = log
+    detailOpen.value = true
+}
+
+function closeDetails() {
+    detailOpen.value = false
+    selectedLog.value = null
+}
+
+function formatJsonValue(value: unknown) {
+    if (value === null || value === undefined) return '-'
+    if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2)
+    }
+    return String(value)
+}
+
+function buildPageUrl(pageNumber: number) {
+    const params = new URLSearchParams({
+        module: filters.module || 'all',
+        action: filters.action || 'all',
+        user_id: filters.user_id || 'all',
+        from: filters.from || '',
+        to: filters.to || '',
+        page: String(pageNumber),
+    })
+    return `/log-aktivitas?${params.toString()}`
+}
+
+const pagination = computed(() => page.props.activityLogs.meta ?? { current_page: 1, last_page: 1, total: 0 })
+</script>
+
+<template>
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <Head title="Log Aktivitas" />
+
+        <div class="space-y-6 p-6">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold">Log Aktivitas</h1>
+                    <p class="text-sm text-muted-foreground">Riwayat seluruh aktivitas yang terjadi di sistem</p>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
+                <div class="grid gap-4 md:grid-cols-6">
+                    <div class="space-y-1">
+                        <Label>Modul</Label>
+                        <select v-model="moduleFilter" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="all">Semua Modul</option>
+                            <option v-for="module in modules" :key="module" :value="module">{{ module }}</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <Label>Aksi</Label>
+                        <select v-model="actionFilter" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="all">Semua Aksi</option>
+                            <option v-for="action in actions" :key="action" :value="action">{{ action }}</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1 md:col-span-2">
+                        <Label>User</Label>
+                        <select v-model="userFilter" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="all">Semua User</option>
+                            <option v-for="user in users" :key="user.id" :value="String(user.id)">{{ user.name }}</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <Label>Dari</Label>
+                        <Input type="date" v-model="fromDate" />
+                    </div>
+                    <div class="space-y-1">
+                        <Label>Sampai</Label>
+                        <Input type="date" v-model="toDate" />
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <Button @click.prevent="router.get('/log-aktivitas', { module: filters.module, action: filters.action, user_id: filters.user_id, from: filters.from, to: filters.to }, { preserveState: true, preserveScroll: true })">Filter</Button>
+                    <Button variant="outline" @click.prevent="router.get('/log-aktivitas', { module: 'all', action: 'all', user_id: 'all', from: '', to: '' }, { preserveState: true, preserveScroll: true })">Reset</Button>
+                </div>
+            </div>
+
+            <div class="overflow-hidden rounded-lg border border-sidebar-border/70 bg-background dark:border-sidebar-border">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-border">
+                        <thead class="bg-muted">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Waktu</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">User</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Modul</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aksi</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deskripsi</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border bg-background">
+                            <tr v-if="activityLogs.length === 0">
+                                <td colspan="6" class="px-4 py-8 text-center text-sm text-muted-foreground">Belum ada log aktivitas.</td>
+                            </tr>
+                            <tr v-for="log in activityLogs" :key="log.id" class="hover:bg-muted/50">
+                                <td class="px-4 py-3 text-sm text-foreground">{{ formatLogDate(log.created_at) }}</td>
+                                <td class="px-4 py-3 text-sm text-foreground">{{ log.user?.name ?? 'System' }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span :class="badgeClass(log.module) + ' inline-flex rounded-full px-3 py-1 text-xs font-semibold'">{{ log.module }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span :class="actionBadgeClass(log.action) + ' inline-flex rounded-full px-3 py-1 text-xs font-semibold'">{{ log.action }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-foreground">{{ log.description }}</td>
+                                <td class="px-4 py-3 text-right text-sm">
+                                    <Button variant="outline" size="sm" @click="openDetails(log)">Detail</Button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex flex-col gap-4 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-muted-foreground">Total log: {{ pagination.total }}</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" size="sm" :disabled="pagination.current_page <= 1" @click.prevent="router.get(buildPageUrl(pagination.current_page - 1), {}, { preserveState: true, preserveScroll: true })">Previous</Button>
+                        <template v-for="pageNumber in pagination.last_page" :key="pageNumber">
+                            <Button size="sm" :variant="pageNumber === pagination.current_page ? 'default' : 'outline'" @click.prevent="router.get(buildPageUrl(pageNumber), {}, { preserveState: true, preserveScroll: true })">{{ pageNumber }}</Button>
+                        </template>
+                        <Button variant="outline" size="sm" :disabled="pagination.current_page >= pagination.last_page" @click.prevent="router.get(buildPageUrl(pagination.current_page + 1), {}, { preserveState: true, preserveScroll: true })">Next</Button>
+                    </div>
+                </div>
+            </div>
+
+            <Dialog v-model:open="detailOpen">
+                <DialogContent class="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Detail Log Aktivitas</DialogTitle>
+                        <DialogDescription>Informasi lengkap aktivitas dan perubahan yang tercatat.</DialogDescription>
+                    </DialogHeader>
+                    <div class="space-y-4 p-4">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">User</p>
+                                <p class="text-sm text-foreground">{{ selectedLog?.user?.name ?? 'System' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">Modul</p>
+                                <p class="text-sm text-foreground">{{ selectedLog?.module }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">Aksi</p>
+                                <p class="text-sm text-foreground">{{ selectedLog?.action }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">Waktu</p>
+                                <p class="text-sm text-foreground">{{ selectedLog ? formatLogDate(selectedLog.created_at) : '-' }}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">IP address</p>
+                                <p class="text-sm text-foreground">{{ selectedLog?.ip_address ?? '-' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-muted-foreground">User agent</p>
+                                <p class="text-sm text-foreground break-words">{{ selectedLog?.user_agent ?? '-' }}</p>
+                            </div>
+                        </div>
+
+                        <div v-if="selectedLog?.action === 'update' && selectedLog.old_values && selectedLog.new_values" class="overflow-x-auto rounded-xl border border-border bg-muted p-4">
+                            <p class="text-sm font-semibold text-foreground mb-3">Perbandingan perubahan</p>
+                            <table class="min-w-full divide-y divide-border text-sm">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Field</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sebelum</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sesudah</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border">
+                                    <tr v-for="key in Object.keys(selectedLog.old_values)" :key="key">
+                                        <td class="px-3 py-2 font-medium text-foreground">{{ key }}</td>
+                                        <td class="px-3 py-2 text-red-700">{{ formatJsonValue(selectedLog.old_values?.[key]) }}</td>
+                                        <td class="px-3 py-2 text-emerald-700">{{ formatJsonValue(selectedLog.new_values?.[key]) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div v-else-if="selectedLog?.action === 'create' && selectedLog.new_values" class="rounded-xl border border-border bg-muted p-4">
+                            <p class="text-sm font-semibold text-foreground mb-3">Data baru</p>
+                            <pre class="whitespace-pre-wrap break-words text-sm text-foreground">{{ JSON.stringify(selectedLog.new_values, null, 2) }}</pre>
+                        </div>
+
+                        <div v-else-if="selectedLog?.action === 'delete' && selectedLog.old_values" class="rounded-xl border border-border bg-muted p-4">
+                            <p class="text-sm font-semibold text-foreground mb-3">Data sebelum dihapus</p>
+                            <pre class="whitespace-pre-wrap break-words text-sm text-foreground">{{ JSON.stringify(selectedLog.old_values, null, 2) }}</pre>
+                        </div>
+
+                        <div v-else-if="selectedLog && ['login', 'logout'].includes(selectedLog.action)">
+                            <p class="text-sm text-muted-foreground">Aktivitas autentikasi tidak memiliki nilai data tambahan.</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-border px-4 py-4">
+                        <Button variant="outline" @click="closeDetails">Tutup</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
+    </AppLayout>
+</template>

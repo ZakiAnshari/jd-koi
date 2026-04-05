@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import InputError from '@/components/InputError.vue'
 import { useForm } from '@inertiajs/vue3'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import type { BreadcrumbItem } from '@/types'
 
 type User = {
@@ -30,15 +30,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ]
 
-// ─── SweetAlert Helper (prevent scrollbar hiding) ───────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
-
 const form = useForm({
     name: user.name,
     email: user.email,
@@ -50,7 +41,7 @@ const submit = () => {
     form.put(`/users/${user.id}`, {
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data user berhasil diperbarui.',
@@ -62,7 +53,7 @@ const submit = () => {
             form.password_confirmation = ''
         },
         onError: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'error',
                 title: 'Gagal!',
                 text: 'Terjadi kesalahan saat memperbarui data.',

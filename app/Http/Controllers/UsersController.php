@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UserStoreRequest;
 use App\Http\Requests\UserUpdateRequest;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,8 @@ class UsersController extends Controller
 
     public function store(UserStoreRequest $request): RedirectResponse
     {
-        User::create($request->validated());
+        $user = User::create($request->validated());
+        ActivityLog::log('create', "Menambahkan data User \"{$user->name}\" (ID: {$user->id})", 'users');
 
         return to_route('users.index');
     }
@@ -52,6 +54,7 @@ class UsersController extends Controller
     public function update(UserUpdateRequest $request, User $user): RedirectResponse
     {
         $user->fill($request->validated())->save();
+        ActivityLog::log('update', "Mengubah data User \"{$user->name}\" (ID: {$user->id})", 'users');
 
         return to_route('users.index');
     }
@@ -63,7 +66,10 @@ class UsersController extends Controller
             return back();
         }
 
+        $name = $user->name;
+        $id = $user->id;
         $user->delete();
+        ActivityLog::log('delete', "Menghapus data User \"{$name}\" (ID: {$id})", 'users');
 
         return to_route('users.index');
     }

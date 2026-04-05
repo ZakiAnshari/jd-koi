@@ -183,3 +183,8 @@ body.swal2-height-auto {
         @apply bg-background text-foreground;
     }
 }
+
+body.swal2-shown {
+    padding-right: 0 !important;
+    overflow-y: scroll !important;
+}

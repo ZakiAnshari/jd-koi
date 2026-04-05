@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { destroy as usersDestroy, edit as usersEdit, index as usersIndex, show as usersShow } from '@/routes/users'
 import type { BreadcrumbItem } from '@/types'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,15 +37,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: usersIndex(),
     },
 ]
-
-// ─── SweetAlert Helper (prevent scrollbar hiding) ───────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
 
 // ─── DataTable State ────────────────────────────────────
 const search = ref('')
@@ -131,7 +122,7 @@ const submit = () => {
     form.post('/users', {
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data user berhasil ditambahkan.',
@@ -142,7 +133,7 @@ const submit = () => {
             showModal.value = false
         },
         onError: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'error',
                 title: 'Gagal!',
                 text: 'Terjadi kesalahan saat menyimpan data.',
@@ -154,7 +145,7 @@ const submit = () => {
 }
 
 function confirmDelete(userId: number, userName: string) {
-    fireSwal({
+    useSwal().fire({
         title: 'Hapus user?',
         text: `User "${userName}" akan dihapus permanen.`,
         icon: 'warning',
@@ -168,7 +159,7 @@ function confirmDelete(userId: number, userName: string) {
             router.delete(`/users/${userId}`, {
                 preserveScroll: true,
                 onSuccess: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'success',
                         title: 'Berhasil!',
                         text: 'User berhasil dihapus.',
@@ -177,7 +168,7 @@ function confirmDelete(userId: number, userName: string) {
                     })
                 },
                 onError: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'error',
                         title: 'Gagal!',
                         text: 'Terjadi kesalahan saat menghapus user.',

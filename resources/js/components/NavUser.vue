@@ -41,8 +41,8 @@ const { isMobile, state } = useSidebar();
                         isMobile
                             ? 'bottom'
                             : state === 'collapsed'
-                              ? 'left'
-                              : 'bottom'
+                            ? 'left'
+                            : 'bottom'
                     "
                     align="end"
                     :side-offset="4"

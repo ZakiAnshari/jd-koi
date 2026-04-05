@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,23 +55,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ]
 
-// ─── SweetAlert Helper (prevent scrollbar hiding) ───────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
-
 // ─── DataTable State ────────────────────────────────────
 const search = ref('')
-const sortKey = ref<keyof Koi>('code')
-const sortOrder = ref<'asc' | 'desc'>('asc')
+const sortKey = ref<keyof Koi>('created_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
 const currentPage = ref(1)
 const perPage = ref(10)
 
-// ─── Filtered + Sorted + Paginated ─────────────────────
 const filteredKois = computed(() => {
     let result = kois.value
 
@@ -139,6 +129,14 @@ const showModal = ref(false)
 const photoInputRef = ref<HTMLInputElement | null>(null)
 const breederSearch = ref('')
 
+// Bersihkan error dan search saat modal ditutup
+watch(showModal, (isOpen) => {
+    if (!isOpen) {
+        form.clearErrors()
+        breederSearch.value = ''
+    }
+})
+
 const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders.value
     const q = breederSearch.value.toLowerCase()
@@ -162,7 +160,7 @@ const submit = () => {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data koi berhasil ditambahkan.',
@@ -170,7 +168,6 @@ const submit = () => {
                 showConfirmButton: false,
             })
             form.reset()
-            // Reset file input manually
             if (photoInputRef.value) {
                 photoInputRef.value.value = ''
             }
@@ -178,23 +175,13 @@ const submit = () => {
             breederSearch.value = ''
         },
         onError: () => {
-            fireSwal({
-                icon: 'error',
-                title: 'Gagal!',
-                text: 'Terjadi kesalahan saat menyimpan data.',
-                timer: 3000,
-                showConfirmButton: false,
-            })
+            // Modal tetap terbuka — error tampil langsung di field via InputError
         },
     })
 }
 
-function resetBreederSearch() {
-    breederSearch.value = ''
-}
-
 function confirmDelete(koiId: number, koiName: string) {
-    fireSwal({
+    useSwal().fire({
         title: 'Hapus koi?',
         text: `Koi "${koiName}" akan dihapus permanen.`,
         icon: 'warning',
@@ -208,7 +195,7 @@ function confirmDelete(koiId: number, koiName: string) {
             router.delete(`/master-data/koi/${koiId}`, {
                 preserveScroll: true,
                 onSuccess: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'success',
                         title: 'Berhasil!',
                         text: 'Koi berhasil dihapus.',
@@ -217,7 +204,7 @@ function confirmDelete(koiId: number, koiName: string) {
                     })
                 },
                 onError: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'error',
                         title: 'Gagal!',
                         text: 'Terjadi kesalahan saat menghapus koi.',
@@ -270,7 +257,7 @@ function getBreederName(koi: Koi): string {
                                         <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
                                             <div class="sticky top-0 bg-background p-2 border-b">
                                                 <Input v-model="breederSearch" placeholder="Search breeder..."
-                                                    class="h-8" />
+                                                    class="h-8" @keydown.stop />
                                             </div>
                                             <div class="max-h-48 overflow-y-auto">
                                                 <div v-if="filteredBreeders.length === 0"
@@ -308,6 +295,7 @@ function getBreederName(koi: Koi): string {
                                 </div>
                             </div>
                             <DialogFooter>
+                                <Button type="button" variant="outline" @click="showModal = false">Batal</Button>
                                 <Button type="submit" :disabled="form.processing">Create</Button>
                             </DialogFooter>
                         </form>
@@ -374,7 +362,7 @@ function getBreederName(koi: Koi): string {
                                 <td class="px-4 py-3 text-sm text-foreground">{{ koi.name }}</td>
                                 <td class="px-4 py-3 text-sm text-foreground">{{ getBreederName(koi) }}</td>
                                 <td class="px-4 py-3 text-sm text-foreground">{{ new
-                                    Date(koi.created_at).toLocaleDateString() }}</td>
+                                    Date(koi.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
                                     <Link :href="`/master-data/koi/${koi.id}`"
                                         class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">

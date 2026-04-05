@@ -1,38 +1,33 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 
-type SalesReport = {
+type ActivityLogItem = {
     id: number
-    day: number
-    month: number
-    year: number
-    status: string
-    breeder: string
-    code: string
-    photo: string | null
-    name: string
-    qty: number
-    sell_jpy: number
-    sell_idr: number
-    margin: number
-    fee: number
-    stock_jpy: number
-    stock_idr: number
-    sell_to: string
-    profit: number
-    user_id: number
+    user: { name: string } | null
+    action: string
+    description: string
     created_at: string
-    updated_at: string
 }
 
 const page = usePage()
-const salesReports = computed(() => (page.props.salesReports as { data: SalesReport[] } | null)?.data ?? [])
+const summary = computed(() => (page.props.summary as {
+    totalSales: number
+    totalProfit: number
+    totalKoiSold: number
+    totalStock: number
+}) ?? {
+    totalSales: 0,
+    totalProfit: 0,
+    totalKoiSold: 0,
+    totalStock: 0,
+})
+const latestActivityLogs = computed<ActivityLogItem[]>(() => (page.props.latestActivityLogs as ActivityLogItem[] | null) ?? [])
+const authUser = computed(() => page.props.auth?.user)
+const isAdmin = computed(() => authUser.value?.email === 'admin@gmail.com')
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -44,78 +39,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 const currentDate = new Date()
 const currentMonth = currentDate.getMonth() + 1
 const currentYear = currentDate.getFullYear()
-const chartView = ref<'daily' | 'monthly'>('daily')
-const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-
-const totalSalesThisMonth = computed(() => {
-    return salesReports.value
-        .filter(report => report.month === currentMonth && report.year === currentYear)
-        .reduce((sum, report) => sum + (report.sell_idr || 0), 0)
-})
-
-const totalProfitThisMonth = computed(() => {
-    return salesReports.value
-        .filter(report => report.month === currentMonth && report.year === currentYear)
-        .reduce((sum, report) => sum + (report.profit || 0), 0)
-})
-
-const totalKoiSoldThisMonth = computed(() => {
-    return salesReports.value
-        .filter(report => report.month === currentMonth && report.year === currentYear)
-        .reduce((sum, report) => sum + (report.qty || 0), 0)
-})
-
-const totalRemainingStock = computed(() => {
-    return salesReports.value
-        .filter(report => report.month === currentMonth && report.year === currentYear)
-        .reduce((sum, report) => sum + (report.stock_idr || 0), 0)
-})
-
-const salesByDay = computed(() => {
-    const dailySales: Record<number, number> = {}
-    
-    salesReports.value
-        .filter(report => report.month === currentMonth && report.year === currentYear)
-        .forEach(report => {
-            if (!dailySales[report.day]) {
-                dailySales[report.day] = 0
-            }
-            dailySales[report.day] += report.sell_idr || 0
-        })
-    
-    // Get the max day in current month
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-    const labels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`)
-    const data = labels.map((_, i) => dailySales[i + 1] || 0)
-    
-    return { labels, data }
-})
-
-const salesByMonth = computed(() => {
-    const monthlySales: Record<number, number> = {}
-    
-    salesReports.value
-        .filter(report => report.year === currentYear)
-        .forEach(report => {
-            if (!monthlySales[report.month]) {
-                monthlySales[report.month] = 0
-            }
-            monthlySales[report.month] += report.sell_idr || 0
-        })
-    
-    const labels = monthNames
-    const data = labels.map((_, i) => monthlySales[i + 1] || 0)
-    
-    return { labels, data }
-})
-
-const chartData = computed(() => {
-    return chartView.value === 'daily' ? salesByDay.value : salesByMonth.value
-})
-
-const maxChartValue = computed(() => {
-    return Math.max(...chartData.value.data, 1)
-})
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -123,6 +46,55 @@ const formatCurrency = (value: number) => {
         currency: 'IDR',
         minimumFractionDigits: 0,
     }).format(value)
+}
+
+const getInitials = (name?: string) => {
+    if (!name) {
+        return 'U'
+    }
+
+    return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0].toUpperCase())
+        .join('')
+}
+
+const timeAgo = (dateString: string) => {
+    const isoDate = dateString.endsWith('Z') || dateString.includes('+')
+        ? dateString
+        : dateString + 'Z'
+    const diff = Date.now() - new Date(isoDate).getTime()
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (seconds < 60) {
+        return `${seconds} detik lalu`
+    }
+    if (minutes < 60) {
+        return `${minutes} menit lalu`
+    }
+    if (hours < 24) {
+        return `${hours} jam lalu`
+    }
+
+    return `${days} hari lalu`
+}
+
+const actionBadgeClasses = (action: string) => {
+    switch (action) {
+        case 'create':
+            return 'bg-emerald-100 text-emerald-700'
+        case 'update':
+            return 'bg-sky-100 text-sky-700'
+        case 'delete':
+            return 'bg-rose-100 text-rose-700'
+        default:
+            return 'bg-slate-100 text-slate-700'
+    }
 }
 </script>
 
@@ -138,7 +110,8 @@ const formatCurrency = (value: number) => {
                     <div class="flex flex-col justify-between h-full">
                         <div>
                             <p class="text-sm font-medium text-muted-foreground mb-2">Total Penjualan Bulan Ini</p>
-                            <h2 class="text-3xl font-bold text-foreground">{{ formatCurrency(totalSalesThisMonth) }}</h2>
+                            <h2 class="text-3xl font-bold text-foreground">{{ formatCurrency(summary.totalSales) }}
+                            </h2>
                         </div>
                         <p class="text-xs text-muted-foreground mt-4">
                             {{ currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) }}
@@ -150,7 +123,8 @@ const formatCurrency = (value: number) => {
                     <div class="flex flex-col justify-between h-full">
                         <div>
                             <p class="text-sm font-medium text-muted-foreground mb-2">Total Profit Bulan Ini</p>
-                            <h2 class="text-3xl font-bold text-foreground">{{ formatCurrency(totalProfitThisMonth) }}</h2>
+                            <h2 class="text-3xl font-bold text-foreground">{{ formatCurrency(summary.totalProfit) }}
+                            </h2>
                         </div>
                         <p class="text-xs text-muted-foreground mt-4">
                             {{ currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) }}
@@ -162,7 +136,7 @@ const formatCurrency = (value: number) => {
                     <div class="flex flex-col justify-between h-full">
                         <div>
                             <p class="text-sm font-medium text-muted-foreground mb-2">Total Koi Terjual</p>
-                            <h2 class="text-3xl font-bold text-foreground">{{ totalKoiSoldThisMonth }}</h2>
+                            <h2 class="text-3xl font-bold text-foreground">{{ summary.totalKoiSold }}</h2>
                         </div>
                         <p class="text-xs text-muted-foreground mt-4">
                             {{ currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) }}
@@ -174,7 +148,7 @@ const formatCurrency = (value: number) => {
                     <div class="flex flex-col justify-between h-full">
                         <div>
                             <p class="text-sm font-medium text-muted-foreground mb-2">Sisa Stok</p>
-                            <h2 class="text-3xl font-bold text-foreground">{{ totalRemainingStock }}</h2>
+                            <h2 class="text-3xl font-bold text-foreground">{{ summary.totalStock }}</h2>
                         </div>
                         <p class="text-xs text-muted-foreground mt-4">
                             {{ currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) }}
@@ -182,46 +156,36 @@ const formatCurrency = (value: number) => {
                     </div>
                 </div>
             </div>
-            <div
-                class="relative flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-foreground">Grafik Penjualan</h3>
-                    <div class="flex gap-2">
-                        <button
-                            @click="chartView = 'daily'"
-                            :class="[
-                                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                chartView === 'daily'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'border border-input text-foreground hover:bg-muted'
-                            ]">
-                            Per Hari
-                        </button>
-                        <button
-                            @click="chartView = 'monthly'"
-                            :class="[
-                                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                chartView === 'monthly'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'border border-input text-foreground hover:bg-muted'
-                            ]">
-                            Per Bulan
-                        </button>
+            <div v-if="isAdmin" class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-foreground">Aktivitas Terbaru</h2>
+                        <p class="text-sm text-muted-foreground">10 log aktivitas terbaru</p>
                     </div>
+                    <Link href="/log-aktivitas" class="text-sm font-medium text-primary hover:text-primary/80">
+                        Lihat semua aktivitas →
+                    </Link>
                 </div>
-                <div class="w-full h-96 flex items-end justify-start gap-1 overflow-x-auto pb-8">
-                    <div v-if="chartData.data.length === 0" class="w-full h-full flex items-center justify-center text-muted-foreground">
-                        Tidak ada data penjualan
-                    </div>
-                    <div v-for="(value, index) in chartData.data" :key="index" class="flex flex-col items-center gap-2 min-w-fit">
-                        <div class="flex items-end gap-1">
-                            <div
-                                :style="{ height: `${Math.max((value / maxChartValue) * 300, 10)}px` }"
-                                class="w-8 bg-blue-500 rounded-t cursor-pointer hover:bg-blue-600 transition-colors"
-                                :title="`${chartView === 'daily' ? 'Hari ' : ''}${chartData.labels[index]}: ${formatCurrency(value)}`">
+                <div class="mt-6 space-y-4">
+                    <template v-if="latestActivityLogs.length > 0">
+                        <div v-for="log in latestActivityLogs" :key="log.id" class="flex items-start gap-4 rounded-2xl border border-border bg-surface p-4">
+                            <div class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                                {{ getInitials(log.user?.name) }}
                             </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="truncate text-sm font-semibold text-foreground">{{ log.user?.name || 'Pengguna tidak dikenal' }}</p>
+                                    <span :class="actionBadgeClasses(log.action) + ' rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]'">
+                                        {{ log.action }}
+                                    </span>
+                                </div>
+                                <p class="mt-1 text-sm text-muted-foreground line-clamp-2">{{ log.description }}</p>
+                            </div>
+                            <p class="whitespace-nowrap text-xs text-muted-foreground">{{ timeAgo(log.created_at) }}</p>
                         </div>
-                        <span class="text-xs text-muted-foreground whitespace-nowrap">{{ chartData.labels[index] }}</span>
+                    </template>
+                    <div v-else class="rounded-2xl border border-dashed border-border/80 bg-background p-8 text-center text-sm text-muted-foreground">
+                        Belum ada aktivitas terbaru.
                     </div>
                 </div>
             </div>

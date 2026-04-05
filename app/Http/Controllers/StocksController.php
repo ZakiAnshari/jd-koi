@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Stock;
 use App\Models\Koi;
 use Illuminate\Http\Request;
@@ -12,48 +13,39 @@ class StocksController extends Controller
 {
     public function index(): Response
     {
-        $stocks = Stock::select(['id', 'koi_id', 'date', 'qty', 'price_jpy', 'price_idr', 'total_jpy', 'total_idr', 'created_at'])
-            ->with('koi:id,code,name')
-            ->orderBy('date', 'desc')
-            ->paginate(10);
-
-        $kois = Koi::select(['id', 'code', 'name'])->orderBy('code')->get();
+        $stocks = Stock::with('koi:id,code,name,photo')
+            ->orderBy('koi_id')
+            ->get();
 
         return Inertia::render('Inventory/Index', [
             'stocks' => $stocks,
-            'kois' => $kois,
         ]);
     }
 
-    public function create(): Response
+    public function create()
     {
-        $kois = Koi::select(['id', 'code', 'name'])->orderBy('code')->get();
-
-        return Inertia::render('Inventory/Create', [
-            'kois' => $kois,
-        ]);
+        return to_route('stocks.index');
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'koi_id' => 'required|exists:kois,id',
-            'date' => 'required|date',
-            'qty' => 'required|integer|min:1',
-            'price_jpy' => 'required|numeric|min:0',
-            'price_idr' => 'required|numeric|min:0',
-            'total_jpy' => 'required|numeric|min:0',
-            'total_idr' => 'required|numeric|min:0',
+            'koi_id' => 'required|exists:kois,id|unique:stocks,koi_id',
+            'qty' => 'required|integer|min:0',
         ]);
 
-        Stock::create($validated);
+        $stock = Stock::create($validated);
+
+        $koiName = $stock->koi?->name ?? 'Unknown Koi';
+        $koiCode = $stock->koi?->code ?? 'Unknown Code';
+        ActivityLog::log('create', "Menambahkan data Stok \"{$koiCode} - {$koiName}\" (ID: {$stock->id})", 'stocks');
 
         return to_route('stocks.index');
     }
 
     public function show(Stock $stock): Response
     {
-        $stock->load('koi:id,code,name,breeder_id');
+        $stock->load('koi:id,code,name,photo');
 
         return Inertia::render('Inventory/Show', [
             'stock' => $stock,
@@ -74,22 +66,26 @@ class StocksController extends Controller
     public function update(Request $request, Stock $stock)
     {
         $validated = $request->validate([
-            'koi_id' => 'required|exists:kois,id',
-            'date' => 'required|date',
-            'qty' => 'required|integer|min:1',
-            'price_jpy' => 'required|numeric|min:0',
-            'price_idr' => 'required|numeric|min:0',
-            'total_jpy' => 'required|numeric|min:0',
-            'total_idr' => 'required|numeric|min:0',
+            'koi_id' => 'required|exists:kois,id|unique:stocks,koi_id,' . $stock->id,
+            'qty' => 'required|integer|min:0',
         ]);
 
         $stock->update($validated);
+
+        $koiName = $stock->koi?->name ?? 'Unknown Koi';
+        $koiCode = $stock->koi?->code ?? 'Unknown Code';
+        ActivityLog::log('update', "Mengubah data Stok \"{$koiCode} - {$koiName}\" (ID: {$stock->id})", 'stocks');
 
         return to_route('stocks.index');
     }
 
     public function destroy(Stock $stock)
     {
+        $koiName = $stock->koi?->name ?? 'Unknown Koi';
+        $koiCode = $stock->koi?->code ?? 'Unknown Code';
+        $id = $stock->id;
+        ActivityLog::log('delete', "Menghapus data Stok \"{$koiCode} - {$koiName}\" (ID: {$id})", 'stocks');
+
         $stock->delete();
 
         return to_route('stocks.index');

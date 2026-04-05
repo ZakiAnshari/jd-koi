@@ -3,7 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +12,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +24,11 @@ class User extends Authenticatable
         'email',
         'password',
     ];
+
+    protected function getActivityItemName(): ?string
+    {
+        return $this->name;
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -50,4 +55,12 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->email === 'admin@gmail.com';
+    }
+
+    protected $logModule = 'User';
+    protected $logExcept = ['password', 'remember_token', 'updated_at'];
 }

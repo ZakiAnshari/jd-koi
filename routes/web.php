@@ -1,20 +1,24 @@
 <?php
 
 use App\Http\Controllers\UsersController;
-use App\Http\Controllers\SalesController;
 use App\Http\Controllers\BreedersController;
 use App\Http\Controllers\KoisController;
+use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\PurchasesController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\DashboardController;
+use App\Models\ActivityLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
+use Inertia\Inertia;
 
-Route::inertia('/', 'Welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('users', [UsersController::class, 'index'])->name('users.index');
     Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
@@ -23,7 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
     Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
-
+    //BREEDER
     Route::get('master-data/breeder', [BreedersController::class, 'index'])->name('breeders.index');
     Route::get('master-data/breeder/create', [BreedersController::class, 'create'])->name('breeders.create');
     Route::post('master-data/breeder', [BreedersController::class, 'store'])->name('breeders.store');
@@ -31,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('master-data/breeder/{breeder}/edit', [BreedersController::class, 'edit'])->name('breeders.edit');
     Route::put('master-data/breeder/{breeder}', [BreedersController::class, 'update'])->name('breeders.update');
     Route::delete('master-data/breeder/{breeder}', [BreedersController::class, 'destroy'])->name('breeders.destroy');
-
+    //KOI
     Route::get('master-data/koi', [KoisController::class, 'index'])->name('kois.index');
     Route::get('master-data/koi/create', [KoisController::class, 'create'])->name('kois.create');
     Route::post('master-data/koi', [KoisController::class, 'store'])->name('kois.store');
@@ -39,29 +43,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('master-data/koi/{koi}/edit', [KoisController::class, 'edit'])->name('kois.edit');
     Route::put('master-data/koi/{koi}', [KoisController::class, 'update'])->name('kois.update');
     Route::delete('master-data/koi/{koi}', [KoisController::class, 'destroy'])->name('kois.destroy');
-
+    //CUSTUMER
+    Route::get('master-data/customer', [CustomersController::class, 'index'])->name('customers.index');
+    Route::get('master-data/customer/create', [CustomersController::class, 'create'])->name('customers.create');
+    Route::post('master-data/customer', [CustomersController::class, 'store'])->name('customers.store');
+    Route::get('master-data/customer/{customer}', [CustomersController::class, 'show'])->name('customers.show');
+    Route::get('master-data/customer/{customer}/edit', [CustomersController::class, 'edit'])->name('customers.edit');
+    Route::put('master-data/customer/{customer}', [CustomersController::class, 'update'])->name('customers.update');
+    Route::delete('master-data/customer/{customer}', [CustomersController::class, 'destroy'])->name('customers.destroy');
+    //PEMBELIAN
+    Route::get('pembelian', [PurchasesController::class, 'index'])->name('purchases.index');
+    Route::post('pembelian', [PurchasesController::class, 'store'])->name('purchases.store');
+    Route::get('pembelian/{purchase}', [PurchasesController::class, 'show'])->name('purchases.show');
+    Route::get('pembelian/{purchase}/edit', [PurchasesController::class, 'edit'])->name('purchases.edit');
+    Route::put('pembelian/{purchase}', [PurchasesController::class, 'update'])->name('purchases.update');
+    Route::delete('pembelian/{purchase}', [PurchasesController::class, 'destroy'])->name('purchases.destroy');
+    // STOK KOI
     Route::get('inventory', [StocksController::class, 'index'])->name('stocks.index');
-    Route::get('inventory/create', [StocksController::class, 'create'])->name('stocks.create');
     Route::post('inventory', [StocksController::class, 'store'])->name('stocks.store');
     Route::get('inventory/{stock}', [StocksController::class, 'show'])->name('stocks.show');
     Route::get('inventory/{stock}/edit', [StocksController::class, 'edit'])->name('stocks.edit');
     Route::put('inventory/{stock}', [StocksController::class, 'update'])->name('stocks.update');
     Route::delete('inventory/{stock}', [StocksController::class, 'destroy'])->name('stocks.destroy');
 
-    Route::get('sales', [SalesController::class, 'index'])->name('sales.index');
-    Route::get('sales/create', [SalesController::class, 'create'])->name('sales.create');
-    Route::post('sales', [SalesController::class, 'store'])->name('sales.store');
-    Route::get('sales/{salesReport}', [SalesController::class, 'show'])->name('sales.show');
-    Route::get('sales/{salesReport}/edit', [SalesController::class, 'edit'])->name('sales.edit');
-    Route::put('sales/{salesReport}', [SalesController::class, 'update'])->name('sales.update');
-    Route::delete('sales/{salesReport}', [SalesController::class, 'destroy'])->name('sales.destroy');
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('log-aktivitas.index');
+        Route::get('/log-aktivitas/{id}', [ActivityLogController::class, 'show'])->name('log-aktivitas.show');
+        Route::delete('/log-aktivitas/clear', [ActivityLogController::class, 'destroy'])->name('log-aktivitas.clear');
+    });
 
-    Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
-    Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
-    Route::get('transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
-    Route::get('transactions/{transaction}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
-    Route::put('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
-    Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    // PENJUALAN
+    Route::get('penjualan', [TransactionController::class, 'index'])->name('penjualan.index');
+    Route::post('penjualan', [TransactionController::class, 'store'])->name('penjualan.store');
+    Route::get('penjualan/{transaction}', [TransactionController::class, 'show'])->name('penjualan.show');
+    Route::get('penjualan/{transaction}/edit', [TransactionController::class, 'edit'])->name('penjualan.edit');
+    Route::put('penjualan/{transaction}', [TransactionController::class, 'update'])->name('penjualan.update');
+    Route::delete('penjualan/{transaction}', [TransactionController::class, 'destroy'])->name('penjualan.destroy');
+
+    // REPORTS
+    Route::middleware(['ensure.admin'])->prefix('reports')->name('reports.')->group(function () {
+        Route::get('/sales', [ReportController::class, 'salesReport'])->name('sales');
+        Route::get('/purchases', [ReportController::class, 'purchaseReport'])->name('purchases');
+        Route::get('/profit-loss', [ReportController::class, 'profitLossReport'])->name('profitLoss');
+        Route::get('/stock', [ReportController::class, 'stockReport'])->name('stock');
+        
+        Route::get('/sales/export-excel', [ReportController::class, 'exportSalesExcel'])->name('sales.excel');
+        Route::get('/purchases/export-excel', [ReportController::class, 'exportPurchasesExcel'])->name('purchases.excel');
+        Route::get('/profit-loss/export-excel', [ReportController::class, 'exportProfitLossExcel'])->name('profitLoss.excel');
+        Route::get('/stock/export-excel', [ReportController::class, 'exportStockExcel'])->name('stock.excel');
+    });
+
 });
 
 require __DIR__.'/settings.php';

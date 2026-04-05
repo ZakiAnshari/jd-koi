@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,23 +39,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ]
 
-// ─── SweetAlert Helper (prevent scrollbar hiding) ───────
-function fireSwal(options: SweetAlertOptions) {
-    return Swal.fire({
-        ...options,
-        scrollbarPadding: false,
-        heightAuto: false,
-    })
-}
-
 // ─── DataTable State ────────────────────────────────────
 const search = ref('')
-const sortKey = ref<keyof Breeder>('name_breeder')
-const sortOrder = ref<'asc' | 'desc'>('asc')
+const sortKey = ref<keyof Breeder>('created_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
 const currentPage = ref(1)
 const perPage = ref(10)
 
-// ─── Filtered + Sorted + Paginated ─────────────────────
 const filteredBreeders = computed(() => {
     let result = breeders.value
 
@@ -119,6 +109,13 @@ function sortIcon(key: keyof Breeder) {
 // ─── Modal + Form ───────────────────────────────────────
 const showModal = ref(false)
 
+// Bersihkan error saat modal ditutup
+watch(showModal, (isOpen) => {
+    if (!isOpen) {
+        form.clearErrors()
+    }
+})
+
 const form = useForm({
     name_breeder: '',
 })
@@ -127,7 +124,7 @@ const submit = () => {
     form.post('/master-data/breeder', {
         preserveScroll: true,
         onSuccess: () => {
-            fireSwal({
+            useSwal().fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Data breeder berhasil ditambahkan.',
@@ -138,19 +135,13 @@ const submit = () => {
             showModal.value = false
         },
         onError: () => {
-            fireSwal({
-                icon: 'error',
-                title: 'Gagal!',
-                text: 'Terjadi kesalahan saat menyimpan data.',
-                timer: 3000,
-                showConfirmButton: false,
-            })
+            // Modal tetap terbuka — error tampil langsung di field via InputError
         },
     })
 }
 
 function confirmDelete(breederId: number, breederName: string) {
-    fireSwal({
+    useSwal().fire({
         title: 'Hapus breeder?',
         text: `Breeder "${breederName}" akan dihapus permanen.`,
         icon: 'warning',
@@ -164,7 +155,7 @@ function confirmDelete(breederId: number, breederName: string) {
             router.delete(`/master-data/breeder/${breederId}`, {
                 preserveScroll: true,
                 onSuccess: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'success',
                         title: 'Berhasil!',
                         text: 'Breeder berhasil dihapus.',
@@ -173,7 +164,7 @@ function confirmDelete(breederId: number, breederName: string) {
                     })
                 },
                 onError: () => {
-                    fireSwal({
+                    useSwal().fire({
                         icon: 'error',
                         title: 'Gagal!',
                         text: 'Terjadi kesalahan saat menghapus breeder.',
@@ -215,6 +206,7 @@ function confirmDelete(breederId: number, breederName: string) {
                                 <InputError :message="form.errors.name_breeder" />
                             </div>
                             <DialogFooter>
+                                <Button type="button" variant="outline" @click="showModal = false">Batal</Button>
                                 <Button type="submit" :disabled="form.processing">Create</Button>
                             </DialogFooter>
                         </form>
@@ -271,7 +263,7 @@ function confirmDelete(breederId: number, breederName: string) {
                             <tr v-for="breeder in paginatedBreeders" :key="breeder.id"
                                 class="transition-colors hover:bg-muted/50">
                                 <td class="px-4 py-3 text-sm text-foreground">{{ breeder.name_breeder }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground">{{ new Date(breeder.created_at).toLocaleDateString() }}</td>
+                                <td class="px-4 py-3 text-sm text-foreground">{{ new Intl.DateTimeFormat('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(breeder.created_at)) }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
                                     
                                     <Link :href="`/master-data/breeder/${breeder.id}/edit`"

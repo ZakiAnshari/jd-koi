@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Koi;
 use App\Models\Breeder;
 use Illuminate\Http\Request;
@@ -47,7 +48,8 @@ class KoisController extends Controller
             $validated['photo'] = $request->file('photo')->store('kois', 'public');
         }
 
-        Koi::create($validated);
+        $koi = Koi::create($validated);
+        ActivityLog::log('create', "Menambahkan data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
 
         return to_route('kois.index');
     }
@@ -85,13 +87,17 @@ class KoisController extends Controller
         }
 
         $koi->fill($validated)->save();
+        ActivityLog::log('update', "Mengubah data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
 
         return to_route('kois.index');
     }
 
     public function destroy(Koi $koi)
     {
+        $name = "{$koi->code} - {$koi->name}";
+        $id = $koi->id;
         $koi->delete();
+        ActivityLog::log('delete', "Menghapus data Koi \"{$name}\" (ID: {$id})", 'kois');
 
         return to_route('kois.index');
     }
