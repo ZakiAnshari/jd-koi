@@ -93,33 +93,6 @@ const form = useForm({
     fee: 0,
 })
 
-const sellJpyDisplay = ref('')
-const sellIdrDisplay = ref('')
-
-function onSellJpyInput(e: Event) {
-    const input = e.target as HTMLInputElement
-    // Remove all non-digit characters and dots
-    const raw = input.value.replace(/\./g, '').replace(/[^0-9]/g, '')
-    const num = parseInt(raw) || 0
-    form.sell_jpy = num
-    // Format display dengan pemisah ribuan (titik untuk locale id-ID)
-    sellJpyDisplay.value = num > 0 ? num.toLocaleString('id-ID') : ''
-    // Update input display juga
-    input.value = sellJpyDisplay.value
-}
-
-function onSellIdrInput(e: Event) {
-    const input = e.target as HTMLInputElement
-    // Remove all non-digit characters and dots
-    const raw = input.value.replace(/\./g, '').replace(/[^0-9]/g, '')
-    const num = parseInt(raw) || 0
-    form.sell_idr = num
-    // Format display dengan pemisah ribuan (titik untuk locale id-ID)
-    sellIdrDisplay.value = num > 0 ? num.toLocaleString('id-ID') : ''
-    // Update input display juga
-    input.value = sellIdrDisplay.value
-}
-
 // Computed: selected pembelian for prefill
 const selectedPembelianId = ref<string>('')
 const pembelianSearchQuery = ref<string>('')
@@ -160,8 +133,6 @@ function onPembelianChange(val: string | null) {
 // Watch sell_jpy + kurs → auto update sell_idr
 watch(() => [form.sell_jpy, form.kurs] as const, ([jpy, kurs]) => {
     form.sell_idr = Math.round(jpy * kurs)
-    // Update display ketika auto-calculated
-    sellIdrDisplay.value = form.sell_idr > 0 ? form.sell_idr.toLocaleString('id-ID') : ''
 })
 
 // Realtime calculations
@@ -226,8 +197,6 @@ function openCreate() {
     editingId.value = null
     selectedPembelianId.value = ''
     pembelianSearchQuery.value = ''
-    sellJpyDisplay.value = ''
-    sellIdrDisplay.value = ''
     form.reset()
     showModal.value = true
 }
@@ -246,9 +215,6 @@ function openEdit(katalog: KatalogKoi) {
     form.stock_jpy = Number(katalog.stock_jpy)
     form.stock_idr = Number(katalog.stock_idr)
     form.fee = Number(katalog.fee)
-    // Set display values
-    sellJpyDisplay.value = form.sell_jpy > 0 ? form.sell_jpy.toLocaleString('id-ID') : ''
-    sellIdrDisplay.value = form.sell_idr > 0 ? form.sell_idr.toLocaleString('id-ID') : ''
     showModal.value = true
 }
 
@@ -555,13 +521,18 @@ function handleDelete(katalog: KatalogKoi) {
                                 <!-- Sell JPY -->
                                 <div class="grid gap-2">
                                     <Label>Sell JPY <span class="text-red-500">*</span></Label>
-                                    <Input
-                                        type="text"
-                                        :value="sellJpyDisplay"
-                                        placeholder="0"
-                                        @input="onSellJpyInput"
-                                        inputmode="numeric"
-                                    />
+                                    <div class="flex items-center gap-2">
+                                        <Input
+                                            v-model.number="form.sell_jpy"
+                                            type="number"
+                                            placeholder="0"
+                                            inputmode="numeric"
+                                            class="flex-1"
+                                        />
+                                        <span class="whitespace-nowrap text-sm text-muted-foreground">
+                                            {{ form.sell_jpy > 0 ? fmtJPY(form.sell_jpy) : '-' }}
+                                        </span>
+                                    </div>
                                     <InputError :message="form.errors.sell_jpy" />
                                 </div>
 
@@ -575,13 +546,18 @@ function handleDelete(katalog: KatalogKoi) {
                                 <!-- Sell IDR -->
                                 <div class="grid gap-2">
                                     <Label>Sell IDR <span class="text-red-500">*</span></Label>
-                                    <Input
-                                        type="text"
-                                        :value="sellIdrDisplay"
-                                        placeholder="0"
-                                        @input="onSellIdrInput"
-                                        inputmode="numeric"
-                                    />
+                                    <div class="flex items-center gap-2">
+                                        <Input
+                                            v-model.number="form.sell_idr"
+                                            type="number"
+                                            placeholder="0"
+                                            inputmode="numeric"
+                                            class="flex-1"
+                                        />
+                                        <span class="whitespace-nowrap text-sm text-muted-foreground">
+                                            {{ form.sell_idr > 0 ? fmtIDR(form.sell_idr) : '-' }}
+                                        </span>
+                                    </div>
                                     <InputError :message="form.errors.sell_idr" />
                                 </div>
 
