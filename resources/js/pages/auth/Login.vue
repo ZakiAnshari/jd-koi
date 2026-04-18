@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -63,15 +63,15 @@ defineProps<{
                 </Button>
             </div>
 
-            <!--
             <div
                 class="text-center text-sm text-muted-foreground"
                 v-if="canRegister"
             >
                 Don't have an account?
-                <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
+                <Link href="/register" class="text-blue-600 hover:underline font-medium">
+                    Sign up
+                </Link>
             </div>
-            -->
         </Form>
     </AuthBase>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 // static wallpaper asset
 import wallpaper from '@/components/ui/images/Wallpaper.jpg';
 
@@ -33,10 +33,10 @@ withDefaults(
                         class="inline-block rounded-sm border border-white px-5 py-1.5 text-sm leading-normal text-white hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]">
                         Log in
                     </Link>
-                    <!-- <Link v-if="canRegister" :href="register()"
+                    <Link v-if="canRegister" href="/register"
                         class="inline-block rounded-sm border border-white px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]">
                         Register
-                    </Link> -->
+                    </Link>
                 </template>
             </nav>
         </header>

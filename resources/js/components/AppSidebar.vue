@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, FileBarChart } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, FileBarChart, ShoppingBag } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -14,10 +14,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { index as usersIndex } from '@/routes/users';
 import type { NavItem } from '@/types';
 import { computed } from 'vue';
+import { dashboard } from '@/routes';
+import { index as adminKatalogKoiIndex } from '@/routes/admin/katalog-koi';
+import { index as customerKatalogIndex } from '@/routes/customer/katalog';
+import { index as usersIndex } from '@/routes/users';
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user);
@@ -31,7 +33,10 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: dashboard(),
             icon: LayoutGrid,
         },
-        {
+    ];
+
+    if (isAdmin.value) {
+        items.push({
             title: 'Master Data',
             icon: Database,
             items: [
@@ -51,8 +56,9 @@ const mainNavItems = computed<NavItem[]>(() => {
                     icon: Users,
                 },
             ],
-        },
-        {
+        });
+
+        items.push({
             title: 'Transaksi',
             icon: BarChart3,
             items: [
@@ -62,26 +68,19 @@ const mainNavItems = computed<NavItem[]>(() => {
                     icon: Package,
                 },
                 {
-                    title: 'Penjualan',
-                    href: '/penjualan',
-                    icon: ShoppingCart,
+                    title: 'Katalog Koi',
+                    href: adminKatalogKoiIndex(),
+                    icon: ShoppingBag,
                 },
             ],
-        },
-        {
+        });
+
+        items.push({
             title: 'Stok Koi',
             href: '/inventory',
             icon: Database,
-        },
-    ];
+        });
 
-    items.push({
-        title: 'User',
-        href: usersIndex(),
-        icon: User,
-    });
-
-    if (isAdmin.value) {
         items.push({
             title: 'Log Aktivitas',
             href: '/log-aktivitas',
@@ -115,7 +114,19 @@ const mainNavItems = computed<NavItem[]>(() => {
                 },
             ],
         });
+    } else {
+        items.push({
+            title: 'Katalog',
+            href: customerKatalogIndex(),
+            icon: ShoppingBag,
+        });
     }
+
+    items.push({
+        title: 'User',
+        href: usersIndex(),
+        icon: User,
+    });
 
     return items;
 });
@@ -132,7 +143,7 @@ const footerNavItems: NavItem[] = [];
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
+                        <Link :href="dashboard().url">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

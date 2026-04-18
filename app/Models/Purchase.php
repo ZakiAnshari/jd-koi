@@ -39,4 +39,9 @@ class Purchase extends Model
     {
         return $this->belongsTo(Koi::class);
     }
+
+    public function katalogKoi(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(KatalogKoi::class, 'pembelian_id');
+    }
 }

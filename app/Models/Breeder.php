@@ -20,4 +20,9 @@ class Breeder extends Model
     {
         return $this->name_breeder;
     }
+
+    public function katalogKois(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(KatalogKoi::class);
+    }
 }

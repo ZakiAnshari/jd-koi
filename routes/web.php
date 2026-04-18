@@ -10,6 +10,7 @@ use App\Http\Controllers\StocksController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KatalogKoiController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +94,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/stock/export-excel', [ReportController::class, 'exportStockExcel'])->name('stock.excel');
     });
 
+});
+
+// Admin Routes - Katalog Koi
+Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('katalog-koi', KatalogKoiController::class);
+});
+
+// Customer Routes - Katalog Koi
+Route::middleware(['auth', 'verified'])->prefix('customer')->name('customer.')->group(function () {
+    Route::get('katalog', [KatalogKoiController::class, 'katalogCustomer'])->name('katalog.index');
+    Route::get('katalog/{katalogKoi}', [KatalogKoiController::class, 'katalogDetail'])->name('katalog.detail');
 });
 
 require __DIR__.'/settings.php';
