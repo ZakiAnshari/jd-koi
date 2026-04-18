@@ -28,6 +28,21 @@ class PurchasesController extends Controller
         ]);
     }
 
+    public function print(): Response
+    {
+        $purchases = Purchase::select(['id', 'koi_id', 'date', 'qty', 'price_jpy', 'price_idr', 'status', 'created_at'])
+            ->with('koi:id,code,name')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $kois = Koi::select(['id', 'code', 'name'])->orderBy('code')->get();
+
+        return Inertia::render('Purchases/Print', [
+            'purchases' => ['data' => $purchases],
+            'kois' => $kois,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

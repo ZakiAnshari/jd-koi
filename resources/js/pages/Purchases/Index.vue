@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import InputError from '@/components/InputError.vue'
+import { Pencil, Trash2 } from 'lucide-vue-next'
 import {
     Dialog,
     DialogContent,
@@ -350,10 +351,18 @@ function getKoiInfo(purchase: Purchase): { code: string; name: string } {
                     <p class="text-sm text-muted-foreground">Kelola pembelian koi.</p>
                 </div>
 
-                <Dialog v-model:open="showModal">
-                    <DialogTrigger as-child>
-                        <Button>Tambah Pembelian</Button>
-                    </DialogTrigger>
+                <div class="flex gap-2">
+                    <Link
+                        href="/pembelian/print"
+                        target="_blank"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                        🖨️ Cetak
+                    </Link>
+                    <Dialog v-model:open="showModal">
+                        <DialogTrigger as-child>
+                            <Button>Tambah Pembelian</Button>
+                        </DialogTrigger>
                     <DialogContent class="flex max-h-[90vh] flex-col p-0 sm:max-w-[600px]">
                         <DialogHeader class="flex-shrink-0 border-b px-6 py-4">
                             <DialogTitle>Tambah Pembelian</DialogTitle>
@@ -528,6 +537,7 @@ function getKoiInfo(purchase: Purchase): { code: string; name: string } {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
 
             <!-- DataTable -->
@@ -642,25 +652,23 @@ function getKoiInfo(purchase: Purchase): { code: string; name: string } {
                                     {{ formatIDR(purchase.price_idr) }}
                                 </td>
                                 <td class="px-4 py-3 text-right text-sm">
-                                    <Link
-                                        :href="`/pembelian/${purchase.id}`"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                                    >
-                                        Detail
-                                    </Link>
-                                    <Link
-                                        :href="`/pembelian/${purchase.id}/edit`"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                                    >
-                                        Edit
-                                    </Link>
-                                    <button
-                                        type="button"
-                                        class="rounded-md border border-red-500 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-500/20"
-                                        @click="confirmDelete(purchase.id)"
-                                    >
-                                        Delete
-                                    </button>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <Link
+                                            :href="`/pembelian/${purchase.id}`"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Detail"
+                                        >
+                                            <Pencil :size="16" />
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                                            title="Hapus"
+                                            @click="confirmDelete(purchase.id)"
+                                        >
+                                            <Trash2 :size="16" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -722,3 +730,40 @@ function getKoiInfo(purchase: Purchase): { code: string; name: string } {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    th, td {
+        border: 1px solid black;
+        padding: 8px;
+    }
+    
+    th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+    }
+    
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    
+    .no-print {
+        display: none;
+    }
+    
+    /* Prevent page breaks inside table rows */
+    tr {
+        page-break-inside: avoid;
+    }
+}
+</style>

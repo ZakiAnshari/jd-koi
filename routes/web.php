@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('master-data/customer/{customer}', [CustomersController::class, 'destroy'])->name('customers.destroy');
     //PEMBELIAN
     Route::get('pembelian', [PurchasesController::class, 'index'])->name('purchases.index');
+    Route::get('pembelian/print', [PurchasesController::class, 'print'])->name('purchases.print');
     Route::post('pembelian', [PurchasesController::class, 'store'])->name('purchases.store');
     Route::get('pembelian/{purchase}', [PurchasesController::class, 'show'])->name('purchases.show');
     Route::get('pembelian/{purchase}/edit', [PurchasesController::class, 'edit'])->name('purchases.edit');

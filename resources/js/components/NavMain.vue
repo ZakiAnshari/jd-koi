@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { computed, ref, onMounted } from 'vue';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -11,6 +11,7 @@ import {
     SidebarMenuSubButton,
     SidebarMenuSubItem,
     SidebarMenuBadge,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import {
     Collapsible,
@@ -25,6 +26,7 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
+const sidebar = useSidebar();
 const currentUrl = computed(() => page.url);
 const openMenus = ref<Record<string, boolean>>({});
 
@@ -38,6 +40,16 @@ const isActive = (href?: string) => {
     if (!href) return false;
     return currentUrl.value === href || currentUrl.value.startsWith(href);
 };
+
+// Prevent sidebar collapse on navigation
+onMounted(() => {
+    router.on('navigate', () => {
+        // Keep sidebar from collapsing during navigation
+        if (sidebar?.state?.value === 'collapsed') {
+            sidebar.toggleSidebar();
+        }
+    });
+});
 </script>
 
 <template>
