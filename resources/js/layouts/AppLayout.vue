@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import AppLayoutAdmin from '@/layouts/AppLayoutAdmin.vue';
+import AppLayoutCustomer from '@/layouts/AppLayoutCustomer.vue';
 import { Toaster } from '@/components/ui/sonner'
 import type { BreadcrumbItem } from '@/types';
 
@@ -10,11 +13,19 @@ type Props = {
 withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
+
+const page = usePage();
+const authUser = computed(() => page.props.auth?.user);
+const isAdmin = computed(() => authUser.value?.role?.name === 'admin');
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppLayoutAdmin v-if="isAdmin" :breadcrumbs="breadcrumbs">
         <slot />
         <Toaster position="top-right" :richColors="true" />
-    </AppLayout>
+    </AppLayoutAdmin>
+    <AppLayoutCustomer v-else :breadcrumbs="breadcrumbs">
+        <slot />
+        <Toaster position="top-right" :richColors="true" />
+    </AppLayoutCustomer>
 </template>

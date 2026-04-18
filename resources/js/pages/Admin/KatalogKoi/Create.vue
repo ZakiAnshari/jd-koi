@@ -73,11 +73,6 @@ const selectedPembelian = computed(() => {
     return props.pembelians.find(p => p.id === parseInt(form.pembelian_id as any))
 })
 
-const props = defineProps<{
-    pembelians: Pembelian[]
-    breeders: Breeder[]
-}>()
-
 const handlePembelianChange = (value: string) => {
     form.pembelian_id = value
     const pembelian = selectedPembelian.value

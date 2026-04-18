@@ -17,6 +17,7 @@ class UserSeeder extends Seeder
             'name' => 'Admin JDKOI',
             'email' => 'admin@gmail.com',
             'password' => bcrypt('admin123'),
+            'role_id' => 1,
         ]);
     }
 }

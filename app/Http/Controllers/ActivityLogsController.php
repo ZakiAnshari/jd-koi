@@ -14,7 +14,7 @@ class ActivityLogsController extends Controller
     {
         $this->middleware(function ($request, $next) {
             $user = auth()->user();
-            abort_if(!$user || !method_exists($user, 'isAdmin') || !$user->isAdmin(), 403);
+            abort_if(!$user || !$user->role || $user->role->name !== 'admin', 403);
             return $next($request);
         });
     }

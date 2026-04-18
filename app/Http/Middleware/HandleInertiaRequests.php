@@ -42,7 +42,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'activityLogTodayCount' => $request->user() && method_exists($request->user(), 'isAdmin') && $request->user()->isAdmin()
+            'activityLogTodayCount' => $request->user() && $request->user()->role && $request->user()->role->name === 'admin'
                 ? ActivityLog::whereDate('created_at', now()->toDateString())->count()
                 : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

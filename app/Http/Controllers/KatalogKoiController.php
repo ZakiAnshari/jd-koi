@@ -92,4 +92,58 @@ class KatalogKoiController extends Controller
         return redirect()->route('admin.katalog-koi.index')
             ->with('success', 'Katalog Koi berhasil dihapus.');
     }
+
+    // Customer Routes
+    public function katalogCustomer()
+    {
+        $katalogs = KatalogKoi::with(['koi.breeder'])
+            ->paginate(12)
+            ->through(function ($katalog) {
+                return [
+                    'id' => $katalog->id,
+                    'tanggal' => $katalog->tanggal,
+                    'qty' => $katalog->qty,
+                    'sell_idr' => $katalog->sell_idr,
+                    'koi' => [
+                        'id' => $katalog->koi->id,
+                        'nama' => $katalog->koi->nama,
+                        'kode' => $katalog->koi->kode,
+                        'photo' => $katalog->koi->photo,
+                        'breeder' => [
+                            'name_breeder' => $katalog->koi->breeder->name_breeder ?? null,
+                        ],
+                    ],
+                ];
+            });
+
+        return Inertia::render('Customer/KatalogKoi/Index', [
+            'katalogs' => $katalogs,
+        ]);
+    }
+
+    public function katalogDetail(KatalogKoi $katalogKoi)
+    {
+        $katalogKoi->load(['koi.breeder']);
+
+        $katalog = [
+            'id' => $katalogKoi->id,
+            'tanggal' => $katalogKoi->tanggal,
+            'qty' => $katalogKoi->qty,
+            'sell_idr' => $katalogKoi->sell_idr,
+            'koi' => [
+                'id' => $katalogKoi->koi->id,
+                'nama' => $katalogKoi->koi->nama,
+                'kode' => $katalogKoi->koi->kode,
+                'photo' => $katalogKoi->koi->photo,
+                'deskripsi' => $katalogKoi->koi->deskripsi ?? null,
+                'breeder' => [
+                    'name_breeder' => $katalogKoi->koi->breeder->name_breeder ?? null,
+                ],
+            ],
+        ];
+
+        return Inertia::render('Customer/KatalogKoi/Detail', [
+            'katalog' => $katalog,
+        ]);
+    }
 }

@@ -1,153 +1,172 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 import { Button } from '@/components/ui/button'
+import type { BreadcrumbItem } from '@/types'
 
-interface Breeder {
-    id: number
+type Breeder = {
     name_breeder: string
 }
 
-interface KatalogKoi {
+type Koi = {
     id: number
-    kode_koi: string
-    nama_koi: string
-    foto: string | null
-    ukuran: number | null
-    jenis_kelamin: string
-    umur: string | null
-    deskripsi: string | null
-    harga_jual_idr: number
-    qty: number
-    breeder?: Breeder
+    nama: string
+    kode: string
+    photo?: string
+    deskripsi?: string
+    breeder: Breeder
 }
 
-defineProps<{
-    katalog: KatalogKoi
+type Katalog = {
+    id: number
+    tanggal: string
+    qty: number
+    sell_idr: number
+    koi: Koi
+}
+
+const props = defineProps<{
+    katalog: Katalog
 }>()
 
-const formatIDR = (value: number) => {
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Katalog Koi',
+        href: '/customer/katalog',
+    },
+    {
+        title: props.katalog.koi.nama,
+        href: `/customer/katalog/${props.katalog.id}`,
+    },
+]
+
+const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
     }).format(value)
 }
 
-const getPhotoUrl = (foto: string | null) => {
-    if (!foto) return 'https://via.placeholder.com/400x400?text=Foto+Tidak+Tersedia'
-    return `/storage/${foto}`
+const storagePath = (photo?: string) => {
+    if (!photo) return ''
+    return `/storage/${photo}`
 }
 
-const getGenderLabel = (gender: string) => {
-    const labels = {
-        male: 'Jantan',
-        female: 'Betina',
-        unknown: 'Tidak Diketahui',
-    }
-    return labels[gender as keyof typeof labels] || gender
+const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    })
 }
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
-        <Head :title="katalog.nama_koi" />
+    <Head :title="`Detail - ${katalog.koi.nama}`" />
 
-        <!-- Header dengan Back Button -->
-        <div class="border-b border-sidebar-border/70 bg-background dark:border-sidebar-border">
-            <div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
-                <Link
-                    :href="route('customer.katalog.index')"
-                    class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                    ← Kembali ke Katalog
-                </Link>
-            </div>
-        </div>
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <!-- Back Button -->
+            <Link
+                href="/customer/katalog"
+                class="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80 mb-4 w-fit"
+            >
+                ← Kembali ke Katalog
+            </Link>
 
-        <!-- Main Content -->
-        <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="grid gap-8 lg:grid-cols-2">
-                <!-- Kolom Kiri: Foto -->
-                <div class="flex items-start justify-center">
-                    <img
-                        :src="getPhotoUrl(katalog.foto)"
-                        :alt="katalog.nama_koi"
-                        class="h-full max-h-96 w-full rounded-lg object-cover shadow-lg lg:max-h-96"
-                    />
-                </div>
-
-                <!-- Kolom Kanan: Detail -->
-                <div class="space-y-6">
-                    <!-- Nama Koi -->
-                    <div>
-                        <h1 class="text-3xl font-bold text-foreground">{{ katalog.nama_koi }}</h1>
-                        <p v-if="katalog.breeder" class="mt-2 text-gray-600 dark:text-gray-400">
-                            Breeder: <span class="font-medium">{{ katalog.breeder.name_breeder }}</span>
-                        </p>
-                    </div>
-
-                    <!-- Harga -->
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Harga</p>
-                        <p class="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                            {{ formatIDR(katalog.harga_jual_idr) }}
-                        </p>
-                    </div>
-
-                    <!-- Info Box -->
-                    <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4 dark:border-sidebar-border">
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <!-- Kode Koi -->
-                            <div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Kode Koi</p>
-                                <p class="font-medium">{{ katalog.kode_koi }}</p>
-                            </div>
-
-                            <!-- Ukuran -->
-                            <div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Ukuran</p>
-                                <p class="font-medium">
-                                    {{ katalog.ukuran ? `${katalog.ukuran} cm` : '-' }}
-                                </p>
-                            </div>
-
-                            <!-- Jenis Kelamin -->
-                            <div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Jenis Kelamin</p>
-                                <p class="font-medium">{{ getGenderLabel(katalog.jenis_kelamin) }}</p>
-                            </div>
-
-                            <!-- Umur -->
-                            <div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Umur</p>
-                                <p class="font-medium">{{ katalog.umur || '-' }}</p>
-                            </div>
+            <!-- Detail Card -->
+            <div class="rounded-xl border border-border bg-background overflow-hidden">
+                <div class="grid md:grid-cols-2 gap-0">
+                    <!-- Left - Photo -->
+                    <div class="bg-muted flex items-center justify-center aspect-video md:aspect-square md:h-96">
+                        <img
+                            v-if="katalog.koi.photo"
+                            :src="storagePath(katalog.koi.photo)"
+                            :alt="katalog.koi.nama"
+                            class="w-full h-full object-cover"
+                        />
+                        <div
+                            v-else
+                            class="w-full h-full flex items-center justify-center text-muted-foreground"
+                        >
+                            <span>Foto Tidak Tersedia</span>
                         </div>
                     </div>
 
-                    <!-- Deskripsi -->
-                    <div v-if="katalog.deskripsi">
-                        <h2 class="mb-2 text-lg font-semibold">Deskripsi</h2>
-                        <p class="whitespace-pre-line text-gray-700 dark:text-gray-300">
-                            {{ katalog.deskripsi }}
-                        </p>
-                    </div>
+                    <!-- Right - Details -->
+                    <div class="p-6 sm:p-8 space-y-6 flex flex-col justify-between bg-gradient-to-b from-background to-muted/30">
+                        <!-- Header Section -->
+                        <div class="space-y-4">
+                            <!-- Title & Breeder -->
+                            <div class="space-y-2">
+                                <h1 class="text-4xl font-bold text-foreground leading-tight">
+                                    {{ katalog.koi.nama }}
+                                </h1>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-2 h-2 rounded-full bg-primary" />
+                                    <p class="text-sm font-semibold text-muted-foreground">
+                                        Breeder: {{ katalog.koi.breeder.name_breeder }}
+                                    </p>
+                                </div>
+                            </div>
 
-                    <!-- Stok Tersedia -->
-                    <div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Stok Tersedia</p>
-                        <p class="text-lg font-semibold text-foreground">
-                            {{ katalog.qty }} ekor
-                        </p>
-                    </div>
+                            <!-- Price Highlight -->
+                            <div class="bg-primary/10 border border-primary/20 rounded-xl p-4 space-y-1">
+                                <p class="text-xs font-semibold text-primary uppercase tracking-wide">Harga Jual</p>
+                                <p class="text-3xl font-bold text-primary">
+                                    {{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}
+                                </p>
+                            </div>
+                        </div>
 
-                    <!-- Tombol Pesan -->
-                    <Button class="w-full bg-blue-600 py-6 text-lg hover:bg-blue-700">
-                        Pesan Koi Ini
-                    </Button>
+                        <!-- Key Info Grid -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <!-- Kode -->
+                            <div class="bg-muted rounded-lg p-3 space-y-1">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kode</p>
+                                <p class="font-mono font-bold text-foreground text-sm">
+                                    {{ katalog.koi.kode }}
+                                </p>
+                            </div>
+
+                            <!-- Stok -->
+                            <div class="bg-muted rounded-lg p-3 space-y-1">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stok</p>
+                                <p class="font-bold text-foreground text-sm flex items-baseline gap-1">
+                                    {{ katalog.qty }}
+                                    <span class="text-xs font-medium text-muted-foreground">ekor</span>
+                                </p>
+                            </div>
+
+                            <!-- Tanggal Masuk -->
+                            <div class="bg-muted rounded-lg p-3 space-y-1 col-span-2">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tanggal Masuk</p>
+                                <p class="text-sm font-medium text-foreground">
+                                    {{ formatDate(katalog.tanggal) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Deskripsi Section -->
+                        <div v-if="katalog.koi.deskripsi" class="border-t border-border pt-4">
+                            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                Deskripsi Produk
+                            </p>
+                            <p class="text-sm leading-relaxed text-foreground/80">
+                                {{ katalog.koi.deskripsi }}
+                            </p>
+                        </div>
+
+                        <!-- CTA Button -->
+                        <Button
+                            class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                        >
+                            Pesan Koi Ini
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </AppLayout>
 </template>

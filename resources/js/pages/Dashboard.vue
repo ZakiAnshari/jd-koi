@@ -27,7 +27,8 @@ const summary = computed(() => (page.props.summary as {
 })
 const latestActivityLogs = computed<ActivityLogItem[]>(() => (page.props.latestActivityLogs as ActivityLogItem[] | null) ?? [])
 const authUser = computed(() => page.props.auth?.user)
-const isAdmin = computed(() => authUser.value?.email === 'admin@gmail.com')
+const isAdmin = computed(() => authUser.value?.role?.name === 'admin')
+const isCustomer = computed(() => authUser.value?.role?.name === 'customer')
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -104,7 +105,7 @@ const actionBadgeClasses = (action: string) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-            <div class="grid auto-rows-min gap-4 md:grid-cols-4">
+            <div v-if="isAdmin" class="grid auto-rows-min gap-4 md:grid-cols-4">
                 <div
                     class="relative overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
                     <div class="flex flex-col justify-between h-full">
@@ -186,6 +187,32 @@ const actionBadgeClasses = (action: string) => {
                     </template>
                     <div v-else class="rounded-2xl border border-dashed border-border/80 bg-background p-8 text-center text-sm text-muted-foreground">
                         Belum ada aktivitas terbaru.
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="isCustomer" class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-foreground">Jelajahi Katalog Koi</h2>
+                        <p class="text-sm text-muted-foreground">Lihat koleksi koi terbaru kami</p>
+                    </div>
+                    <Link href="/customer/katalog" class="text-sm font-medium text-primary hover:text-primary/80">
+                        Lihat katalog →
+                    </Link>
+                </div>
+                <div class="mt-6">
+                    <div class="rounded-2xl border border-border bg-surface p-8 text-center">
+                        <div class="mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-primary opacity-50">
+                                <path d="M6 9h12M6 9a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3M6 9v10a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9M9 13h6v4H9z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground mb-2">Temukan Koi Impian Anda</h3>
+                        <p class="text-sm text-muted-foreground mb-4">Koleksi lengkap koi berkualitas dari berbagai breeder terpercaya</p>
+                        <Link href="/customer/katalog" class="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition">
+                            Mulai Belanja
+                        </Link>
                     </div>
                 </div>
             </div>

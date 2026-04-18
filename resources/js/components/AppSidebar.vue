@@ -23,7 +23,7 @@ import { index as usersIndex } from '@/routes/users';
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user);
-const isAdmin = computed(() => authUser.value?.email === 'admin@gmail.com');
+const isAdmin = computed(() => authUser.value?.role?.name === 'admin');
 const activityLogTodayCount = computed(() => Number(page.props.activityLogTodayCount ?? 0));
 
 const mainNavItems = computed<NavItem[]>(() => {
@@ -67,10 +67,16 @@ const mainNavItems = computed<NavItem[]>(() => {
                     href: '/pembelian',
                     icon: Package,
                 },
+
                 {
                     title: 'Katalog Koi',
                     href: adminKatalogKoiIndex(),
                     icon: ShoppingBag,
+                },
+                {
+                    title: 'Pesanan',
+                    href: '/pesanan',
+                    icon: ShoppingCart,
                 },
             ],
         });
@@ -122,11 +128,13 @@ const mainNavItems = computed<NavItem[]>(() => {
         });
     }
 
-    items.push({
-        title: 'User',
-        href: usersIndex(),
-        icon: User,
-    });
+    if (isAdmin.value) {
+        items.push({
+            title: 'User',
+            href: usersIndex(),
+            icon: User,
+        });
+    }
 
     return items;
 });
@@ -168,6 +176,7 @@ const footerNavItems: NavItem[] = [];
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }

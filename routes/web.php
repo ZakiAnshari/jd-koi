@@ -21,6 +21,16 @@ Route::redirect('/', '/login')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Customer Routes - Katalog Koi
+    Route::prefix('customer')->name('customer.')->group(function () {
+        Route::get('katalog', [KatalogKoiController::class, 'katalogCustomer'])->name('katalog.index');
+        Route::get('katalog/{katalogKoi}', [KatalogKoiController::class, 'katalogDetail'])->name('katalog.detail');
+    });
+});
+
+// Admin-Only Routes
+Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
+    // USERS - Admin Only
     Route::get('users', [UsersController::class, 'index'])->name('users.index');
     Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
     Route::post('users', [UsersController::class, 'store'])->name('users.store');
@@ -67,13 +77,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('inventory/{stock}/edit', [StocksController::class, 'edit'])->name('stocks.edit');
     Route::put('inventory/{stock}', [StocksController::class, 'update'])->name('stocks.update');
     Route::delete('inventory/{stock}', [StocksController::class, 'destroy'])->name('stocks.destroy');
-
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('log-aktivitas.index');
-        Route::get('/log-aktivitas/{id}', [ActivityLogController::class, 'show'])->name('log-aktivitas.show');
-        Route::delete('/log-aktivitas/clear', [ActivityLogController::class, 'destroy'])->name('log-aktivitas.clear');
-    });
-
     // PENJUALAN
     Route::get('penjualan', [TransactionController::class, 'index'])->name('penjualan.index');
     Route::post('penjualan', [TransactionController::class, 'store'])->name('penjualan.store');
@@ -81,9 +84,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('penjualan/{transaction}/edit', [TransactionController::class, 'edit'])->name('penjualan.edit');
     Route::put('penjualan/{transaction}', [TransactionController::class, 'update'])->name('penjualan.update');
     Route::delete('penjualan/{transaction}', [TransactionController::class, 'destroy'])->name('penjualan.destroy');
-
+    // LOG AKTIVITAS
+    Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('log-aktivitas.index');
+    Route::get('/log-aktivitas/{id}', [ActivityLogController::class, 'show'])->name('log-aktivitas.show');
+    Route::delete('/log-aktivitas/clear', [ActivityLogController::class, 'destroy'])->name('log-aktivitas.clear');
     // REPORTS
-    Route::middleware(['ensure.admin'])->prefix('reports')->name('reports.')->group(function () {
+    Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/sales', [ReportController::class, 'salesReport'])->name('sales');
         Route::get('/purchases', [ReportController::class, 'purchaseReport'])->name('purchases');
         Route::get('/profit-loss', [ReportController::class, 'profitLossReport'])->name('profitLoss');
@@ -94,18 +100,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/profit-loss/export-excel', [ReportController::class, 'exportProfitLossExcel'])->name('profitLoss.excel');
         Route::get('/stock/export-excel', [ReportController::class, 'exportStockExcel'])->name('stock.excel');
     });
-
-});
-
-// Admin Routes - Katalog Koi
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
-    Route::resource('katalog-koi', KatalogKoiController::class);
-});
-
-// Customer Routes - Katalog Koi
-Route::middleware(['auth', 'verified'])->prefix('customer')->name('customer.')->group(function () {
-    Route::get('katalog', [KatalogKoiController::class, 'katalogCustomer'])->name('katalog.index');
-    Route::get('katalog/{katalogKoi}', [KatalogKoiController::class, 'katalogDetail'])->name('katalog.detail');
+    // Admin Routes - Katalog Koi
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::resource('katalog-koi', KatalogKoiController::class);
+    });
 });
 
 require __DIR__.'/settings.php';

@@ -36,7 +36,7 @@ class DashboardController extends Controller
 
         $latestActivityLogs = [];
 
-        if ($request->user() && method_exists($request->user(), 'isAdmin') && $request->user()->isAdmin()) {
+        if ($request->user() && $request->user()->role && $request->user()->role->name === 'admin') {
             $latestActivityLogs = ActivityLog::with('user:id,name')
                 ->orderByDesc('created_at')
                 ->limit(10)
