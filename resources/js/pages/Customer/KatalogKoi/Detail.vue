@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Button } from '@/components/ui/button'
 import type { BreadcrumbItem } from '@/types'
+import { checkout } from '@/routes/customer/pesanan'
 
 type Breeder = {
     name_breeder: string
@@ -159,11 +159,12 @@ const formatDate = (date: string) => {
                         </div>
 
                         <!-- CTA Button -->
-                        <Button
-                            class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                        <Link
+                            :href="checkout.url(katalog.id)"
+                            class="block w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl text-center"
                         >
                             Pesan Koi Ini
-                        </Button>
+                        </Link>
                     </div>
                 </div>
             </div>

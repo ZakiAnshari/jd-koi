@@ -11,6 +11,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KatalogKoiController;
+use App\Http\Controllers\PesananController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('customer')->name('customer.')->group(function () {
         Route::get('katalog', [KatalogKoiController::class, 'katalogCustomer'])->name('katalog.index');
         Route::get('katalog/{katalogKoi}', [KatalogKoiController::class, 'katalogDetail'])->name('katalog.detail');
+        Route::get('checkout/{katalogKoi}', [PesananController::class, 'checkout'])->name('pesanan.checkout');
+        Route::post('pesanan', [PesananController::class, 'store'])->name('pesanan.store');
+        Route::get('pesanan', [PesananController::class, 'index'])->name('pesanan.index');
     });
 });
 
