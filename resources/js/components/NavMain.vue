@@ -28,18 +28,20 @@ const props = defineProps<{
 const page = usePage();
 const sidebar = useSidebar();
 const currentUrl = computed(() => page.url);
+
+const isActive = (href?: string) => {
+    if (!href) return false;
+    const path = currentUrl.value.split('?')[0];
+    return path === href || path.startsWith(href + '/');
+};
+
 const openMenus = ref<Record<string, boolean>>({});
 
 props.items.forEach((item) => {
     if (item.items) {
-        openMenus.value[item.title] = item.items.some((sub) => currentUrl.value.startsWith(sub.href));
+        openMenus.value[item.title] = item.items.some((sub) => isActive(sub.href));
     }
 });
-
-const isActive = (href?: string) => {
-    if (!href) return false;
-    return currentUrl.value === href || currentUrl.value.startsWith(href);
-};
 
 // Prevent sidebar collapse on navigation
 onMounted(() => {

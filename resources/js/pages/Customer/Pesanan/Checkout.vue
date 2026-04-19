@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3'
+import { Head, Link, useForm, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
+import Swal from 'sweetalert2'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import InputError from '@/components/InputError.vue'
 import type { BreadcrumbItem } from '@/types'
+import { store as pesananStore, show as pesananShow } from '@/routes/customer/pesanan'
 
 type Breeder = {
     name_breeder: string
@@ -56,6 +58,29 @@ const form = useForm({
     catatan: '',
 })
 
+const handleSuccess = (page: any) => {
+    const whatsappUrl = page.props.whatsapp_url || ''
+    const pesananId = page.props.pesanan?.id || ''
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Pesanan Berhasil!',
+        text: 'Pesanan Anda telah disimpan. Anda akan diarahkan ke WhatsApp untuk konfirmasi pembayaran.',
+        confirmButtonText: 'Hubungi Admin via WhatsApp',
+        cancelButtonText: 'Lihat Pesanan',
+        showCancelButton: true,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+    }).then((result) => {
+        if (result.isConfirmed && whatsappUrl) {
+            window.open(whatsappUrl, '_blank')
+        }
+        if (pesananId) {
+            router.visit(pesananShow.url(pesananId))
+        }
+    })
+}
+
 const quantity = ref(1)
 
 const formatCurrency = (value: number) => {
@@ -85,10 +110,18 @@ const increaseQty = () => {
     }
 }
 
+const onQtyInput = () => {
+    if (quantity.value < 1 || isNaN(quantity.value)) quantity.value = 1
+    if (quantity.value > props.katalog.qty) quantity.value = props.katalog.qty
+    form.qty = quantity.value
+}
+
 const totalPrice = computed(() => quantity.value * props.katalog.sell_idr)
 
 const submit = () => {
-    form.post(route('customer.pesanan.store'))
+    form.post(pesananStore.url(), {
+        onSuccess: (page) => handleSuccess(page),
+    })
 }
 </script>
 
@@ -200,7 +233,7 @@ const submit = () => {
                                 min="1"
                                 :max="katalog.qty"
                                 class="w-16 text-center"
-                                readonly
+                                @input="onQtyInput"
                             />
                             
                             <Button

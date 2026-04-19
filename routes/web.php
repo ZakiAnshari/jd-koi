@@ -9,9 +9,12 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KatalogKoiController;
 use App\Http\Controllers\PesananController;
+use App\Http\Controllers\AdminPesananController;
+use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +24,7 @@ Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
 
     // Customer Routes - Katalog Koi
     Route::prefix('customer')->name('customer.')->group(function () {
@@ -29,6 +33,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('checkout/{katalogKoi}', [PesananController::class, 'checkout'])->name('pesanan.checkout');
         Route::post('pesanan', [PesananController::class, 'store'])->name('pesanan.store');
         Route::get('pesanan', [PesananController::class, 'index'])->name('pesanan.index');
+        Route::get('pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
+        Route::delete('pesanan/{pesanan}', [PesananController::class, 'destroy'])->name('pesanan.destroy');
+        Route::get('notifikasi', [NotificationController::class, 'index'])->name('notifikasi.index');
+        Route::put('notifikasi/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifikasi.read-all');
+        Route::put('notifikasi/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifikasi.read');
     });
 });
 
@@ -107,6 +116,9 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     // Admin Routes - Katalog Koi
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('katalog-koi', KatalogKoiController::class);
+        Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
+        Route::get('pesanan/{pesanan}', [AdminPesananController::class, 'show'])->name('pesanan.show');
+        Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');
     });
 });
 

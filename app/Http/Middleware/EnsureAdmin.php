@@ -12,7 +12,7 @@ class EnsureAdmin
         $user = $request->user();
 
         // Check if user is authenticated and has admin role
-        if (!$user || !$user->role || $user->role->name !== 'admin') {
+        if (!$user || $user->role_id !== 1) {
             abort(403);
         }
 

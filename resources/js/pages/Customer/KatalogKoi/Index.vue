@@ -138,70 +138,95 @@ const hasFilteredData = computed(() => filteredKatalogs.value.length > 0)
 
             <!-- Grid Katalog -->
             <div v-if="hasFilteredData" class="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                <Link
-                    v-for="katalog in filteredKatalogs"
-                    :key="katalog.id"
-                    :href="`/customer/katalog/${katalog.id}`"
-                    class="group flex flex-col h-full rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background hover:border-primary/50 hover:shadow-lg transition-all duration-300"
-                >
-                    <!-- Foto Container -->
-                    <div class="relative overflow-hidden bg-muted aspect-square">
-                        <img
-                            v-if="katalog.koi.photo"
-                            :src="storagePath(katalog.koi.photo)"
-                            :alt="katalog.koi.nama"
-                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                        <div
-                            v-else
-                            class="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50"
-                        >
-                            <span class="text-sm font-medium">Foto Tidak Tersedia</span>
-                        </div>
-                        
-                        <!-- Stok Badge -->
-                        <div class="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-                            {{ katalog.qty }} ekor
-                        </div>
-                    </div>
-
-                    <!-- Content -->
-                    <div class="p-4 space-y-3 flex flex-col flex-1">
-                        <!-- Nama & Breeder -->
-                        <div class="flex-1">
-                            <h3 class="font-bold text-foreground line-clamp-2 text-sm md:text-base leading-tight mb-1">
-                                {{ katalog.koi.nama }}
-                            </h3>
-                            <p class="text-xs text-muted-foreground font-medium">
-                                {{ katalog.koi.breeder.name_breeder }}
-                            </p>
-                        </div>
-
-                        <!-- Divider -->
-                        <div class="h-px bg-border" />
-
-                        <!-- Kode & Harga -->
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-muted-foreground">Kode:</span>
-                                <span class="font-mono font-semibold text-foreground text-xs">{{ katalog.koi.kode }}</span>
+                <template v-for="katalog in filteredKatalogs" :key="katalog.id">
+                    <!-- Card: Stok Tersedia -->
+                    <Link
+                        v-if="katalog.qty > 0"
+                        :href="`/customer/katalog/${katalog.id}`"
+                        class="group flex flex-col h-full rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+                    >
+                        <!-- Foto Container -->
+                        <div class="relative overflow-hidden bg-muted aspect-square">
+                            <img
+                                v-if="katalog.koi.photo"
+                                :src="storagePath(katalog.koi.photo)"
+                                :alt="katalog.koi.nama"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50">
+                                <span class="text-sm font-medium">Foto Tidak Tersedia</span>
                             </div>
-                            <div class="flex items-baseline justify-between">
-                                <span class="text-xs text-muted-foreground">Harga</span>
-                                <span class="text-lg font-bold text-primary">
-                                    {{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}
-                                </span>
+                            <div class="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                                {{ katalog.qty }} ekor
                             </div>
                         </div>
+                        <!-- Content -->
+                        <div class="p-4 space-y-3 flex flex-col flex-1">
+                            <div class="flex-1">
+                                <h3 class="font-bold text-foreground line-clamp-2 text-sm md:text-base leading-tight mb-1">{{ katalog.koi.nama }}</h3>
+                                <p class="text-xs text-muted-foreground font-medium">{{ katalog.koi.breeder.name_breeder }}</p>
+                            </div>
+                            <div class="h-px bg-border" />
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-muted-foreground">Kode:</span>
+                                    <span class="font-mono font-semibold text-foreground text-xs">{{ katalog.koi.kode }}</span>
+                                </div>
+                                <div class="flex items-baseline justify-between">
+                                    <span class="text-xs text-muted-foreground">Harga</span>
+                                    <span class="text-lg font-bold text-primary">{{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}</span>
+                                </div>
+                            </div>
+                            <Button class="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 text-sm">
+                                Lihat Detail
+                            </Button>
+                        </div>
+                    </Link>
 
-                        <!-- CTA Button -->
-                        <Button 
-                            class="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 text-sm"
-                        >
-                            Lihat Detail
-                        </Button>
+                    <!-- Card: Stok Habis -->
+                    <div
+                        v-else
+                        class="flex flex-col h-full rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background cursor-not-allowed"
+                    >
+                        <!-- Foto Container with overlay -->
+                        <div class="relative overflow-hidden bg-muted aspect-square">
+                            <img
+                                v-if="katalog.koi.photo"
+                                :src="storagePath(katalog.koi.photo)"
+                                :alt="katalog.koi.nama"
+                                class="w-full h-full object-cover opacity-40"
+                            />
+                            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 opacity-40">
+                                <span class="text-sm font-medium">Foto Tidak Tersedia</span>
+                            </div>
+                            <!-- Stok Habis overlay -->
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <span class="text-red-400 font-bold text-xl tracking-wide drop-shadow-lg">Stok Habis</span>
+                            </div>
+                        </div>
+                        <!-- Content -->
+                        <div class="p-4 space-y-3 flex flex-col flex-1 opacity-60">
+                            <div class="flex-1">
+                                <h3 class="font-bold text-foreground line-clamp-2 text-sm md:text-base leading-tight mb-1">{{ katalog.koi.nama }}</h3>
+                                <p class="text-xs text-muted-foreground font-medium">{{ katalog.koi.breeder.name_breeder }}</p>
+                            </div>
+                            <div class="h-px bg-border" />
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-muted-foreground">Kode:</span>
+                                    <span class="font-mono font-semibold text-foreground text-xs">{{ katalog.koi.kode }}</span>
+                                </div>
+                                <div class="flex items-baseline justify-between">
+                                    <span class="text-xs text-muted-foreground">Harga</span>
+                                    <span class="text-lg font-bold text-muted-foreground">{{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}</span>
+                                </div>
+                            </div>
+                            <button disabled class="w-full mt-2 bg-muted text-muted-foreground font-semibold h-9 text-sm rounded-md cursor-not-allowed">
+                                Stok Habis
+                            </button>
+                        </div>
                     </div>
-                </Link>
+                </template>
             </div>
 
             <!-- Empty State - No Search Results -->

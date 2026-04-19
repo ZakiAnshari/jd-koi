@@ -7,8 +7,12 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use App\Http\Responses\LoginResponse;
+use App\Models\Pesanan;
 use App\Models\StockMovement;
+use App\Observers\PesananObserver;
 use App\Observers\StockMovementObserver;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+
+        Pesanan::observe(PesananObserver::class);
         StockMovement::observe(StockMovementObserver::class);
 
         if (app()->isProduction()) {

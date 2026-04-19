@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
+import { show as pesananShow, destroy as pesananDestroy } from '@/routes/customer/pesanan'
 
 type Breeder = {
     name_breeder: string
@@ -10,8 +11,8 @@ type Breeder = {
 
 type Koi = {
     id: number
-    nama: string
-    kode: string
+    name: string
+    code: string
 }
 
 type KatalogKoi = {
@@ -28,7 +29,7 @@ type Pesanan = {
     status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
     catatan?: string
     created_at: string
-    katalogKoi: KatalogKoi
+    katalog_koi: KatalogKoi
 }
 
 type PaginatedPesanans = {
@@ -66,9 +67,16 @@ const formatCurrency = (value: number) => {
 const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('id-ID', {
         year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
     })
+}
+
+const deletePesanan = (pesanan: Pesanan) => {
+    if (!window.confirm(`Hapus pesanan ${pesanan.kode_pesanan}? Tindakan ini tidak dapat dibatalkan.`)) return
+    router.delete(pesananDestroy.url(pesanan.id))
 }
 
 const statusBadge = (status: string) => {
@@ -119,6 +127,7 @@ const hasData = computed(() => (props.pesanans?.data?.length ?? 0) > 0)
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Total Harga</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tanggal</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border">
@@ -134,7 +143,7 @@ const hasData = computed(() => (props.pesanans?.data?.length ?? 0) > 0)
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="text-foreground font-medium">
-                                        {{ pesanan.katalogKoi.koi.nama }}
+                                        {{ pesanan.katalog_koi.koi.name }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
@@ -156,6 +165,23 @@ const hasData = computed(() => (props.pesanans?.data?.length ?? 0) > 0)
                                     <span class="text-sm text-muted-foreground">
                                         {{ formatDate(pesanan.created_at) }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <Link
+                                            :href="pesananShow.url(pesanan.id)"
+                                            class="text-sm px-3 py-1 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                                        >
+                                            Detail
+                                        </Link>
+                                        <button
+                                            v-if="pesanan.status === 'pending'"
+                                            @click="deletePesanan(pesanan)"
+                                            class="text-sm px-3 py-1 rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                        >
+                                            Hapus
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

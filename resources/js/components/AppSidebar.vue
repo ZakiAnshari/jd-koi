@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, FileBarChart, ShoppingBag } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, FileBarChart, ShoppingBag, Bell } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -19,18 +19,22 @@ import { computed } from 'vue';
 import { dashboard } from '@/routes';
 import { index as adminKatalogKoiIndex } from '@/routes/admin/katalog-koi';
 import { index as customerKatalogIndex } from '@/routes/customer/katalog';
+import { index as customerPesananIndex } from '@/routes/customer/pesanan';
+import { index as customerNotifikasiIndex } from '@/routes/customer/notifikasi';
 import { index as usersIndex } from '@/routes/users';
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user);
-const isAdmin = computed(() => authUser.value?.role?.name === 'admin');
+const isAdmin = computed(() => authUser.value?.role_id === 1);
 const activityLogTodayCount = computed(() => Number(page.props.activityLogTodayCount ?? 0));
+const unreadNotifications = computed(() => Number((page.props as any).unreadNotifications ?? 0));
+const pendingPesananCount = computed(() => Number((page.props as any).pendingPesananCount ?? 0));
 
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
             title: 'Dashboard',
-            href: dashboard(),
+            href: isAdmin.value ? dashboard().url : '/customer/dashboard',
             icon: LayoutGrid,
         },
     ];
@@ -70,13 +74,14 @@ const mainNavItems = computed<NavItem[]>(() => {
 
                 {
                     title: 'Katalog Koi',
-                    href: adminKatalogKoiIndex(),
+                    href: adminKatalogKoiIndex().url,
                     icon: ShoppingBag,
                 },
                 {
                     title: 'Pesanan',
-                    href: '/pesanan',
+                    href: '/admin/pesanan',
                     icon: ShoppingCart,
+                    badgeCount: pendingPesananCount.value,
                 },
             ],
         });
@@ -123,15 +128,26 @@ const mainNavItems = computed<NavItem[]>(() => {
     } else {
         items.push({
             title: 'Katalog',
-            href: customerKatalogIndex(),
+            href: customerKatalogIndex().url,
             icon: ShoppingBag,
+        });
+        items.push({
+            title: 'Pesanan Saya',
+            href: customerPesananIndex().url,
+            icon: ShoppingCart,
+        });
+        items.push({
+            title: 'Notifikasi',
+            href: customerNotifikasiIndex().url,
+            icon: Bell,
+            badgeCount: unreadNotifications.value,
         });
     }
 
     if (isAdmin.value) {
         items.push({
             title: 'User',
-            href: usersIndex(),
+            href: usersIndex().url,
             icon: User,
         });
     }
@@ -151,7 +167,7 @@ const footerNavItems: NavItem[] = [];
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard().url">
+                        <Link :href="isAdmin ? dashboard().url : '/customer/dashboard'">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

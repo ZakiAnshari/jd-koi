@@ -133,9 +133,12 @@ const formatDate = (date: string) => {
                             <!-- Stok -->
                             <div class="bg-muted rounded-lg p-3 space-y-1">
                                 <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stok</p>
-                                <p class="font-bold text-foreground text-sm flex items-baseline gap-1">
+                                <p v-if="katalog.qty > 0" class="font-bold text-green-600 dark:text-green-400 text-sm flex items-baseline gap-1">
                                     {{ katalog.qty }}
-                                    <span class="text-xs font-medium text-muted-foreground">ekor</span>
+                                    <span class="text-xs font-medium text-muted-foreground">ekor tersedia</span>
+                                </p>
+                                <p v-else class="font-bold text-red-600 dark:text-red-400 text-sm">
+                                    Stok Habis
                                 </p>
                             </div>
 
@@ -160,11 +163,19 @@ const formatDate = (date: string) => {
 
                         <!-- CTA Button -->
                         <Link
+                            v-if="katalog.qty > 0"
                             :href="checkout.url(katalog.id)"
                             class="block w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl text-center"
                         >
                             Pesan Koi Ini
                         </Link>
+                        <button
+                            v-else
+                            disabled
+                            class="w-full bg-muted text-muted-foreground font-bold py-3 text-base rounded-xl cursor-not-allowed"
+                        >
+                            Stok Habis
+                        </button>
                     </div>
                 </div>
             </div>
