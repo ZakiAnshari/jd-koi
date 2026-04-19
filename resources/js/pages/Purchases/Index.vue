@@ -47,7 +47,7 @@ type Purchase = {
 }
 
 const page = usePage()
-const purchases = computed(() => (page.props.purchases as { data: Purchase[] } | null)?.data ?? [])
+const purchases = computed(() => (page.props.purchases as Purchase[] | null) ?? [])
 const kois = computed(() => (page.props.kois as Koi[] | null) ?? [])
 
 // ─── Exchange Rate (sama seperti Penjualan) ─────────────

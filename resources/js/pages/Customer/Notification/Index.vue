@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
+import { CheckCheck, Check, Bell } from 'lucide-vue-next'
 import { read as notifRead, readAll as notifReadAll } from '@/routes/customer/notifikasi'
 
 type Notifikasi = {
@@ -15,162 +18,207 @@ type Notifikasi = {
     created_at: string
 }
 
-type PaginatedNotifikasi = {
-    data: Notifikasi[]
-    current_page: number
-    last_page: number
-    prev_page_url: string | null
-    next_page_url: string | null
-}
+const props = defineProps<{ notifications: Notifikasi[] }>()
 
-const props = defineProps<{
-    notifications: PaginatedNotifikasi
-}>()
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Notifikasi', href: '/customer/notifikasi' }]
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Notifikasi', href: '/customer/notifikasi' },
-]
+// ─── DataTable State ──────────────────────────────────────
+const search = ref('')
+const filterUnread = ref(false)
+const currentPage = ref(1)
+const perPage = ref(10)
 
-const hasUnread = computed(() => props.notifications.data.some(n => !n.is_read))
+const filteredNotifications = computed(() => {
+    let result = props.notifications ?? []
+    if (filterUnread.value) result = result.filter(n => !n.is_read)
+    if (search.value) {
+        const q = search.value.toLowerCase()
+        result = result.filter(n =>
+            n.title.toLowerCase().includes(q) ||
+            n.message.toLowerCase().includes(q)
+        )
+    }
+    return result
+})
+
+const totalPages = computed(() => Math.ceil(filteredNotifications.value.length / perPage.value) || 1)
+
+watch(totalPages, (n) => { if (currentPage.value > n) currentPage.value = 1 })
+
+const paginatedNotifications = computed(() => {
+    const start = (currentPage.value - 1) * perPage.value
+    return filteredNotifications.value.slice(start, start + perPage.value)
+})
+
+const showingFrom = computed(() =>
+    filteredNotifications.value.length === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1
+)
+const showingTo = computed(() =>
+    Math.min(currentPage.value * perPage.value, filteredNotifications.value.length)
+)
+
+const hasUnread = computed(() => props.notifications.some(n => !n.is_read))
+const unreadCount = computed(() => props.notifications.filter(n => !n.is_read).length)
+
+function onSearch(v: string | number) { search.value = String(v); currentPage.value = 1 }
 
 const timeAgo = (dateString: string) => {
     const isoDate = dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z'
     const diff = Date.now() - new Date(isoDate).getTime()
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
-
-    if (seconds < 60) return `${seconds} detik lalu`
-    if (minutes < 60) return `${minutes} menit lalu`
-    if (hours < 24) return `${hours} jam lalu`
-    if (days === 1) return 'kemarin'
-    return `${days} hari lalu`
+    const s = Math.floor(diff / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24)
+    if (s < 60) return `${s} detik lalu`
+    if (m < 60) return `${m} menit lalu`
+    if (h < 24) return `${h} jam lalu`
+    if (d === 1) return 'kemarin'
+    return `${d} hari lalu`
 }
 
-const typeIcon = (type: string) => type
-
-const handleClick = (notif: Notifikasi) => {
-    router.put(markAsRead.url(notif.id))
+function handleClick(notif: Notifikasi) {
+    if (!notif.is_read) router.put(notifRead.url(notif.id), {}, { preserveScroll: true })
 }
 
-const handleMarkAllRead = () => {
-    router.put(markAllAsRead.url())
+function handleMarkAllRead() {
+    router.put(notifReadAll.url(), {}, { preserveScroll: true })
 }
 </script>
 
 <template>
     <Head title="Notifikasi" />
-
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex flex-col gap-4 p-6">
             <!-- Header -->
-            <div class="flex items-center justify-between">
-                <div class="space-y-1">
-                    <h1 class="text-4xl font-bold text-foreground">Notifikasi</h1>
-                    <p class="text-base text-muted-foreground">Informasi terbaru tentang pesanan Anda</p>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold">Notifikasi</h1>
+                    <p class="text-sm text-muted-foreground">Informasi terbaru tentang pesanan Anda.</p>
                 </div>
                 <button
                     v-if="hasUnread"
                     @click="handleMarkAllRead"
-                    class="px-4 py-2 text-sm font-semibold rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                    class="inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-background px-3 py-2 text-sm text-foreground shadow-sm hover:bg-muted self-start md:self-auto"
+                    title="Tandai semua dibaca"
                 >
-                    Tandai Semua Dibaca
+                    <CheckCheck class="h-4 w-4" />
+                    <span>Tandai Semua Dibaca</span>
                 </button>
             </div>
 
-            <!-- Notification List -->
-            <div v-if="notifications.data.length > 0" class="space-y-3">
-                <button
-                    v-for="notif in notifications.data"
-                    :key="notif.id"
-                    @click="handleClick(notif)"
-                    class="w-full text-left rounded-xl border transition-colors"
-                    :class="notif.is_read
-                        ? 'border-sidebar-border/70 dark:border-sidebar-border bg-background hover:bg-muted/30'
-                        : 'border-blue-200 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/30'"
-                >
-                    <div class="flex items-start gap-4 p-4">
-                        <!-- Icon -->
-                        <div class="flex-shrink-0 mt-0.5">
-                            <!-- order_confirmed -->
-                            <div v-if="typeIcon(notif.type) === 'order_confirmed'" class="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Filter bar -->
+            <div class="overflow-hidden rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                <div class="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-3">
+                        <Input
+                            :model-value="search"
+                            @update:model-value="onSearch"
+                            placeholder="Cari notifikasi..."
+                            class="max-w-sm"
+                        />
+                        <button
+                            @click="filterUnread = !filterUnread; currentPage = 1"
+                            :class="[
+                                'inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
+                                filterUnread
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-input bg-background text-foreground hover:bg-muted'
+                            ]"
+                        >
+                            <Bell class="h-3.5 w-3.5" />
+                            Belum dibaca
+                            <span v-if="unreadCount > 0" class="ml-1 rounded-full bg-background/20 px-1.5 py-0.5 text-xs font-semibold">
+                                {{ unreadCount }}
+                            </span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">Show</span>
+                        <select
+                            :value="perPage"
+                            @change="(e) => { perPage = Number((e.target as HTMLSelectElement).value); currentPage = 1 }"
+                            class="rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        >
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span class="text-sm text-muted-foreground">entries</span>
+                    </div>
+                </div>
+
+                <!-- Notification List -->
+                <div class="divide-y divide-border bg-background">
+                    <div v-if="paginatedNotifications.length === 0" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                        <Bell class="h-10 w-10 text-muted-foreground/40" />
+                        <p class="text-sm text-muted-foreground">
+                            {{ search || filterUnread ? 'Tidak ada notifikasi yang sesuai filter.' : 'Belum ada notifikasi.' }}
+                        </p>
+                    </div>
+
+                    <div
+                        v-for="notif in paginatedNotifications"
+                        :key="notif.id"
+                        :class="[
+                            'flex items-start gap-4 p-4 transition-colors',
+                            notif.is_read ? 'bg-background hover:bg-muted/30' : 'bg-blue-50/40 dark:bg-blue-950/10 hover:bg-blue-50/60 dark:hover:bg-blue-950/20'
+                        ]"
+                    >
+                        <!-- Type icon -->
+                        <div class="mt-0.5 flex-shrink-0">
+                            <div v-if="notif.type === 'order_confirmed'" class="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                                <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
-                            <!-- order_completed -->
-                            <div v-else-if="typeIcon(notif.type) === 'order_completed'" class="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            <div v-else-if="notif.type === 'order_completed'" class="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                                <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <!-- order_cancelled -->
-                            <div v-else class="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                            <div v-else class="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                                <Bell class="w-5 h-5 text-muted-foreground" />
                             </div>
                         </div>
 
                         <!-- Content -->
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-0.5">
                                 <p :class="['text-sm', notif.is_read ? 'font-medium text-foreground' : 'font-bold text-foreground']">
                                     {{ notif.title }}
                                 </p>
                                 <span v-if="!notif.is_read" class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
                             </div>
                             <p class="text-sm text-muted-foreground leading-relaxed">{{ notif.message }}</p>
+                            <p class="mt-1 text-xs text-muted-foreground/70">{{ timeAgo(notif.created_at) }}</p>
                         </div>
 
-                        <!-- Time -->
-                        <p class="flex-shrink-0 text-xs text-muted-foreground whitespace-nowrap">
-                            {{ timeAgo(notif.created_at) }}
-                        </p>
+                        <!-- Mark as read button -->
+                        <button
+                            v-if="!notif.is_read"
+                            @click="handleClick(notif)"
+                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted flex-shrink-0"
+                            title="Tandai sudah dibaca"
+                        >
+                            <Check class="h-4 w-4" />
+                        </button>
+                        <div v-else class="w-9 flex-shrink-0" />
                     </div>
-                </button>
-            </div>
-
-            <!-- Empty State -->
-            <div
-                v-else
-                class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-16 text-center"
-            >
-                <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
                 </div>
-                <p class="text-lg font-semibold text-foreground mb-1">Belum ada notifikasi</p>
-                <p class="text-sm text-muted-foreground">Notifikasi pesanan Anda akan muncul di sini</p>
-            </div>
 
-            <!-- Pagination -->
-            <div v-if="notifications.last_page > 1" class="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-border">
-                <a
-                    v-if="notifications.prev_page_url"
-                    :href="notifications.prev_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
-                >
-                    ← Sebelumnya
-                </a>
-                <button v-else disabled class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed">
-                    ← Sebelumnya
-                </button>
-                <span class="px-2 py-2 text-sm text-muted-foreground">
-                    Halaman {{ notifications.current_page }} dari {{ notifications.last_page }}
-                </span>
-                <a
-                    v-if="notifications.next_page_url"
-                    :href="notifications.next_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
-                >
-                    Selanjutnya →
-                </a>
-                <button v-else disabled class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed">
-                    Selanjutnya →
-                </button>
+                <!-- Footer: info + pagination -->
+                <div class="flex flex-col items-center justify-between gap-2 border-t border-border px-4 py-3 sm:flex-row">
+                    <p class="text-sm text-muted-foreground">
+                        Showing {{ showingFrom }} to {{ showingTo }} of {{ filteredNotifications.length }} entries
+                        <span v-if="search || filterUnread">(filtered from {{ notifications.length }} total)</span>
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="currentPage--">Previous</Button>
+                        <template v-for="p in totalPages" :key="p">
+                            <Button size="sm" :variant="p === currentPage ? 'default' : 'outline'" @click="currentPage = p">
+                                {{ p }}
+                            </Button>
+                        </template>
+                        <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="currentPage++">Next</Button>
+                    </div>
+                </div>
             </div>
         </div>
     </AppLayout>

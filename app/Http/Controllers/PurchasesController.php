@@ -17,7 +17,7 @@ class PurchasesController extends Controller
         $purchases = Purchase::select(['id', 'koi_id', 'date', 'qty', 'price_jpy', 'price_idr', 'status', 'created_at'])
             ->with('koi:id,code,name')
             ->orderBy('date', 'desc')
-            ->paginate(10);
+            ->get();
 
         $kois = Koi::select(['id', 'code', 'name'])->orderBy('code')->get();
 

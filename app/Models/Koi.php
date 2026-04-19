@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Koi extends Model
 {
@@ -28,5 +29,10 @@ class Koi extends Model
     public function breeder(): BelongsTo
     {
         return $this->belongsTo(Breeder::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(KoiImage::class)->orderBy('sort_order');
     }
 }

@@ -17,11 +17,12 @@ import {
 import type { NavItem } from '@/types';
 import { computed } from 'vue';
 import { dashboard } from '@/routes';
-import { index as adminKatalogKoiIndex } from '@/routes/admin/katalog-koi';
 import { index as customerKatalogIndex } from '@/routes/customer/katalog';
 import { index as customerPesananIndex } from '@/routes/customer/pesanan';
 import { index as customerNotifikasiIndex } from '@/routes/customer/notifikasi';
 import { index as usersIndex } from '@/routes/users';
+
+const adminKatalogKoiIndex = () => ({ url: '/admin/katalog-koi' });
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user);

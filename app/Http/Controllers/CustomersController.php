@@ -14,7 +14,7 @@ class CustomersController extends Controller
     {
         $customers = Customer::select(['id', 'name', 'phone', 'created_at'])
             ->orderBy('name')
-            ->paginate(10);
+            ->get();
 
         return Inertia::render('MasterData/Customer/Index', [
             'customers' => $customers,

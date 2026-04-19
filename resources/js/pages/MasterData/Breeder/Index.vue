@@ -26,7 +26,7 @@ type Breeder = {
 }
 
 const page = usePage()
-const breeders = computed(() => (page.props.breeders as { data: Breeder[] } | null)?.data ?? [])
+const breeders = computed(() => (page.props.breeders as Breeder[] | null) ?? [])
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

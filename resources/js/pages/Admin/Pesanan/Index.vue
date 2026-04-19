@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
-import { show as adminPesananShow, updateStatus as adminPesananUpdateStatus } from '@/routes/admin/pesanan'
+const adminPesananShow = { url: (id: number) => `/admin/pesanan/${id}` }
+const adminPesananUpdateStatus = { url: (id: number) => `/admin/pesanan/${id}/status` }
 
 type Customer = {
     id: number
     name: string
     email: string
-}
-
-type Breeder = {
-    id: number
-    name_breeder: string
 }
 
 type Koi = {
@@ -40,55 +38,102 @@ type Pesanan = {
     katalog_koi: KatalogKoi
 }
 
-type PaginatedPesanans = {
-    data: Pesanan[]
-    current_page: number
-    last_page: number
-    per_page: number
-    total: number
-    from?: number
-    to?: number
-    prev_page_url?: string
-    next_page_url?: string
-    path: string
-}
-
 const props = defineProps<{
-    pesanans: PaginatedPesanans
+    pesanans: Pesanan[]
 }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Pesanan Customer',
-        href: '/admin/pesanan',
-    },
+    { title: 'Pesanan Customer', href: '/admin/pesanan' },
 ]
 
+// ─── DataTable State ─────────────────────────────────────
+const search = ref('')
+const sortKey = ref<keyof Pesanan>('created_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+const currentPage = ref(1)
+const perPage = ref(10)
+
 const selectedStatus = ref<Record<number, string>>(
-    Object.fromEntries((props.pesanans?.data ?? []).map(p => [p.id, p.status]))
+    Object.fromEntries((props.pesanans ?? []).map(p => [p.id, p.status]))
 )
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-    }).format(value)
+const filteredPesanans = computed(() => {
+    let result = props.pesanans ?? []
+
+    if (search.value) {
+        const q = search.value.toLowerCase()
+        result = result.filter(p =>
+            p.kode_pesanan.toLowerCase().includes(q) ||
+            p.customer.name.toLowerCase().includes(q) ||
+            p.customer.email.toLowerCase().includes(q) ||
+            p.katalog_koi.koi.name.toLowerCase().includes(q) ||
+            p.status.toLowerCase().includes(q)
+        )
+    }
+
+    result = [...result].sort((a, b) => {
+        const aVal = (a as any)[sortKey.value]
+        const bVal = (b as any)[sortKey.value]
+        if (aVal == null || bVal == null) return 0
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+            return sortOrder.value === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+            return sortOrder.value === 'asc' ? aVal - bVal : bVal - aVal
+        }
+        return 0
+    })
+
+    return result
+})
+
+const totalPages = computed(() => Math.ceil(filteredPesanans.value.length / perPage.value) || 1)
+
+watch(totalPages, (newTotal) => {
+    if (currentPage.value > newTotal) currentPage.value = 1
+})
+
+const paginatedPesanans = computed(() => {
+    const start = (currentPage.value - 1) * perPage.value
+    return filteredPesanans.value.slice(start, start + perPage.value)
+})
+
+const showingFrom = computed(() =>
+    filteredPesanans.value.length === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1
+)
+const showingTo = computed(() =>
+    Math.min(currentPage.value * perPage.value, filteredPesanans.value.length)
+)
+
+function onSearch(value: string | number) {
+    search.value = String(value)
+    currentPage.value = 1
 }
 
-const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    })
+function toggleSort(key: keyof Pesanan) {
+    if (sortKey.value === key) {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    } else {
+        sortKey.value = key
+        sortOrder.value = 'asc'
+    }
 }
+
+function sortIcon(key: keyof Pesanan) {
+    if (sortKey.value !== key) return '↕'
+    return sortOrder.value === 'asc' ? '↑' : '↓'
+}
+
+// ─── Helpers ─────────────────────────────────────────────
+const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)
+
+const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
 const statusBadge = (status: string) => {
     const badges: Record<string, string> = {
-        pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+        pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
         confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
         completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
         cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -98,10 +143,7 @@ const statusBadge = (status: string) => {
 
 const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
-        pending: 'Pending',
-        confirmed: 'Confirmed',
-        completed: 'Completed',
-        cancelled: 'Cancelled',
+        pending: 'Pending', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled',
     }
     return labels[status] || status
 }
@@ -109,85 +151,132 @@ const statusLabel = (status: string) => {
 const updateStatus = (pesanan: Pesanan) => {
     const newStatus = selectedStatus.value[pesanan.id]
     if (!newStatus || newStatus === pesanan.status) return
-
-    router.put(adminPesananUpdateStatus.url(pesanan.id), {
-        status: newStatus,
-    })
+    router.put(adminPesananUpdateStatus.url(pesanan.id), { status: newStatus })
 }
-
-const hasData = (props.pesanans?.data?.length ?? 0) > 0
 </script>
 
 <template>
     <Head title="Pesanan Customer" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex flex-col gap-4 p-6">
             <!-- Header -->
-            <div class="space-y-2 mb-2">
-                <h1 class="text-4xl font-bold text-foreground">Pesanan Customer</h1>
-                <p class="text-base text-muted-foreground">
-                    Kelola pesanan yang masuk dari customer
-                </p>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold">Pesanan Customer</h1>
+                    <p class="text-sm text-muted-foreground">Kelola pesanan yang masuk dari customer.</p>
+                </div>
             </div>
 
-            <!-- Table -->
-            <div v-if="hasData" class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
+            <!-- DataTable -->
+            <div class="overflow-hidden rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                <!-- Search & Per-page -->
+                <div class="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <Input
+                        :model-value="search"
+                        @update:model-value="onSearch"
+                        placeholder="Cari kode, customer, koi, atau status..."
+                        class="max-w-sm"
+                    />
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">Show</span>
+                        <select
+                            :value="perPage"
+                            @change="(e) => { perPage = Number((e.target as HTMLSelectElement).value); currentPage = 1 }"
+                            class="rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span class="text-sm text-muted-foreground">entries</span>
+                    </div>
+                </div>
+
                 <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-muted/30 border-b border-border">
+                    <table class="min-w-full divide-y divide-border">
+                        <thead class="bg-muted">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Kode Pesanan</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Customer</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Nama Koi</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Qty</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Total Harga</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Aksi</th>
+                                <th
+                                    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('kode_pesanan')"
+                                >
+                                    Kode Pesanan <span class="ml-1">{{ sortIcon('kode_pesanan') }}</span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Customer
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Nama Koi
+                                </th>
+                                <th
+                                    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('qty')"
+                                >
+                                    Qty <span class="ml-1">{{ sortIcon('qty') }}</span>
+                                </th>
+                                <th
+                                    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('total_harga')"
+                                >
+                                    Total Harga <span class="ml-1">{{ sortIcon('total_harga') }}</span>
+                                </th>
+                                <th
+                                    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('created_at')"
+                                >
+                                    Tanggal <span class="ml-1">{{ sortIcon('created_at') }}</span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Status
+                                </th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Aksi
+                                </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-border">
-                            <tr
-                                v-for="pesanan in pesanans.data"
-                                :key="pesanan.id"
-                                class="hover:bg-muted/20 transition-colors"
-                            >
-                                <td class="px-6 py-4">
-                                    <span class="font-mono font-semibold text-foreground text-sm">
-                                        {{ pesanan.kode_pesanan }}
-                                    </span>
+                        <tbody class="divide-y divide-border bg-background">
+                            <tr v-if="paginatedPesanans.length === 0">
+                                <td colspan="8" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                    {{ search ? 'Tidak ada hasil untuk pencarian tersebut.' : 'Belum ada pesanan.' }}
                                 </td>
-                                <td class="px-6 py-4">
+                            </tr>
+                            <tr
+                                v-for="pesanan in paginatedPesanans"
+                                :key="pesanan.id"
+                                class="transition-colors hover:bg-muted/50"
+                            >
+                                <td class="px-4 py-3 text-sm font-mono font-semibold text-foreground">
+                                    {{ pesanan.kode_pesanan }}
+                                </td>
+                                <td class="px-4 py-3">
                                     <div class="text-sm">
                                         <p class="font-medium text-foreground">{{ pesanan.customer.name }}</p>
                                         <p class="text-xs text-muted-foreground">{{ pesanan.customer.email }}</p>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="text-foreground font-medium">
-                                        {{ pesanan.katalog_koi.koi.name }}
-                                    </span>
+                                <td class="px-4 py-3 text-sm text-foreground">
+                                    {{ pesanan.katalog_koi.koi.name }}
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="text-foreground">{{ pesanan.qty }}</span>
+                                <td class="px-4 py-3 text-sm text-foreground">
+                                    {{ pesanan.qty }}
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="font-semibold text-primary">
-                                        {{ formatCurrency(pesanan.total_harga) }}
-                                    </span>
+                                <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-foreground">
+                                    {{ formatCurrency(pesanan.total_harga) }}
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="text-sm text-muted-foreground">
-                                        {{ formatDate(pesanan.created_at) }}
-                                    </span>
+                                <td class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
+                                    {{ formatDate(pesanan.created_at) }}
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
+                                        <span :class="`inline-block px-2 py-1 rounded-full text-xs font-semibold ${statusBadge(pesanan.status)}`">
+                                            {{ statusLabel(pesanan.status) }}
+                                        </span>
                                         <select
                                             v-model="selectedStatus[pesanan.id]"
                                             @change="updateStatus(pesanan)"
-                                            class="px-2 py-1 text-xs rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                            class="rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                                         >
                                             <option value="pending">Pending</option>
                                             <option value="confirmed">Confirmed</option>
@@ -196,10 +285,10 @@ const hasData = (props.pesanans?.data?.length ?? 0) > 0
                                         </select>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 py-3 text-right">
                                     <Link
                                         :href="adminPesananShow.url(pesanan.id)"
-                                        class="text-sm px-3 py-1 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm hover:bg-muted"
                                     >
                                         Detail
                                     </Link>
@@ -208,58 +297,32 @@ const hasData = (props.pesanans?.data?.length ?? 0) > 0
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <!-- Empty State -->
-            <div
-                v-else
-                class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-16 text-center"
-            >
-                <p class="text-lg font-semibold text-foreground mb-2">
-                    Belum Ada Pesanan
-                </p>
-                <p class="text-sm text-muted-foreground">
-                    Pesanan dari customer akan muncul di sini
-                </p>
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="hasData && pesanans.last_page > 1" class="flex items-center justify-center gap-2 mt-8 pt-4 border-t border-border">
-                <Link
-                    v-if="pesanans.prev_page_url"
-                    :href="pesanans.prev_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
-                >
-                    ← Sebelumnya
-                </Link>
-                <button
-                    v-else
-                    disabled
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed"
-                >
-                    ← Sebelumnya
-                </button>
-
-                <div class="flex gap-1 items-center">
-                    <span class="px-2 py-2 text-sm text-muted-foreground">
-                        Halaman {{ pesanans.current_page }} dari {{ pesanans.last_page }}
-                    </span>
+                <!-- Footer: info + pagination -->
+                <div class="flex flex-col items-center justify-between gap-2 border-t border-border px-4 py-3 sm:flex-row">
+                    <p class="text-sm text-muted-foreground">
+                        Showing {{ showingFrom }} to {{ showingTo }} of
+                        {{ filteredPesanans.length }} entries
+                        <span v-if="search">(filtered from {{ pesanans.length }} total)</span>
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="currentPage--">
+                            Previous
+                        </Button>
+                        <template v-for="p in totalPages" :key="p">
+                            <Button
+                                size="sm"
+                                :variant="p === currentPage ? 'default' : 'outline'"
+                                @click="currentPage = p"
+                            >
+                                {{ p }}
+                            </Button>
+                        </template>
+                        <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="currentPage++">
+                            Next
+                        </Button>
+                    </div>
                 </div>
-
-                <Link
-                    v-if="pesanans.next_page_url"
-                    :href="pesanans.next_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
-                >
-                    Selanjutnya →
-                </Link>
-                <button
-                    v-else
-                    disabled
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed"
-                >
-                    Selanjutnya →
-                </button>
             </div>
         </div>
     </AppLayout>

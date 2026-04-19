@@ -181,7 +181,7 @@ class PesananController extends Controller
             ->pesanans()
             ->with(['katalogKoi.koi.breeder'])
             ->latest()
-            ->paginate(10);
+            ->get();
 
         return Inertia::render('Customer/Pesanan/Index', [
             'pesanans' => $pesanans,

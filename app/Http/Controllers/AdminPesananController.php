@@ -14,7 +14,7 @@ class AdminPesananController extends Controller
     {
         $pesanans = Pesanan::with(['customer', 'katalogKoi.koi.breeder'])
             ->latest()
-            ->paginate(10);
+            ->get();
 
         return Inertia::render('Admin/Pesanan/Index', [
             'pesanans' => $pesanans,

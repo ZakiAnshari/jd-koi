@@ -27,7 +27,7 @@ type Customer = {
 }
 
 const page = usePage()
-const customers = computed(() => (page.props.customers as { data: Customer[] } | null)?.data ?? [])
+const customers = computed(() => (page.props.customers as Customer[] | null) ?? [])
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

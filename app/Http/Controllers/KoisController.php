@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Koi;
+use App\Models\KoiImage;
 use App\Models\Breeder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,7 +17,7 @@ class KoisController extends Controller
         $kois = Koi::select(['id', 'breeder_id', 'code', 'name', 'created_at'])
             ->with('breeder:id,name_breeder')
             ->orderBy('code')
-            ->paginate(10);
+            ->get();
 
         $breeders = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
 
@@ -41,7 +42,8 @@ class KoisController extends Controller
             'breeder_id' => 'required|exists:breeders,id',
             'code' => 'required|string|max:255|unique:kois,code',
             'name' => 'required|string|max:255',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -49,6 +51,20 @@ class KoisController extends Controller
         }
 
         $koi = Koi::create($validated);
+
+        // Handle multiple image uploads
+        if ($request->hasFile('images')) {
+            $sortOrder = 0;
+            foreach ($request->file('images') as $image) {
+                $imagePath = $image->store('kois', 'public');
+                KoiImage::create([
+                    'koi_id' => $koi->id,
+                    'image_path' => $imagePath,
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+        }
+
         ActivityLog::log('create', "Menambahkan data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
 
         return to_route('kois.index');
@@ -57,19 +73,20 @@ class KoisController extends Controller
     public function edit(Koi $koi): Response
     {
         $breeders = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
+        $koi->load('images');
 
         return Inertia::render('MasterData/Koi/Edit', [
-            'koi' => $koi->only(['id', 'breeder_id', 'code', 'name', 'photo']),
+            'koi' => $koi->only(['id', 'breeder_id', 'code', 'name', 'photo', 'images']),
             'breeders' => $breeders,
         ]);
     }
 
     public function show(Koi $koi): Response
     {
-        $koi->load('breeder:id,name_breeder');
+        $koi->load(['breeder:id,name_breeder', 'images']);
 
         return Inertia::render('MasterData/Koi/Show', [
-            'koi' => $koi->only(['id', 'breeder_id', 'code', 'name', 'photo', 'created_at', 'updated_at', 'breeder']),
+            'koi' => $koi->only(['id', 'breeder_id', 'code', 'name', 'photo', 'images', 'created_at', 'updated_at', 'breeder']),
         ]);
     }
 
@@ -79,7 +96,10 @@ class KoisController extends Controller
             'breeder_id' => 'required|exists:breeders,id',
             'code' => 'required|string|max:255|unique:kois,code,' . $koi->id,
             'name' => 'required|string|max:255',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'delete_images' => 'nullable|array',
+            'delete_images.*' => 'integer|exists:koi_images,id',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -87,6 +107,27 @@ class KoisController extends Controller
         }
 
         $koi->fill($validated)->save();
+
+        // Handle deleted images
+        if ($request->has('delete_images') && is_array($request->input('delete_images'))) {
+            KoiImage::whereIn('id', $request->input('delete_images'))->delete();
+        }
+
+        // Handle multiple image uploads
+        if ($request->hasFile('images')) {
+            $sortOrder = $koi->images()->max('sort_order') ?? -1;
+            $sortOrder++;
+            
+            foreach ($request->file('images') as $image) {
+                $imagePath = $image->store('kois', 'public');
+                KoiImage::create([
+                    'koi_id' => $koi->id,
+                    'image_path' => $imagePath,
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+        }
+
         ActivityLog::log('update', "Mengubah data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
 
         return to_route('kois.index');
@@ -100,5 +141,13 @@ class KoisController extends Controller
         ActivityLog::log('delete', "Menghapus data Koi \"{$name}\" (ID: {$id})", 'kois');
 
         return to_route('kois.index');
+    }
+
+    public function deleteImage(KoiImage $image)
+    {
+        $koiId = $image->koi_id;
+        $image->delete();
+
+        return response()->json(['success' => true]);
     }
 }

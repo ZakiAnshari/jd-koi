@@ -29,7 +29,7 @@ type User = {
 }
 
 const page = usePage()
-const users = computed(() => (page.props.users as { data: User[] } | null)?.data ?? [])
+const users = computed(() => (page.props.users as User[] | null) ?? [])
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

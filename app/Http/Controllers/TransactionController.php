@@ -55,7 +55,7 @@ class TransactionController extends Controller
             ])
             ->with(['koi:id,code,name', 'customer:id,name'])
             ->orderBy('date', 'desc')
-            ->paginate(10);
+            ->get();
 
         $kois = Koi::select(['id', 'code', 'name'])->orderBy('code')->get();
         $customers = Customer::select(['id', 'name'])->orderBy('name')->get();

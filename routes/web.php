@@ -67,6 +67,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     Route::get('master-data/koi/{koi}/edit', [KoisController::class, 'edit'])->name('kois.edit');
     Route::put('master-data/koi/{koi}', [KoisController::class, 'update'])->name('kois.update');
     Route::delete('master-data/koi/{koi}', [KoisController::class, 'destroy'])->name('kois.destroy');
+    Route::delete('master-data/koi/{koi}/images/{koiImage}', [KoisController::class, 'deleteImage'])->name('kois.images.destroy');
     //CUSTUMER
     Route::get('master-data/customer', [CustomersController::class, 'index'])->name('customers.index');
     Route::get('master-data/customer/create', [CustomersController::class, 'create'])->name('customers.create');
@@ -116,6 +117,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     // Admin Routes - Katalog Koi
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('katalog-koi', KatalogKoiController::class);
+        Route::delete('katalog-koi/{katalogKoi}/images/{katalogKoiImage}', [KatalogKoiController::class, 'destroyImage'])->name('katalog-koi.images.destroy');
         Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
         Route::get('pesanan/{pesanan}', [AdminPesananController::class, 'show'])->name('pesanan.show');
         Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');

@@ -15,7 +15,7 @@ class BreedersController extends Controller
     {
         $breeders = Breeder::select(['id', 'name_breeder', 'created_at'])
             ->orderBy('name_breeder')
-            ->paginate(10);
+            ->get();
 
         return Inertia::render('MasterData/Breeder/Index', [
             'breeders' => $breeders,

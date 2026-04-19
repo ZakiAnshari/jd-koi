@@ -17,7 +17,7 @@ class UsersController extends Controller
     {
         $users = User::select(['id', 'name', 'email', 'created_at'])
             ->orderBy('name')
-            ->paginate(10);
+            ->get();
 
         return Inertia::render('Users/Index', [
             'users' => $users,

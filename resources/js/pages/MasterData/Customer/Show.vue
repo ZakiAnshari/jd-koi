@@ -42,41 +42,40 @@ const breadcrumbs: BreadcrumbItem[] = [
                     <p class="text-sm text-muted-foreground">Detail lengkap customer dan informasi kontak.</p>
                 </div>
                 <div class="flex gap-2">
-                    <Link href="/master-data/customer" class="rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">Kembali</Link>
-                   
+                    <Link href="/master-data/customer" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted">Kembali</Link>
                 </div>
             </div>
 
             <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
                 <div class="grid gap-6 md:grid-cols-3">
-                    <section class="md:col-span-2 rounded-3xl border border-border/70 bg-white p-6 shadow-sm">
-                        <h2 class="text-lg font-semibold">Informasi Customer</h2>
-                        <div class="mt-6 space-y-5">
+                    <section class="md:col-span-2 rounded-xl border border-border bg-background p-6">
+                        <h2 class="text-base font-semibold text-foreground">Informasi Customer</h2>
+                        <div class="mt-4 space-y-4">
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Nama</p>
-                                <p class="mt-2 text-lg text-slate-900">{{ customer.name }}</p>
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nama</p>
+                                <p class="mt-1 text-sm font-medium text-foreground">{{ customer.name }}</p>
                             </div>
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Telepon</p>
-                                <p class="mt-2 text-lg text-slate-900">{{ customer.phone || '-' }}</p>
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Telepon</p>
+                                <p class="mt-1 text-sm font-medium text-foreground">{{ customer.phone || '-' }}</p>
                             </div>
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Alamat</p>
-                                <p class="mt-2 whitespace-pre-line text-lg text-slate-900">{{ customer.address || '-' }}</p>
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Alamat</p>
+                                <p class="mt-1 whitespace-pre-line text-sm font-medium text-foreground">{{ customer.address || '-' }}</p>
                             </div>
                         </div>
                     </section>
 
-                    <section class="rounded-3xl border border-border/70 bg-white p-6 shadow-sm">
-                        <p class="text-xs uppercase tracking-[0.32em] text-slate-500">Detail Waktu</p>
-                        <div class="mt-6 space-y-4">
-                            <div class="rounded-2xl bg-slate-50 p-4">
-                                <p class="text-sm font-medium text-slate-600">Dibuat</p>
-                                <p class="mt-2 text-base text-slate-900">{{ new Date(customer.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
+                    <section class="rounded-xl border border-border bg-background p-6">
+                        <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detail Waktu</p>
+                        <div class="mt-4 space-y-4">
+                            <div class="rounded-lg bg-muted/40 p-4">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dibuat</p>
+                                <p class="mt-1 text-sm font-medium text-foreground">{{ new Date(customer.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
                             </div>
-                            <div class="rounded-2xl bg-slate-50 p-4">
-                                <p class="text-sm font-medium text-slate-600">Terakhir diperbarui</p>
-                                <p class="mt-2 text-base text-slate-900">{{ new Date(customer.updated_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
+                            <div class="rounded-lg bg-muted/40 p-4">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Terakhir diperbarui</p>
+                                <p class="mt-1 text-sm font-medium text-foreground">{{ new Date(customer.updated_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</p>
                             </div>
                         </div>
                     </section>

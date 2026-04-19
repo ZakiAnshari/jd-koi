@@ -10,12 +10,19 @@ type Breeder = {
     name_breeder: string
 }
 
+type KoiImage = {
+    id: number
+    image_path: string
+    sort_order: number
+}
+
 type Koi = {
     id: number
     breeder_id: number
     code: string
     name: string
     photo?: string
+    images?: KoiImage[]
     breeder?: Breeder
     created_at: string
 }
@@ -92,25 +99,39 @@ function getBreederName(): string {
                     <div class="md:col-span-2 space-y-6">
                         <!-- Basic Information -->
                         <div class="space-y-4">
-                            <h3 class="text-lg text-foreground border-b-1 border-primary pb-2">Informasi Koi</h3>
+                            <h3 class="text-base font-semibold text-foreground border-b border-border pb-2">Informasi Koi</h3>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div class="rounded-lg p-4 border border-border">
                                     <p class="text-xs text-muted-foreground uppercase tracking-wide">Code</p>
-                                    <p class="text-lg text-foreground mt-2">{{ koi.code }}</p>
+                                    <p class="text-sm font-medium text-foreground mt-1">{{ koi.code }}</p>
                                 </div>
                                 <div class="rounded-lg p-4 border border-border">
                                     <p class="text-xs text-muted-foreground uppercase tracking-wide">Name</p>
-                                    <p class="text-lg text-foreground mt-2">{{ koi.name }}</p>
+                                    <p class="text-sm font-medium text-foreground mt-1">{{ koi.name }}</p>
                                 </div>
                                 <div class="rounded-lg p-4 border border-border">
                                     <p class="text-xs text-muted-foreground uppercase tracking-wide">Breeder</p>
-                                    <p class="text-lg text-foreground mt-2">{{ getBreederName() }}</p>
+                                    <p class="text-sm font-medium text-foreground mt-1">{{ getBreederName() }}</p>
                                 </div>
                                 <div class="rounded-lg p-4 border border-border">
                                     <p class="text-xs text-muted-foreground uppercase tracking-wide">Created</p>
-                                    <p class="text-lg text-foreground mt-2">{{ new Date(koi.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
+                                    <p class="text-sm font-medium text-foreground mt-1">{{ new Date(koi.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Gallery -->
+                <div v-if="koi.images && koi.images.length > 0" class="mt-8 border-t border-border pt-8">
+                    <h3 class="text-base font-semibold text-foreground border-b border-border pb-2 mb-4">Image Gallery</h3>
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                        <div v-for="image in koi.images" :key="image.id" class="group relative overflow-hidden rounded-lg border border-border bg-muted">
+                            <img 
+                                :src="`/storage/${image.image_path}`"
+                                :alt="`Koi gallery image ${image.id}`"
+                                class="h-24 w-full object-cover transition-transform group-hover:scale-110"
+                            />
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
+import { X } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
@@ -22,12 +23,19 @@ type Breeder = {
     name_breeder: string
 }
 
+type KoiImage = {
+    id: number
+    image_path: string
+    sort_order: number
+}
+
 type Koi = {
     id: number
     breeder_id: number
     code: string
     name: string
     photo: string | null
+    images: KoiImage[]
 }
 
 const page = usePage()
@@ -51,8 +59,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Form ───────────────────────────────────────────────
 const photoInputRef = ref<HTMLInputElement | null>(null)
+const imagesInputRef = ref<HTMLInputElement | null>(null)
 const photoError = ref(false)
 const breederSearch = ref('')
+const selectedImages = ref<File[]>([])
+const imagePreviews = ref<string[]>([])
+const deletedImageIds = ref<number[]>([])
 
 const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders
@@ -65,11 +77,58 @@ const form = useForm({
     code: koi.code,
     name: koi.name,
     photo: null as File | null,
+    images: [] as File[],
+    delete_images: [] as number[],
 })
 
 function onPhotoChange(e: Event) {
     const target = e.target as HTMLInputElement
     form.photo = target.files?.[0] ?? null
+}
+
+function onImagesChange(e: Event) {
+    const target = e.target as HTMLInputElement
+    const files = target.files ? Array.from(target.files) : []
+    selectedImages.value = files
+    
+    // Generate previews
+    imagePreviews.value = []
+    files.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            imagePreviews.value.push(event.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+    })
+    
+    form.images = files
+}
+
+function removeImagePreview(index: number) {
+    selectedImages.value.splice(index, 1)
+    imagePreviews.value.splice(index, 1)
+    form.images = selectedImages.value
+    
+    if (imagesInputRef.value) {
+        const dataTransfer = new DataTransfer()
+        selectedImages.value.forEach(file => dataTransfer.items.add(file))
+        imagesInputRef.value.files = dataTransfer.files
+    }
+}
+
+function deleteExistingImage(imageId: number) {
+    if (!deletedImageIds.value.includes(imageId)) {
+        deletedImageIds.value.push(imageId)
+        form.delete_images = deletedImageIds.value
+    }
+}
+
+function undoDeleteExistingImage(imageId: number) {
+    const index = deletedImageIds.value.indexOf(imageId)
+    if (index > -1) {
+        deletedImageIds.value.splice(index, 1)
+        form.delete_images = deletedImageIds.value
+    }
 }
 
 const submit = () => {
@@ -171,11 +230,86 @@ const submit = () => {
                             <p class="text-xs text-muted-foreground">JPG, PNG, GIF (max 2MB)</p>
                             <InputError :message="form.errors.photo" />
                         </div>
+
+                        <div class="grid gap-2">
+                            <Label for="images">Additional Images (Multiple)</Label>
+                            <Input
+                                id="images"
+                                ref="imagesInputRef"
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                @change="onImagesChange"
+                            />
+                            <p class="text-xs text-muted-foreground">JPG, PNG, GIF, WebP (max 2MB per file)</p>
+                            <InputError :message="form.errors['images.*']" />
+                        </div>
+                    </div>
+
+                    <!-- Existing Images -->
+                    <div v-if="koi.images && koi.images.length > 0" class="rounded-md border border-border bg-muted/50 p-3">
+                        <p class="mb-3 text-xs font-medium text-muted-foreground">Existing images:</p>
+                        <div class="flex flex-wrap gap-3">
+                            <div 
+                                v-for="image in koi.images" 
+                                :key="image.id"
+                                :class="[
+                                    'relative',
+                                    deletedImageIds.includes(image.id) && 'opacity-50'
+                                ]"
+                            >
+                                <img
+                                    :src="`/storage/${image.image_path}`"
+                                    :alt="`Koi image ${image.id}`"
+                                    class="h-20 w-20 rounded-md border border-border object-cover shadow-sm"
+                                />
+                                <button
+                                    v-if="!deletedImageIds.includes(image.id)"
+                                    type="button"
+                                    @click="deleteExistingImage(image.id)"
+                                    class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                                    title="Delete image"
+                                >
+                                    <X class="h-4 w-4" />
+                                </button>
+                                <button
+                                    v-else
+                                    type="button"
+                                    @click="undoDeleteExistingImage(image.id)"
+                                    class="absolute inset-0 rounded-md bg-black/30 flex items-center justify-center hover:bg-black/50 transition-colors"
+                                    title="Undo delete"
+                                >
+                                    <span class="text-white text-xs font-medium">Undo</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Image Previews -->
+                    <div v-if="imagePreviews.length > 0" class="rounded-md border border-border bg-muted/50 p-3">
+                        <p class="mb-3 text-xs font-medium text-muted-foreground">New images to upload:</p>
+                        <div class="flex flex-wrap gap-3">
+                            <div v-for="(preview, index) in imagePreviews" :key="index" class="relative">
+                                <img 
+                                    :src="preview" 
+                                    :alt="`Preview ${index + 1}`"
+                                    class="h-20 w-20 rounded-md border border-border object-cover shadow-sm"
+                                />
+                                <button
+                                    type="button"
+                                    @click="removeImagePreview(index)"
+                                    class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                                    title="Remove from upload"
+                                >
+                                    <X class="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Current Photo Preview -->
                     <div v-if="koi.photo" class="rounded-md border border-border bg-muted/50 p-3">
-                        <p class="mb-2 text-xs font-medium text-muted-foreground">Current photo:</p>
+                        <p class="mb-2 text-xs font-medium text-muted-foreground">Current main photo:</p>
                         <img
                             v-if="!photoError"
                             :src="`/storage/${koi.photo}`"

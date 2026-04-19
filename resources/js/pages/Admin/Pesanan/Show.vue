@@ -2,7 +2,7 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { updateStatus as adminPesananUpdateStatus } from '@/routes/admin/pesanan'
+const adminPesananUpdateStatus = { url: (id: number) => `/admin/pesanan/${id}/status` }
 
 type Customer = {
     id: number
@@ -123,13 +123,21 @@ const storagePath = (photo?: string) => {
     <Head :title="`Detail Pesanan ${pesanan.kode_pesanan}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-auto rounded-xl p-6">
+        <div class="flex flex-col gap-4 p-6">
             <!-- Header -->
-            <div class="space-y-2 mb-2">
-                <h1 class="text-4xl font-bold text-foreground">{{ pesanan.kode_pesanan }}</h1>
-                <p class="text-base text-muted-foreground">
-                    Detail pesanan dan informasi pelanggan
-                </p>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold text-foreground">Detail Pesanan</h1>
+                    <p class="text-sm text-muted-foreground">
+                        {{ pesanan.kode_pesanan }} — informasi pesanan dan pelanggan.
+                    </p>
+                </div>
+                <Link
+                    href="/admin/pesanan"
+                    class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted self-start md:self-auto"
+                >
+                    Kembali
+                </Link>
             </div>
 
             <!-- Main Content Grid -->
@@ -138,7 +146,7 @@ const storagePath = (photo?: string) => {
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Order Information Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-xl font-bold text-foreground">Informasi Pesanan</h2>
+                        <h2 class="text-base font-semibold text-foreground">Informasi Pesanan</h2>
 
                         <div class="space-y-4">
                             <div class="flex items-center justify-between pb-4 border-b border-border">
@@ -167,7 +175,7 @@ const storagePath = (photo?: string) => {
 
                     <!-- Koi Information Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-xl font-bold text-foreground">Informasi Koi</h2>
+                        <h2 class="text-base font-semibold text-foreground">Informasi Koi</h2>
 
                         <div class="flex gap-4">
                             <!-- Photo -->
@@ -203,7 +211,7 @@ const storagePath = (photo?: string) => {
 
                     <!-- Customer Information Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-xl font-bold text-foreground">Informasi Pelanggan</h2>
+                        <h2 class="text-base font-semibold text-foreground">Informasi Pelanggan</h2>
 
                         <div class="space-y-4">
                             <div class="pb-4 border-b border-border">
@@ -230,7 +238,7 @@ const storagePath = (photo?: string) => {
                 <div class="space-y-6">
                     <!-- Payment Information Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-lg font-bold text-foreground">Informasi Pembayaran</h2>
+                        <h2 class="text-base font-semibold text-foreground">Informasi Pembayaran</h2>
 
                         <div class="space-y-3 text-sm bg-background/50 p-4 rounded-lg border border-border">
                             <div>
@@ -250,7 +258,7 @@ const storagePath = (photo?: string) => {
 
                     <!-- Order Summary Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-lg font-bold text-foreground">Ringkasan Pesanan</h2>
+                        <h2 class="text-base font-semibold text-foreground">Ringkasan Pesanan</h2>
 
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between pb-3 border-b border-border">
@@ -265,7 +273,7 @@ const storagePath = (photo?: string) => {
                             <div class="pt-3 border-t border-border">
                                 <div class="flex justify-between items-center">
                                     <span class="font-bold text-foreground">Total</span>
-                                    <span class="text-2xl font-bold text-primary">
+                                    <span class="text-xl font-bold text-primary">
                                         {{ formatCurrency(pesanan.total_harga) }}
                                     </span>
                                 </div>
@@ -275,7 +283,7 @@ const storagePath = (photo?: string) => {
 
                     <!-- Status Update Card -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/20 p-6 space-y-4">
-                        <h2 class="text-lg font-bold text-foreground">Update Status</h2>
+                        <h2 class="text-base font-semibold text-foreground">Update Status</h2>
 
                         <select
                             v-model="form.status"

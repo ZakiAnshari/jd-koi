@@ -88,6 +88,10 @@ onMounted(() => {
                                         <Link :href="subitem.href || '#'">
                                             <component v-if="subitem.icon" :is="subitem.icon" />
                                             <span>{{ subitem.title }}</span>
+                                            <span
+                                                v-if="subitem.badgeCount && subitem.badgeCount > 0"
+                                                class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white"
+                                            >{{ subitem.badgeCount }}</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

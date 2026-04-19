@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import { X } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
@@ -41,7 +42,7 @@ type Koi = {
 }
 
 const page = usePage()
-const kois = computed(() => (page.props.kois as { data: Koi[] } | null)?.data ?? [])
+const kois = computed(() => (page.props.kois as Koi[] | null) ?? [])
 const breeders = computed(() => (page.props.breeders as Breeder[] | null) ?? [])
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -127,13 +128,21 @@ function sortIcon(key: keyof Koi) {
 // ─── Modal + Form ───────────────────────────────────────
 const showModal = ref(false)
 const photoInputRef = ref<HTMLInputElement | null>(null)
+const imagesInputRef = ref<HTMLInputElement | null>(null)
 const breederSearch = ref('')
+const selectedImages = ref<File[]>([])
+const imagePreviews = ref<string[]>([])
 
 // Bersihkan error dan search saat modal ditutup
 watch(showModal, (isOpen) => {
     if (!isOpen) {
         form.clearErrors()
         breederSearch.value = ''
+        selectedImages.value = []
+        imagePreviews.value = []
+        if (imagesInputRef.value) {
+            imagesInputRef.value.value = ''
+        }
     }
 })
 
@@ -148,11 +157,42 @@ const form = useForm({
     code: '',
     name: '',
     photo: null as File | null,
+    images: [] as File[],
 })
 
 function onPhotoChange(e: Event) {
     const target = e.target as HTMLInputElement
     form.photo = target.files?.[0] ?? null
+}
+
+function onImagesChange(e: Event) {
+    const target = e.target as HTMLInputElement
+    const files = target.files ? Array.from(target.files) : []
+    selectedImages.value = files
+    
+    // Generate previews
+    imagePreviews.value = []
+    files.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            imagePreviews.value.push(event.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+    })
+    
+    form.images = files
+}
+
+function removeImagePreview(index: number) {
+    selectedImages.value.splice(index, 1)
+    imagePreviews.value.splice(index, 1)
+    form.images = selectedImages.value
+    
+    if (imagesInputRef.value) {
+        const dataTransfer = new DataTransfer()
+        selectedImages.value.forEach(file => dataTransfer.items.add(file))
+        imagesInputRef.value.files = dataTransfer.files
+    }
 }
 
 const submit = () => {
@@ -171,6 +211,11 @@ const submit = () => {
             if (photoInputRef.value) {
                 photoInputRef.value.value = ''
             }
+            if (imagesInputRef.value) {
+                imagesInputRef.value.value = ''
+            }
+            selectedImages.value = []
+            imagePreviews.value = []
             showModal.value = false
             breederSearch.value = ''
         },
@@ -292,6 +337,35 @@ function getBreederName(koi: Koi): string {
                                         @change="onPhotoChange" />
                                     <p class="text-xs text-muted-foreground">JPG, PNG, GIF (max 2MB)</p>
                                     <InputError :message="form.errors.photo" />
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="images">Additional Images (Multiple)</Label>
+                                    <Input id="images" ref="imagesInputRef" type="file" multiple accept="image/*"
+                                        @change="onImagesChange" />
+                                    <p class="text-xs text-muted-foreground">JPG, PNG, GIF, WebP (max 2MB per file)</p>
+                                    <InputError :message="form.errors['images.*']" />
+                                </div>
+
+                                <!-- Image Previews -->
+                                <div v-if="imagePreviews.length > 0" class="grid gap-2">
+                                    <p class="text-sm font-medium">Preview Images:</p>
+                                    <div class="flex flex-wrap gap-3">
+                                        <div v-for="(preview, index) in imagePreviews" :key="index" class="relative">
+                                            <img 
+                                                :src="preview" 
+                                                :alt="`Preview ${index + 1}`"
+                                                class="h-20 w-20 rounded-lg border border-border object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                @click="removeImagePreview(index)"
+                                                class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                                            >
+                                                <X class="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>

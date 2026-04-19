@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
 import { useForm } from '@inertiajs/vue3'
+import { Button } from '@/components/ui/button'
 import { computed, ref, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import InputError from '@/components/InputError.vue'
 import { useSwal } from '@/composables/useSwal'
 import type { BreadcrumbItem } from '@/types'
-import { X, Pencil, Trash2 } from 'lucide-vue-next'
-import { store as katalogStore, update as katalogUpdate, destroy as katalogDestroy } from '@/routes/admin/katalog-koi'
+import { X, Pencil, Trash2, Eye, ImagePlus } from 'lucide-vue-next'
+
+const katalogStore = { url: () => '/admin/katalog-koi' }
+const katalogUpdate = { url: (id: number) => `/admin/katalog-koi/${id}` }
+const katalogDestroy = { url: (id: number) => `/admin/katalog-koi/${id}` }
 
 interface Breeder {
     id: number
@@ -34,6 +37,11 @@ interface Pembelian {
     koi?: Koi
 }
 
+interface KatalogImage {
+    id: number
+    url: string
+}
+
 interface KatalogKoi {
     id: number
     tanggal: string
@@ -48,21 +56,11 @@ interface KatalogKoi {
     profit: number
     koi?: Koi
     pembelian?: Pembelian
-}
-
-interface Paginated {
-    data: KatalogKoi[]
-    current_page: number
-    last_page: number
-    per_page: number
-    total: number
-    from: number | null
-    to: number | null
-    path: string
+    images?: KatalogImage[]
 }
 
 const props = defineProps<{
-    katalogs: Paginated
+    katalogs: KatalogKoi[]
     pembelians: Pembelian[]
 }>()
 
@@ -71,12 +69,18 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Katalog Koi', href: '/admin/katalog-koi' },
 ]
 
-// Modal state
+// ─── Modal state ──────────────────────────────────────────
 const showModal = ref(false)
 const editingId = ref<number | null>(null)
 const tableSearch = ref('')
 const tablePerPage = ref(10)
 const tableCurrentPage = ref(1)
+const sortKey = ref<keyof KatalogKoi>('tanggal')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+
+// ─── Image state ──────────────────────────────────────────
+const existingImages = ref<KatalogImage[]>([])
+const fotoPreviews = ref<{ file: File; url: string }[]>([])
 
 const isEditing = computed(() => editingId.value !== null)
 
@@ -91,9 +95,11 @@ const form = useForm({
     stock_jpy: 0,
     stock_idr: 0,
     fee: 0,
+    fotos: [] as File[],
+    delete_images: [] as number[],
 })
 
-// Computed: selected pembelian for prefill
+// ─── Pembelian select ─────────────────────────────────────
 const selectedPembelianId = ref<string>('')
 const pembelianSearchQuery = ref<string>('')
 
@@ -104,14 +110,12 @@ const selectedPembelian = computed<Pembelian | null>(() => {
 
 const filteredPembelians = computed<Pembelian[]>(() => {
     if (!pembelianSearchQuery.value.trim()) return props.pembelians
-    
     const query = pembelianSearchQuery.value.toLowerCase()
     return props.pembelians.filter(p => {
         const kode = p.koi?.code?.toLowerCase() ?? ''
         const nama = p.koi?.name?.toLowerCase() ?? ''
         const breeder = p.koi?.breeder?.name_breeder?.toLowerCase() ?? ''
         const tgl = new Date(p.date).toLocaleDateString('id-ID')
-        
         return kode.includes(query) || nama.includes(query) || breeder.includes(query) || tgl.includes(query)
     })
 })
@@ -127,15 +131,13 @@ function onPembelianChange(val: string | null) {
     form.stock_jpy = p.price_jpy
     form.stock_idr = p.price_idr
     form.kurs = p.price_jpy > 0 ? Math.round(p.price_idr / p.price_jpy) : 0
-    form.sell_idr = form.sell_jpy * form.kurs
+    form.sell_idr = Math.round(form.sell_jpy * form.kurs)
 }
 
-// Watch sell_jpy + kurs → auto update sell_idr
 watch(() => [form.sell_jpy, form.kurs] as const, ([jpy, kurs]) => {
     form.sell_idr = Math.round(jpy * kurs)
 })
 
-// Realtime calculations
 const margin = computed(() => form.sell_idr - form.stock_idr)
 const profit = computed(() => margin.value - form.fee)
 const profitPct = computed(() => {
@@ -143,34 +145,82 @@ const profitPct = computed(() => {
     return (profit.value / form.stock_idr) * 100
 })
 
-// Table filtering
-const filteredKatalogs = computed(() => {
-    if (!tableSearch.value.trim()) return props.katalogs.data
-    
-    const query = tableSearch.value.toLowerCase()
-    return props.katalogs.data.filter(k => {
-        const kode = k.koi?.code?.toLowerCase() ?? ''
-        const nama = k.koi?.name?.toLowerCase() ?? ''
-        const breeder = k.koi?.breeder?.name_breeder?.toLowerCase() ?? ''
-        return kode.includes(query) || nama.includes(query) || breeder.includes(query)
+// ─── Image handlers ───────────────────────────────────────
+function handleFotosChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    if (!input.files?.length) return
+    const newFiles = Array.from(input.files)
+    form.fotos = [...form.fotos, ...newFiles]
+    newFiles.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = ev => {
+            fotoPreviews.value.push({ file, url: ev.target?.result as string })
+        }
+        reader.readAsDataURL(file)
     })
+    input.value = ''
+}
+
+function removeNewFoto(index: number) {
+    fotoPreviews.value.splice(index, 1)
+    form.fotos = form.fotos.filter((_, i) => i !== index)
+}
+
+function markDeleteExistingImage(id: number) {
+    form.delete_images = [...form.delete_images, id]
+    existingImages.value = existingImages.value.filter(img => img.id !== id)
+}
+
+// ─── Table filtering + sorting ────────────────────────────
+const filteredKatalogs = computed(() => {
+    let result = props.katalogs
+    if (tableSearch.value.trim()) {
+        const query = tableSearch.value.toLowerCase()
+        result = result.filter(k => {
+            const kode = k.koi?.code?.toLowerCase() ?? ''
+            const nama = k.koi?.name?.toLowerCase() ?? ''
+            const breeder = k.koi?.breeder?.name_breeder?.toLowerCase() ?? ''
+            return kode.includes(query) || nama.includes(query) || breeder.includes(query)
+        })
+    }
+    result = [...result].sort((a, b) => {
+        const aVal = (a as any)[sortKey.value]
+        const bVal = (b as any)[sortKey.value]
+        if (aVal == null || bVal == null) return 0
+        if (typeof aVal === 'string' && typeof bVal === 'string')
+            return sortOrder.value === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+        if (typeof aVal === 'number' && typeof bVal === 'number')
+            return sortOrder.value === 'asc' ? aVal - bVal : bVal - aVal
+        return 0
+    })
+    return result
 })
 
 const totalPages = computed(() => Math.ceil(filteredKatalogs.value.length / tablePerPage.value) || 1)
+watch(totalPages, n => { if (tableCurrentPage.value > n) tableCurrentPage.value = 1 })
 
 const paginatedKatalogs = computed(() => {
     const start = (tableCurrentPage.value - 1) * tablePerPage.value
     return filteredKatalogs.value.slice(start, start + tablePerPage.value)
 })
 
-const showingFrom = computed(() => 
+const showingFrom = computed(() =>
     filteredKatalogs.value.length === 0 ? 0 : (tableCurrentPage.value - 1) * tablePerPage.value + 1
 )
-const showingTo = computed(() => 
+const showingTo = computed(() =>
     Math.min(tableCurrentPage.value * tablePerPage.value, filteredKatalogs.value.length)
 )
 
-// Formatting
+function toggleSort(key: keyof KatalogKoi) {
+    if (sortKey.value === key) sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    else { sortKey.value = key; sortOrder.value = 'asc' }
+}
+function sortIcon(key: keyof KatalogKoi) {
+    if (sortKey.value !== key) return '↕'
+    return sortOrder.value === 'asc' ? '↑' : '↓'
+}
+
+// ─── Formatting ───────────────────────────────────────────
 function fmtIDR(v: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v)
 }
@@ -183,7 +233,6 @@ function fmtDate(d: string) {
 function profitClass(v: number) {
     return v >= 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'
 }
-
 function pembelianLabel(p: Pembelian) {
     const kode = p.koi?.code ?? '?'
     const nama = p.koi?.name ?? '?'
@@ -192,16 +241,23 @@ function pembelianLabel(p: Pembelian) {
     return `${kode} - ${nama} (${breeder}) | ${tgl}`
 }
 
-// Open create modal
+// ─── Modal actions ────────────────────────────────────────
+function resetImageState() {
+    existingImages.value = []
+    fotoPreviews.value = []
+    form.fotos = []
+    form.delete_images = []
+}
+
 function openCreate() {
     editingId.value = null
     selectedPembelianId.value = ''
     pembelianSearchQuery.value = ''
     form.reset()
+    resetImageState()
     showModal.value = true
 }
 
-// Open edit modal
 function openEdit(katalog: KatalogKoi) {
     editingId.value = katalog.id
     selectedPembelianId.value = ''
@@ -215,6 +271,10 @@ function openEdit(katalog: KatalogKoi) {
     form.stock_jpy = Number(katalog.stock_jpy)
     form.stock_idr = Number(katalog.stock_idr)
     form.fee = Number(katalog.fee)
+    existingImages.value = katalog.images ? [...katalog.images] : []
+    fotoPreviews.value = []
+    form.fotos = []
+    form.delete_images = []
     showModal.value = true
 }
 
@@ -225,6 +285,7 @@ function closeModal() {
     pembelianSearchQuery.value = ''
     form.reset()
     form.clearErrors()
+    resetImageState()
 }
 
 function submit() {
@@ -244,7 +305,7 @@ function submit() {
 function handleDelete(katalog: KatalogKoi) {
     useSwal().fire({
         title: 'Hapus Katalog Koi?',
-        text: `Hapus katalog koi ${katalog.koi?.code} - ${katalog.koi?.name}?`,
+        text: `Hapus katalog koi ${katalog.koi?.code} - ${katalog.koi?.name}? Semua foto juga akan dihapus.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -307,38 +368,66 @@ function handleDelete(katalog: KatalogKoi) {
                     <table class="min-w-full divide-y divide-border">
                         <thead class="bg-muted">
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tanggal</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground w-16">
+                                    Foto
+                                </th>
+                                <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('tanggal')">
+                                    Tanggal <span class="ml-1">{{ sortIcon('tanggal') }}</span>
+                                </th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Harga Jual</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</th>
+                                <th class="cursor-pointer select-none px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('sell_idr')">
+                                    Harga Jual <span class="ml-1">{{ sortIcon('sell_idr') }}</span>
+                                </th>
+                                <th class="cursor-pointer select-none px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                    @click="toggleSort('profit')">
+                                    Profit <span class="ml-1">{{ sortIcon('profit') }}</span>
+                                </th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="paginatedKatalogs.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-sm text-muted-foreground">
-                                    Belum ada katalog koi.
-                                    <button @click="openCreate" class="text-blue-600 hover:underline">Buat yang pertama</button>.
+                                <td colspan="7" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                    {{ tableSearch ? 'Tidak ada hasil untuk pencarian tersebut.' : 'Belum ada katalog koi.' }}
                                 </td>
                             </tr>
-                            <tr
-                                v-for="katalog in paginatedKatalogs"
-                                :key="katalog.id"
-                                class="hover:bg-muted/50"
-                            >
-                                <td class="whitespace-nowrap px-4 py-3 text-sm">{{ fmtDate(katalog.tanggal) }}</td>
+                            <tr v-for="katalog in paginatedKatalogs" :key="katalog.id"
+                                class="transition-colors hover:bg-muted/50">
+                                <!-- Thumbnail -->
+                                <td class="px-4 py-2">
+                                    <div class="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                                        <img v-if="katalog.images && katalog.images.length > 0"
+                                            :src="katalog.images[0].url"
+                                            :alt="katalog.koi?.name"
+                                            class="w-full h-full object-cover"
+                                        />
+                                        <span v-else class="text-muted-foreground/40">
+                                            <ImagePlus class="w-5 h-5" />
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-3 text-sm text-foreground">{{ fmtDate(katalog.tanggal) }}</td>
                                 <td class="px-4 py-3">
-                                    <div class="font-medium text-sm">{{ katalog.koi?.name }}</div>
+                                    <div class="font-medium text-sm text-foreground">{{ katalog.koi?.name }}</div>
                                     <div class="text-xs text-muted-foreground">{{ katalog.koi?.code }}</div>
                                 </td>
-                                <td class="px-4 py-3 text-sm">{{ katalog.koi?.breeder?.name_breeder ?? '-' }}</td>
-                                <td class="px-4 py-3 text-right text-sm font-medium">{{ fmtIDR(Number(katalog.sell_idr)) }}</td>
+                                <td class="px-4 py-3 text-sm text-foreground">{{ katalog.koi?.breeder?.name_breeder ?? '-' }}</td>
+                                <td class="px-4 py-3 text-right text-sm font-medium text-foreground">{{ fmtIDR(Number(katalog.sell_idr)) }}</td>
                                 <td class="px-4 py-3 text-right text-sm" :class="profitClass(Number(katalog.profit))">
                                     {{ fmtIDR(Number(katalog.profit)) }}
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        <Link
+                                            :href="`/admin/katalog-koi/${katalog.id}`"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Detail"
+                                        >
+                                            <Eye class="h-4 w-4" />
+                                        </Link>
                                         <button
                                             @click="openEdit(katalog)"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
@@ -359,43 +448,20 @@ function handleDelete(katalog: KatalogKoi) {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <!-- Pagination -->
-            <div v-if="totalPages > 1" class="flex items-center justify-between rounded-lg border border-sidebar-border/70 bg-background px-4 py-3 dark:border-sidebar-border">
-                <p class="text-sm text-muted-foreground">
-                    Menampilkan {{ showingFrom }} hingga {{ showingTo }} dari {{ filteredKatalogs.length }} data
-                </p>
-                <div class="flex items-center gap-2">
-                    <button
-                        v-if="tableCurrentPage > 1"
-                        @click="tableCurrentPage--"
-                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-3 py-1 text-sm hover:bg-muted"
-                    >
-                        ← Sebelumnya
-                    </button>
+                <!-- Footer: info + pagination -->
+                <div class="flex flex-col items-center justify-between gap-2 border-t border-border px-4 py-3 sm:flex-row">
+                    <p class="text-sm text-muted-foreground">
+                        Showing {{ showingFrom }} to {{ showingTo }} of {{ filteredKatalogs.length }} entries
+                        <span v-if="tableSearch">(filtered from {{ katalogs.length }} total)</span>
+                    </p>
                     <div class="flex items-center gap-1">
-                        <button
-                            v-for="page in totalPages"
-                            :key="page"
-                            @click="tableCurrentPage = page"
-                            :class="[
-                                'inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium',
-                                tableCurrentPage === page
-                                    ? 'bg-blue-600 text-white'
-                                    : 'border border-neutral-200 bg-background hover:bg-muted'
-                            ]"
-                        >
-                            {{ page }}
-                        </button>
+                        <Button variant="outline" size="sm" :disabled="tableCurrentPage <= 1" @click="tableCurrentPage--">Previous</Button>
+                        <template v-for="p in totalPages" :key="p">
+                            <Button size="sm" :variant="p === tableCurrentPage ? 'default' : 'outline'" @click="tableCurrentPage = p">{{ p }}</Button>
+                        </template>
+                        <Button variant="outline" size="sm" :disabled="tableCurrentPage >= totalPages" @click="tableCurrentPage++">Next</Button>
                     </div>
-                    <button
-                        v-if="tableCurrentPage < totalPages"
-                        @click="tableCurrentPage++"
-                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-3 py-1 text-sm hover:bg-muted"
-                    >
-                        Berikutnya →
-                    </button>
                 </div>
             </div>
         </div>
@@ -429,7 +495,6 @@ function handleDelete(katalog: KatalogKoi) {
                         <div v-if="!isEditing" class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
                             <h3 class="mb-4 font-semibold">Pilih Pembelian</h3>
                             <div class="space-y-4">
-                                <!-- Select with Search -->
                                 <div class="grid gap-2">
                                     <Label>Pembelian <span class="text-red-500">*</span></Label>
                                     <Select :model-value="selectedPembelianId" @update:model-value="onPembelianChange">
@@ -460,7 +525,6 @@ function handleDelete(katalog: KatalogKoi) {
                                     <InputError :message="form.errors.pembelian_id" />
                                 </div>
 
-                                <!-- Info box pembelian terpilih -->
                                 <div v-if="selectedPembelian" class="rounded-lg bg-blue-50 p-4 text-sm dark:bg-blue-950">
                                     <p class="mb-2 font-semibold text-blue-800 dark:text-blue-200">Detail Pembelian</p>
                                     <div class="grid grid-cols-2 gap-3 text-blue-900 dark:text-blue-100 md:grid-cols-4">
@@ -504,64 +568,37 @@ function handleDelete(katalog: KatalogKoi) {
                         <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
                             <h3 class="mb-4 font-semibold">Harga Jual & Detail</h3>
                             <div class="grid gap-4 md:grid-cols-2">
-                                <!-- Tanggal -->
                                 <div class="grid gap-2">
                                     <Label>Tanggal <span class="text-red-500">*</span></Label>
                                     <Input v-model="form.tanggal" type="date" />
                                     <InputError :message="form.errors.tanggal" />
                                 </div>
-
-                                <!-- Qty -->
                                 <div class="grid gap-2">
                                     <Label>Qty <span class="text-red-500">*</span></Label>
                                     <Input v-model.number="form.qty" type="number" min="1" />
                                     <InputError :message="form.errors.qty" />
                                 </div>
-
-                                <!-- Sell JPY -->
                                 <div class="grid gap-2">
                                     <Label>Sell JPY <span class="text-red-500">*</span></Label>
                                     <div class="flex items-center gap-2">
-                                        <Input
-                                            v-model.number="form.sell_jpy"
-                                            type="number"
-                                            placeholder="0"
-                                            inputmode="numeric"
-                                            class="flex-1"
-                                        />
-                                        <span class="whitespace-nowrap text-sm text-muted-foreground">
-                                            {{ form.sell_jpy > 0 ? fmtJPY(form.sell_jpy) : '-' }}
-                                        </span>
+                                        <Input v-model.number="form.sell_jpy" type="number" placeholder="0" inputmode="numeric" class="flex-1" />
+                                        <span class="whitespace-nowrap text-sm text-muted-foreground">{{ form.sell_jpy > 0 ? fmtJPY(form.sell_jpy) : '-' }}</span>
                                     </div>
                                     <InputError :message="form.errors.sell_jpy" />
                                 </div>
-
-                                <!-- Kurs -->
                                 <div class="grid gap-2">
                                     <Label>Kurs (JPY → IDR) <span class="text-red-500">*</span></Label>
                                     <Input v-model.number="form.kurs" type="number" min="0" placeholder="0" />
                                     <InputError :message="form.errors.kurs" />
                                 </div>
-
-                                <!-- Sell IDR -->
                                 <div class="grid gap-2">
                                     <Label>Sell IDR <span class="text-red-500">*</span></Label>
                                     <div class="flex items-center gap-2">
-                                        <Input
-                                            v-model.number="form.sell_idr"
-                                            type="number"
-                                            placeholder="0"
-                                            inputmode="numeric"
-                                            class="flex-1"
-                                        />
-                                        <span class="whitespace-nowrap text-sm text-muted-foreground">
-                                            {{ form.sell_idr > 0 ? fmtIDR(form.sell_idr) : '-' }}
-                                        </span>
+                                        <Input v-model.number="form.sell_idr" type="number" placeholder="0" inputmode="numeric" class="flex-1" />
+                                        <span class="whitespace-nowrap text-sm text-muted-foreground">{{ form.sell_idr > 0 ? fmtIDR(form.sell_idr) : '-' }}</span>
                                     </div>
                                     <InputError :message="form.errors.sell_idr" />
                                 </div>
-
-                                <!-- Fee -->
                                 <div class="grid gap-2">
                                     <Label>Fee IDR</Label>
                                     <Input v-model.number="form.fee" type="number" min="0" placeholder="0" />
@@ -570,8 +607,74 @@ function handleDelete(katalog: KatalogKoi) {
                             </div>
                         </div>
 
-                        <!-- SECTION 3: Kalkulasi Otomatis -->
-                        <div class="rounded-lg bg-gray-100 p-4 text-sm dark:bg-gray-900">
+                        <!-- SECTION 3: Foto Koi -->
+                        <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
+                            <h3 class="mb-4 font-semibold">Foto Koi</h3>
+
+                            <!-- Existing images (edit mode) -->
+                            <div v-if="isEditing && existingImages.length > 0" class="mb-4">
+                                <p class="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Foto Tersimpan</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <div v-for="img in existingImages" :key="img.id"
+                                        class="relative w-24 h-24 rounded-lg overflow-hidden border border-border group">
+                                        <img :src="img.url" alt="Foto koi" class="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            @click="markDeleteExistingImage(img.id)"
+                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Hapus foto"
+                                        >
+                                            <X class="h-5 w-5 text-white" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="isEditing && existingImages.length === 0 && fotoPreviews.length === 0"
+                                class="mb-3 text-xs text-muted-foreground italic">
+                                Belum ada foto tersimpan.
+                            </div>
+
+                            <!-- New image previews -->
+                            <div v-if="fotoPreviews.length > 0" class="mb-4">
+                                <p class="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Foto Baru</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <div v-for="(preview, i) in fotoPreviews" :key="i"
+                                        class="relative w-24 h-24 rounded-lg overflow-hidden border border-border group">
+                                        <img :src="preview.url" :alt="`Preview ${i + 1}`" class="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            @click="removeNewFoto(i)"
+                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Batalkan"
+                                        >
+                                            <X class="h-5 w-5 text-white" />
+                                        </button>
+                                        <span class="absolute bottom-1 left-1 right-1 text-center text-[9px] text-white bg-black/40 rounded px-1 truncate">
+                                            {{ preview.file.name }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- File input -->
+                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+                                <ImagePlus class="h-5 w-5 flex-shrink-0" />
+                                <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
+                                <input
+                                    type="file"
+                                    accept="image/jpg,image/jpeg,image/png,image/webp"
+                                    multiple
+                                    class="sr-only"
+                                    @change="handleFotosChange"
+                                />
+                            </label>
+                            <InputError :message="(form.errors as any)['fotos']" class="mt-1" />
+                            <InputError :message="(form.errors as any)['fotos.0']" class="mt-1" />
+                        </div>
+
+                        <!-- SECTION 4: Kalkulasi Otomatis -->
+                        <div class="rounded-lg bg-muted/50 p-4 text-sm">
                             <h3 class="mb-3 font-semibold">Kalkulasi Otomatis</h3>
                             <div class="grid gap-2">
                                 <div class="flex justify-between">
@@ -586,7 +689,7 @@ function handleDelete(katalog: KatalogKoi) {
                                     <span class="text-muted-foreground">Sell IDR:</span>
                                     <span class="font-medium">{{ fmtIDR(form.sell_idr) }}</span>
                                 </div>
-                                <div class="my-1 border-t border-gray-300 dark:border-gray-700" />
+                                <div class="my-1 border-t border-border" />
                                 <div class="flex justify-between">
                                     <span class="text-muted-foreground">Margin (Sell IDR − Stock IDR):</span>
                                     <span class="font-semibold" :class="profitClass(margin)">{{ fmtIDR(margin) }}</span>
@@ -595,7 +698,7 @@ function handleDelete(katalog: KatalogKoi) {
                                     <span class="text-muted-foreground">Fee:</span>
                                     <span class="font-medium">{{ fmtIDR(form.fee) }}</span>
                                 </div>
-                                <div class="my-1 border-t border-gray-300 dark:border-gray-700" />
+                                <div class="my-1 border-t border-border" />
                                 <div class="flex justify-between text-base">
                                     <span class="font-semibold">Profit (Margin − Fee):</span>
                                     <span class="font-bold" :class="profitClass(profit)">

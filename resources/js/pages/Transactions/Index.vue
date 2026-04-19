@@ -58,7 +58,7 @@ type Transaction = {
 
 // ─── Page Props ─────────────────────────────────────────
 const page = usePage()
-const transactions = computed(() => (page.props.transactions as { data: Transaction[] } | null)?.data ?? [])
+const transactions = computed(() => (page.props.transactions as Transaction[] | null) ?? [])
 const kois = computed(() => (page.props.kois as Koi[] | null) ?? [])
 const customers = computed(() => (page.props.customers as Customer[] | null) ?? [])
 const koiSummaries = computed(() =>

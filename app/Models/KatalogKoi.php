@@ -62,4 +62,9 @@ class KatalogKoi extends Model
     {
         return $this->hasMany(Pesanan::class, 'katalog_koi_id');
     }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(KatalogKoiImage::class)->orderBy('sort_order');
+    }
 }
