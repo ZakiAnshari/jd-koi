@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
+import { Eye, Pencil, Trash2 } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { destroy as usersDestroy, edit as usersEdit, index as usersIndex, show as usersShow } from '@/routes/users'
 import type { BreadcrumbItem } from '@/types'
@@ -302,19 +303,24 @@ function confirmDelete(userId: number, userName: string) {
                                 <td class="px-4 py-3 text-sm text-foreground">{{ new
                                     Date(user.created_at).toLocaleDateString() }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
-                                    <Link :href="usersShow(user.id)"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">
-                                        Detail
-                                    </Link>
-                                    <Link :href="usersEdit(user.id)"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">
-                                        Edit
-                                    </Link>
-                                    <button type="button"
-                                        class="rounded-md border border-red-500 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-500/20"
-                                        @click="confirmDelete(user.id, user.name)">
-                                        Delete
-                                    </button>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <Link :href="usersShow(user.id)"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Detail">
+                                            <Eye :size="16" />
+                                        </Link>
+                                        <Link :href="usersEdit(user.id)"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Edit">
+                                            <Pencil :size="16" />
+                                        </Link>
+                                        <button type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                                            title="Hapus"
+                                            @click="confirmDelete(user.id, user.name)">
+                                            <Trash2 :size="16" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

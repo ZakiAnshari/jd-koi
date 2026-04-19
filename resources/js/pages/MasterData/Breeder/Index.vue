@@ -18,6 +18,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog'
+import { Pencil, Trash2 } from 'lucide-vue-next'
 
 type Breeder = {
     id: number
@@ -265,16 +266,19 @@ function confirmDelete(breederId: number, breederName: string) {
                                 <td class="px-4 py-3 text-sm text-foreground">{{ breeder.name_breeder }}</td>
                                 <td class="px-4 py-3 text-sm text-foreground">{{ new Intl.DateTimeFormat('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(breeder.created_at)) }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
-                                    
-                                    <Link :href="`/master-data/breeder/${breeder.id}/edit`"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">
-                                        Edit
-                                    </Link>
-                                    <button type="button"
-                                        class="rounded-md border border-red-500 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-500/20"
-                                        @click="confirmDelete(breeder.id, breeder.name_breeder)">
-                                        Delete
-                                    </button>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <Link :href="`/master-data/breeder/${breeder.id}/edit`"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Edit">
+                                            <Pencil :size="16" />
+                                        </Link>
+                                        <button type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                                            title="Hapus"
+                                            @click="confirmDelete(breeder.id, breeder.name_breeder)">
+                                            <Trash2 :size="16" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

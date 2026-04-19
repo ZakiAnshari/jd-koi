@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import { Eye } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,9 +129,6 @@ function sortIcon(key: keyof Pesanan) {
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)
 
-const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
 const statusBadge = (status: string) => {
     const badges: Record<string, string> = {
         pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -222,12 +220,6 @@ const updateStatus = (pesanan: Pesanan) => {
                                 >
                                     Total Harga <span class="ml-1">{{ sortIcon('total_harga') }}</span>
                                 </th>
-                                <th
-                                    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
-                                    @click="toggleSort('created_at')"
-                                >
-                                    Tanggal <span class="ml-1">{{ sortIcon('created_at') }}</span>
-                                </th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     Status
                                 </th>
@@ -238,7 +230,7 @@ const updateStatus = (pesanan: Pesanan) => {
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="paginatedPesanans.length === 0">
-                                <td colspan="8" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                <td colspan="7" class="px-4 py-8 text-center text-sm text-muted-foreground">
                                     {{ search ? 'Tidak ada hasil untuk pencarian tersebut.' : 'Belum ada pesanan.' }}
                                 </td>
                             </tr>
@@ -265,9 +257,6 @@ const updateStatus = (pesanan: Pesanan) => {
                                 <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-foreground">
                                     {{ formatCurrency(pesanan.total_harga) }}
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
-                                    {{ formatDate(pesanan.created_at) }}
-                                </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
                                         <span :class="`inline-block px-2 py-1 rounded-full text-xs font-semibold ${statusBadge(pesanan.status)}`">
@@ -288,9 +277,10 @@ const updateStatus = (pesanan: Pesanan) => {
                                 <td class="px-4 py-3 text-right">
                                     <Link
                                         :href="adminPesananShow.url(pesanan.id)"
-                                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm hover:bg-muted"
+                                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                        title="Detail"
                                     >
-                                        Detail
+                                        <Eye :size="16" />
                                     </Link>
                                 </td>
                             </tr>
