@@ -21,11 +21,17 @@ interface Breeder {
     name_breeder: string
 }
 
+interface KoiImage {
+    id: number
+    url: string
+}
+
 interface Koi {
     id: number
     code: string
     name: string
     breeder?: Breeder
+    images?: KoiImage[]
 }
 
 interface Pembelian {
@@ -35,11 +41,6 @@ interface Pembelian {
     price_jpy: number
     price_idr: number
     koi?: Koi
-}
-
-interface KatalogImage {
-    id: number
-    url: string
 }
 
 interface KatalogKoi {
@@ -56,7 +57,6 @@ interface KatalogKoi {
     profit: number
     koi?: Koi
     pembelian?: Pembelian
-    images?: KatalogImage[]
 }
 
 const props = defineProps<{
@@ -78,10 +78,6 @@ const tableCurrentPage = ref(1)
 const sortKey = ref<keyof KatalogKoi>('tanggal')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
-// ─── Image state ──────────────────────────────────────────
-const existingImages = ref<KatalogImage[]>([])
-const fotoPreviews = ref<{ file: File; url: string }[]>([])
-
 const isEditing = computed(() => editingId.value !== null)
 
 const form = useForm({
@@ -95,8 +91,6 @@ const form = useForm({
     stock_jpy: 0,
     stock_idr: 0,
     fee: 0,
-    fotos: [] as File[],
-    delete_images: [] as number[],
 })
 
 // ─── Pembelian select ─────────────────────────────────────
@@ -144,32 +138,6 @@ const profitPct = computed(() => {
     if (form.stock_idr === 0) return 0
     return (profit.value / form.stock_idr) * 100
 })
-
-// ─── Image handlers ───────────────────────────────────────
-function handleFotosChange(e: Event) {
-    const input = e.target as HTMLInputElement
-    if (!input.files?.length) return
-    const newFiles = Array.from(input.files)
-    form.fotos = [...form.fotos, ...newFiles]
-    newFiles.forEach(file => {
-        const reader = new FileReader()
-        reader.onload = ev => {
-            fotoPreviews.value.push({ file, url: ev.target?.result as string })
-        }
-        reader.readAsDataURL(file)
-    })
-    input.value = ''
-}
-
-function removeNewFoto(index: number) {
-    fotoPreviews.value.splice(index, 1)
-    form.fotos = form.fotos.filter((_, i) => i !== index)
-}
-
-function markDeleteExistingImage(id: number) {
-    form.delete_images = [...form.delete_images, id]
-    existingImages.value = existingImages.value.filter(img => img.id !== id)
-}
 
 // ─── Table filtering + sorting ────────────────────────────
 const filteredKatalogs = computed(() => {
@@ -242,19 +210,11 @@ function pembelianLabel(p: Pembelian) {
 }
 
 // ─── Modal actions ────────────────────────────────────────
-function resetImageState() {
-    existingImages.value = []
-    fotoPreviews.value = []
-    form.fotos = []
-    form.delete_images = []
-}
-
 function openCreate() {
     editingId.value = null
     selectedPembelianId.value = ''
     pembelianSearchQuery.value = ''
     form.reset()
-    resetImageState()
     showModal.value = true
 }
 
@@ -271,10 +231,6 @@ function openEdit(katalog: KatalogKoi) {
     form.stock_jpy = Number(katalog.stock_jpy)
     form.stock_idr = Number(katalog.stock_idr)
     form.fee = Number(katalog.fee)
-    existingImages.value = katalog.images ? [...katalog.images] : []
-    fotoPreviews.value = []
-    form.fotos = []
-    form.delete_images = []
     showModal.value = true
 }
 
@@ -285,7 +241,6 @@ function closeModal() {
     pembelianSearchQuery.value = ''
     form.reset()
     form.clearErrors()
-    resetImageState()
 }
 
 function submit() {
@@ -305,7 +260,7 @@ function submit() {
 function handleDelete(katalog: KatalogKoi) {
     useSwal().fire({
         title: 'Hapus Katalog Koi?',
-        text: `Hapus katalog koi ${katalog.koi?.code} - ${katalog.koi?.name}? Semua foto juga akan dihapus.`,
+        text: `Hapus katalog koi ${katalog.koi?.code} - ${katalog.koi?.name}?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -396,11 +351,11 @@ function handleDelete(katalog: KatalogKoi) {
                             </tr>
                             <tr v-for="katalog in paginatedKatalogs" :key="katalog.id"
                                 class="transition-colors hover:bg-muted/50">
-                                <!-- Thumbnail -->
+                                <!-- Thumbnail dari koi.images -->
                                 <td class="px-4 py-2">
                                     <div class="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
-                                        <img v-if="katalog.images && katalog.images.length > 0"
-                                            :src="katalog.images[0].url"
+                                        <img v-if="katalog.koi?.images && katalog.koi.images.length > 0"
+                                            :src="katalog.koi.images[0].url"
                                             :alt="katalog.koi?.name"
                                             class="w-full h-full object-cover"
                                         />
@@ -607,73 +562,7 @@ function handleDelete(katalog: KatalogKoi) {
                             </div>
                         </div>
 
-                        <!-- SECTION 3: Foto Koi -->
-                        <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
-                            <h3 class="mb-4 font-semibold">Foto Koi</h3>
-
-                            <!-- Existing images (edit mode) -->
-                            <div v-if="isEditing && existingImages.length > 0" class="mb-4">
-                                <p class="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Foto Tersimpan</p>
-                                <div class="flex flex-wrap gap-3">
-                                    <div v-for="img in existingImages" :key="img.id"
-                                        class="relative w-24 h-24 rounded-lg overflow-hidden border border-border group">
-                                        <img :src="img.url" alt="Foto koi" class="w-full h-full object-cover" />
-                                        <button
-                                            type="button"
-                                            @click="markDeleteExistingImage(img.id)"
-                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Hapus foto"
-                                        >
-                                            <X class="h-5 w-5 text-white" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="isEditing && existingImages.length === 0 && fotoPreviews.length === 0"
-                                class="mb-3 text-xs text-muted-foreground italic">
-                                Belum ada foto tersimpan.
-                            </div>
-
-                            <!-- New image previews -->
-                            <div v-if="fotoPreviews.length > 0" class="mb-4">
-                                <p class="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Foto Baru</p>
-                                <div class="flex flex-wrap gap-3">
-                                    <div v-for="(preview, i) in fotoPreviews" :key="i"
-                                        class="relative w-24 h-24 rounded-lg overflow-hidden border border-border group">
-                                        <img :src="preview.url" :alt="`Preview ${i + 1}`" class="w-full h-full object-cover" />
-                                        <button
-                                            type="button"
-                                            @click="removeNewFoto(i)"
-                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Batalkan"
-                                        >
-                                            <X class="h-5 w-5 text-white" />
-                                        </button>
-                                        <span class="absolute bottom-1 left-1 right-1 text-center text-[9px] text-white bg-black/40 rounded px-1 truncate">
-                                            {{ preview.file.name }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- File input -->
-                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
-                                <ImagePlus class="h-5 w-5 flex-shrink-0" />
-                                <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
-                                <input
-                                    type="file"
-                                    accept="image/jpg,image/jpeg,image/png,image/webp"
-                                    multiple
-                                    class="sr-only"
-                                    @change="handleFotosChange"
-                                />
-                            </label>
-                            <InputError :message="(form.errors as any)['fotos']" class="mt-1" />
-                            <InputError :message="(form.errors as any)['fotos.0']" class="mt-1" />
-                        </div>
-
-                        <!-- SECTION 4: Kalkulasi Otomatis -->
+                        <!-- SECTION 3: Kalkulasi Otomatis -->
                         <div class="rounded-lg bg-muted/50 p-4 text-sm">
                             <h3 class="mb-3 font-semibold">Kalkulasi Otomatis</h3>
                             <div class="grid gap-2">

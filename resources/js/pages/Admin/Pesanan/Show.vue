@@ -8,7 +8,8 @@ type Customer = {
     id: number
     name: string
     email: string
-    phone?: string
+    no_telepon?: string
+    alamat?: string
 }
 
 type Breeder = {
@@ -222,6 +223,16 @@ const storagePath = (photo?: string) => {
                             <div class="pb-4 border-b border-border">
                                 <p class="text-xs font-semibold text-muted-foreground uppercase mb-1">Email</p>
                                 <p class="text-sm text-muted-foreground">{{ pesanan.customer.email }}</p>
+                            </div>
+
+                            <div class="pb-4 border-b border-border">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase mb-1">No. Telepon</p>
+                                <p class="text-sm text-foreground">{{ pesanan.customer.no_telepon || '-' }}</p>
+                            </div>
+
+                            <div class="pb-4 border-b border-border">
+                                <p class="text-xs font-semibold text-muted-foreground uppercase mb-1">Alamat</p>
+                                <p class="text-sm text-foreground">{{ pesanan.customer.alamat || '-' }}</p>
                             </div>
 
                             <div v-if="pesanan.catatan" class="pb-4 border-b border-border">

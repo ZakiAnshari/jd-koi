@@ -10,9 +10,17 @@ use Inertia\Inertia;
 
 class PesananController extends Controller
 {
+    private function mapKoiImages($koi): array
+    {
+        return $koi->images->map(fn($img) => [
+            'id'  => $img->id,
+            'url' => asset('storage/' . $img->image_path),
+        ])->values()->all();
+    }
+
     public function checkout(KatalogKoi $katalogKoi)
     {
-        $katalogKoi->load(['koi.breeder']);
+        $katalogKoi->load(['koi.breeder', 'koi.images']);
 
         $katalog = [
             'id' => $katalogKoi->id,
@@ -24,6 +32,7 @@ class PesananController extends Controller
                 'nama' => $katalogKoi->koi->name,
                 'kode' => $katalogKoi->koi->code,
                 'photo' => $katalogKoi->koi->photo,
+                'images' => $this->mapKoiImages($katalogKoi->koi),
                 'breeder' => [
                     'name_breeder' => $katalogKoi->koi->breeder->name_breeder ?? null,
                 ],
@@ -32,13 +41,20 @@ class PesananController extends Controller
 
         $payment_info = [
             'bank' => config('app.bank_name', 'BCA'),
-            'account_name' => config('app.bank_account_name', 'Chandra Kirana'),
+            'account_name' => config('app.bank_account_name', 'Admin JD-KOI'),
             'account_number' => config('app.bank_account_number', '2741477086'),
         ];
 
+        $user = auth()->user();
+
         return Inertia::render('Customer/Pesanan/Checkout', [
-            'katalog' => $katalog,
+            'katalog'      => $katalog,
             'payment_info' => $payment_info,
+            'customer'     => [
+                'name'        => $user->name,
+                'no_telepon'  => $user->no_telepon ?? '',
+                'alamat'      => $user->alamat ?? '',
+            ],
         ]);
     }
 
@@ -115,7 +131,7 @@ class PesananController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $pesanan->load(['katalogKoi.koi.breeder']);
+        $pesanan->load(['katalogKoi.koi.breeder', 'katalogKoi.koi.images']);
 
         // Generate WhatsApp message
         $customer = auth()->user();
@@ -138,7 +154,7 @@ class PesananController extends Controller
 
         $payment_info = [
             'bank' => config('app.bank_name', 'BCA'),
-            'account_name' => config('app.bank_account_name', 'Chandra Kirana'),
+            'account_name' => config('app.bank_account_name', 'Admin JD-KOI'),
             'account_number' => config('app.bank_account_number', '2741477086'),
         ];
 
@@ -160,6 +176,7 @@ class PesananController extends Controller
                         'nama' => $pesanan->katalogKoi->koi->name,
                         'kode' => $pesanan->katalogKoi->koi->code,
                         'photo' => $pesanan->katalogKoi->koi->photo,
+                        'images' => $this->mapKoiImages($pesanan->katalogKoi->koi),
                         'breeder' => [
                             'name_breeder' => $pesanan->katalogKoi->koi->breeder->name_breeder ?? null,
                         ],
@@ -167,8 +184,10 @@ class PesananController extends Controller
                 ],
             ],
             'customer' => [
-                'name' => $customer->name,
-                'email' => $customer->email,
+                'name'       => $customer->name,
+                'email'      => $customer->email,
+                'no_telepon' => $customer->no_telepon ?? '',
+                'alamat'     => $customer->alamat ?? '',
             ],
             'payment_info' => $payment_info,
             'whatsapp_url' => $whatsappUrl,

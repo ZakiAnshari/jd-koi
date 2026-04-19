@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watchEffect } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import {
     SidebarGroup,
@@ -37,10 +37,17 @@ const isActive = (href?: string) => {
 
 const openMenus = ref<Record<string, boolean>>({});
 
-props.items.forEach((item) => {
-    if (item.items) {
-        openMenus.value[item.title] = item.items.some((sub) => isActive(sub.href));
-    }
+watchEffect(() => {
+    props.items.forEach((item) => {
+        if (item.items) {
+            const anyActive = item.items.some((sub) => isActive(sub.href));
+            if (anyActive) {
+                openMenus.value[item.title] = true;
+            } else if (!(item.title in openMenus.value)) {
+                openMenus.value[item.title] = false;
+            }
+        }
+    });
 });
 
 // Prevent sidebar collapse on navigation

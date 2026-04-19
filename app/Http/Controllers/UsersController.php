@@ -15,12 +15,28 @@ class UsersController extends Controller
 {
     public function index(Request $request): Response
     {
-        $users = User::select(['id', 'name', 'email', 'created_at'])
+        $users = User::select(['id', 'name', 'email', 'role_id', 'created_at'])
             ->orderBy('name')
             ->get();
 
         return Inertia::render('Users/Index', [
-            'users' => $users,
+            'users'      => $users,
+            'activeRole' => '',
+        ]);
+    }
+
+    public function hakAkses(Request $request, string $role): Response
+    {
+        $roleId = $role === 'admin' ? 1 : 2;
+
+        $users = User::select(['id', 'name', 'email', 'role_id', 'created_at'])
+            ->where('role_id', $roleId)
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Users/Index', [
+            'users'      => $users,
+            'activeRole' => $role,
         ]);
     }
 

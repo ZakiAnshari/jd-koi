@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, ImagePlus } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
@@ -127,22 +127,14 @@ function sortIcon(key: keyof Koi) {
 
 // ─── Modal + Form ───────────────────────────────────────
 const showModal = ref(false)
-const photoInputRef = ref<HTMLInputElement | null>(null)
-const imagesInputRef = ref<HTMLInputElement | null>(null)
 const breederSearch = ref('')
-const selectedImages = ref<File[]>([])
-const imagePreviews = ref<string[]>([])
+const fotoPreviews = ref<{ file: File; url: string }[]>([])
 
-// Bersihkan error dan search saat modal ditutup
 watch(showModal, (isOpen) => {
     if (!isOpen) {
         form.clearErrors()
         breederSearch.value = ''
-        selectedImages.value = []
-        imagePreviews.value = []
-        if (imagesInputRef.value) {
-            imagesInputRef.value.value = ''
-        }
+        fotoPreviews.value = []
     }
 })
 
@@ -156,43 +148,27 @@ const form = useForm({
     breeder_id: '',
     code: '',
     name: '',
-    photo: null as File | null,
     images: [] as File[],
 })
 
-function onPhotoChange(e: Event) {
-    const target = e.target as HTMLInputElement
-    form.photo = target.files?.[0] ?? null
-}
-
-function onImagesChange(e: Event) {
-    const target = e.target as HTMLInputElement
-    const files = target.files ? Array.from(target.files) : []
-    selectedImages.value = files
-    
-    // Generate previews
-    imagePreviews.value = []
-    files.forEach(file => {
+function handleImagesChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    if (!input.files?.length) return
+    const newFiles = Array.from(input.files)
+    form.images = [...form.images, ...newFiles]
+    newFiles.forEach(file => {
         const reader = new FileReader()
-        reader.onload = (event) => {
-            imagePreviews.value.push(event.target?.result as string)
+        reader.onload = ev => {
+            fotoPreviews.value.push({ file, url: ev.target?.result as string })
         }
         reader.readAsDataURL(file)
     })
-    
-    form.images = files
+    input.value = ''
 }
 
-function removeImagePreview(index: number) {
-    selectedImages.value.splice(index, 1)
-    imagePreviews.value.splice(index, 1)
-    form.images = selectedImages.value
-    
-    if (imagesInputRef.value) {
-        const dataTransfer = new DataTransfer()
-        selectedImages.value.forEach(file => dataTransfer.items.add(file))
-        imagesInputRef.value.files = dataTransfer.files
-    }
+function removeNewImage(index: number) {
+    fotoPreviews.value.splice(index, 1)
+    form.images = form.images.filter((_, i) => i !== index)
 }
 
 const submit = () => {
@@ -208,14 +184,7 @@ const submit = () => {
                 showConfirmButton: false,
             })
             form.reset()
-            if (photoInputRef.value) {
-                photoInputRef.value.value = ''
-            }
-            if (imagesInputRef.value) {
-                imagesInputRef.value.value = ''
-            }
-            selectedImages.value = []
-            imagePreviews.value = []
+            fotoPreviews.value = []
             showModal.value = false
             breederSearch.value = ''
         },
@@ -330,42 +299,30 @@ function getBreederName(koi: Koi): string {
                                     <Input id="name" v-model="form.name" placeholder="Koi name" />
                                     <InputError :message="form.errors.name" />
                                 </div>
-                                
-                                <div class="grid gap-2">
-                                    <Label for="photo">Photo</Label>
-                                    <Input id="photo" ref="photoInputRef" type="file" accept="image/*"
-                                        @change="onPhotoChange" />
-                                    <p class="text-xs text-muted-foreground">JPG, PNG, GIF (max 2MB)</p>
-                                    <InputError :message="form.errors.photo" />
-                                </div>
 
-                                <div class="grid gap-2">
-                                    <Label for="images">Additional Images (Multiple)</Label>
-                                    <Input id="images" ref="imagesInputRef" type="file" multiple accept="image/*"
-                                        @change="onImagesChange" />
-                                    <p class="text-xs text-muted-foreground">JPG, PNG, GIF, WebP (max 2MB per file)</p>
-                                    <InputError :message="form.errors['images.*']" />
-                                </div>
+                                <!-- Foto Koi -->
+                                <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-3">
+                                    <p class="mb-3 text-sm font-semibold">Foto Koi</p>
 
-                                <!-- Image Previews -->
-                                <div v-if="imagePreviews.length > 0" class="grid gap-2">
-                                    <p class="text-sm font-medium">Preview Images:</p>
-                                    <div class="flex flex-wrap gap-3">
-                                        <div v-for="(preview, index) in imagePreviews" :key="index" class="relative">
-                                            <img 
-                                                :src="preview" 
-                                                :alt="`Preview ${index + 1}`"
-                                                class="h-20 w-20 rounded-lg border border-border object-cover"
-                                            />
-                                            <button
-                                                type="button"
-                                                @click="removeImagePreview(index)"
-                                                class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                                            >
-                                                <X class="h-4 w-4" />
+                                    <!-- Preview foto baru -->
+                                    <div v-if="fotoPreviews.length > 0" class="mb-3 flex flex-wrap gap-2">
+                                        <div v-for="(preview, i) in fotoPreviews" :key="i"
+                                            class="relative h-20 w-20 overflow-hidden rounded-lg border border-border group">
+                                            <img :src="preview.url" class="h-full w-full object-cover" />
+                                            <button type="button" @click="removeNewImage(i)"
+                                                class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X class="h-4 w-4 text-white" />
                                             </button>
                                         </div>
                                     </div>
+
+                                    <label class="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+                                        <ImagePlus class="h-4 w-4 flex-shrink-0" />
+                                        <span>Pilih foto (jpg, png, webp · maks. 2 MB · bisa beberapa)</span>
+                                        <input type="file" accept="image/jpg,image/jpeg,image/png,image/webp"
+                                            multiple class="sr-only" @change="handleImagesChange" />
+                                    </label>
+                                    <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
                                 </div>
                             </div>
                             <DialogFooter>

@@ -42,13 +42,8 @@ class KoisController extends Controller
             'breeder_id' => 'required|exists:breeders,id',
             'code' => 'required|string|max:255|unique:kois,code',
             'name' => 'required|string|max:255',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
-
-        if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('kois', 'public');
-        }
 
         $koi = Koi::create($validated);
 
@@ -96,15 +91,10 @@ class KoisController extends Controller
             'breeder_id' => 'required|exists:breeders,id',
             'code' => 'required|string|max:255|unique:kois,code,' . $koi->id,
             'name' => 'required|string|max:255',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'delete_images' => 'nullable|array',
             'delete_images.*' => 'integer|exists:koi_images,id',
         ]);
-
-        if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('kois', 'public');
-        }
 
         $koi->fill($validated)->save();
 

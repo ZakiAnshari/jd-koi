@@ -25,11 +25,20 @@ class AdminPesananController extends Controller
     {
         $pesanan->load(['customer', 'katalogKoi.koi.breeder']);
 
+        $data = $pesanan->toArray();
+        $data['customer'] = $pesanan->customer ? [
+            'id'         => $pesanan->customer->id,
+            'name'       => $pesanan->customer->name,
+            'email'      => $pesanan->customer->email,
+            'no_telepon' => $pesanan->customer->no_telepon ?? '-',
+            'alamat'     => $pesanan->customer->alamat ?? '-',
+        ] : null;
+
         return Inertia::render('Admin/Pesanan/Show', [
-            'pesanan' => $pesanan,
+            'pesanan' => $data,
             'payment_info' => [
                 'bank' => config('app.bank_name', 'BCA'),
-                'account_name' => config('app.bank_account_name', 'Chandra Kirana'),
+                'account_name' => config('app.bank_account_name', 'Admin JD-KOI'),
                 'account_number' => config('app.bank_account_number', '2741477086'),
             ],
         ]);

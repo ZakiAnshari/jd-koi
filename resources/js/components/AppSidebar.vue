@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, FileBarChart, ShoppingBag, Bell } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, ShoppingBag, Bell, ShieldCheck } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -20,7 +20,6 @@ import { dashboard } from '@/routes';
 import { index as customerKatalogIndex } from '@/routes/customer/katalog';
 import { index as customerPesananIndex } from '@/routes/customer/pesanan';
 import { index as customerNotifikasiIndex } from '@/routes/customer/notifikasi';
-import { index as usersIndex } from '@/routes/users';
 
 const adminKatalogKoiIndex = () => ({ url: '/admin/katalog-koi' });
 
@@ -55,11 +54,11 @@ const mainNavItems = computed<NavItem[]>(() => {
                     href: '/master-data/koi',
                     icon: BookOpen,
                 },
-                {
-                    title: 'Customer',
-                    href: '/master-data/customer',
-                    icon: Users,
-                },
+                // {
+                //     title: 'Customer',
+                //     href: '/master-data/customer',
+                //     icon: Users,
+                // },
             ],
         });
 
@@ -100,32 +99,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             badgeCount: activityLogTodayCount.value,
         });
 
-        items.push({
-            title: 'Laporan',
-            icon: FileBarChart,
-            items: [
-                {
-                    title: 'Penjualan',
-                    href: '/reports/sales',
-                    icon: ShoppingCart,
-                },
-                {
-                    title: 'Pembelian',
-                    href: '/reports/purchases',
-                    icon: Package,
-                },
-                {
-                    title: 'Laba Rugi',
-                    href: '/reports/profit-loss',
-                    icon: BarChart3,
-                },
-                {
-                    title: 'Stok Koi',
-                    href: '/reports/stock',
-                    icon: Database,
-                },
-            ],
-        });
+
     } else {
         items.push({
             title: 'Katalog',
@@ -147,9 +121,20 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (isAdmin.value) {
         items.push({
-            title: 'User',
-            href: usersIndex().url,
-            icon: User,
+            title: 'Hak Akses',
+            icon: ShieldCheck,
+            items: [
+                {
+                    title: 'Admin',
+                    href: '/admin/hak-akses/admin',
+                    icon: User,
+                },
+                {
+                    title: 'Customer',
+                    href: '/admin/hak-akses/customer',
+                    icon: Users,
+                },
+            ],
         });
     }
 

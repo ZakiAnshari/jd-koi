@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
-import { Search } from 'lucide-vue-next'
+import { Search, ImageOff, SlidersHorizontal } from 'lucide-vue-next'
+
+type KoiImage = {
+    id: number
+    url: string
+}
 
 type Breeder = {
     name_breeder: string
@@ -15,7 +19,7 @@ type Koi = {
     id: number
     nama: string
     kode: string
-    photo?: string
+    images: KoiImage[]
     breeder: Breeder
 }
 
@@ -42,16 +46,28 @@ type PaginatedKatalogs = {
 
 const props = defineProps<{
     katalogs: PaginatedKatalogs
+    sort: string
 }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Katalog Koi',
-        href: '/customer/katalog',
-    },
+    { title: 'Katalog Koi', href: '/customer/katalog' },
 ]
 
 const searchQuery = ref('')
+
+const sortOptions = [
+    { value: 'latest',     label: 'Terbaru' },
+    { value: 'oldest',     label: 'Terlama' },
+    { value: 'price_high', label: 'Harga Tertinggi' },
+    { value: 'price_low',  label: 'Harga Terendah' },
+    { value: 'name_asc',   label: 'Nama A-Z' },
+    { value: 'name_desc',  label: 'Nama Z-A' },
+]
+
+function onSortChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value
+    router.get('/customer/katalog', { sort: value }, { preserveState: false, replace: true })
+}
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -61,38 +77,28 @@ const formatCurrency = (value: number) => {
     }).format(value)
 }
 
-const storagePath = (photo?: string) => {
-    if (!photo) return ''
-    return `/storage/${photo}`
-}
+const thumbUrl = (koi: Koi) => koi.images?.[0]?.url ?? null
 
 const hasData = computed(() => (props.katalogs?.data?.length ?? 0) > 0)
 const currentPage = computed(() => props.katalogs?.current_page ?? 1)
 const lastPage = computed(() => props.katalogs?.last_page ?? 1)
 
 const pagination = computed(() => {
-    const pages = []
+    const pages: (number | string)[] = []
     const start = Math.max(1, currentPage.value - 2)
     const end = Math.min(lastPage.value, currentPage.value + 2)
-    
     if (start > 1) pages.push(1)
     if (start > 2) pages.push('...')
-    
-    for (let i = start; i <= end; i++) {
-        pages.push(i)
-    }
-    
+    for (let i = start; i <= end; i++) pages.push(i)
     if (end < lastPage.value - 1) pages.push('...')
     if (end < lastPage.value) pages.push(lastPage.value)
-    
     return pages
 })
 
 const filteredKatalogs = computed(() => {
-    if (!searchQuery.value.trim()) return (props.katalogs?.data ?? [])
-    
+    if (!searchQuery.value.trim()) return props.katalogs?.data ?? []
     const q = searchQuery.value.toLowerCase()
-    return (props.katalogs?.data ?? []).filter(k => 
+    return (props.katalogs?.data ?? []).filter(k =>
         k.koi.nama.toLowerCase().includes(q) ||
         k.koi.kode.toLowerCase().includes(q) ||
         k.koi.breeder.name_breeder.toLowerCase().includes(q)
@@ -100,187 +106,175 @@ const filteredKatalogs = computed(() => {
 })
 
 const hasFilteredData = computed(() => filteredKatalogs.value.length > 0)
+
+function pageUrl(page: number) {
+    return `/customer/katalog?page=${page}&sort=${props.sort}`
+}
 </script>
 
 <template>
     <Head title="Katalog Koi" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-            <!-- Hero Section -->
-            <div class="space-y-2 mb-2">
-                <h1 class="text-4xl font-bold text-foreground">Katalog Koi</h1>
-                <p class="text-base text-muted-foreground">
+        <div class="flex h-full flex-1 flex-col gap-4 p-6">
+            <!-- Page heading -->
+            <div>
+                <h1 class="text-xl font-semibold text-foreground">Katalog Koi</h1>
+                <p class="text-sm text-muted-foreground mt-0.5">
                     Temukan koi berkualitas premium dari breeder terpercaya kami
                 </p>
             </div>
 
-            <!-- Search Section -->
-            <div class="flex items-center gap-3 mb-2">
-                <div class="relative flex-1 max-w-md">
-                    <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <!-- Toolbar: Search + Sort -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Search -->
+                <div class="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="Cari nama koi, kode, atau breeder..."
-                        class="pl-10 bg-background border-sidebar-border/70 dark:border-sidebar-border"
+                        placeholder="Cari nama, kode, atau breeder..."
+                        class="pl-9 h-9 text-sm bg-background border-sidebar-border/70"
                     />
                 </div>
-                <div v-if="hasData" class="text-sm text-muted-foreground font-medium">
-                    {{ hasFilteredData ? filteredKatalogs.length : props.katalogs?.total ?? 0 }} koi
-                </div>
-            </div>
 
-            <!-- Results Info -->
-            <div v-if="hasData && searchQuery" class="text-sm text-muted-foreground">
-                Menampilkan {{ filteredKatalogs.length }} dari {{ props.katalogs?.total ?? 0 }} koi
+                <!-- Sort dropdown -->
+                <div class="flex items-center gap-2">
+                    <SlidersHorizontal class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <select
+                        :value="sort"
+                        @change="onSortChange"
+                        class="h-9 rounded-md border border-sidebar-border/70 bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                            {{ opt.label }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Count -->
+                <span v-if="hasData" class="text-xs text-muted-foreground ml-auto">
+                    {{ hasFilteredData ? filteredKatalogs.length : (katalogs?.total ?? 0) }} koi
+                </span>
             </div>
 
             <!-- Grid Katalog -->
-            <div v-if="hasFilteredData" class="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div v-if="hasFilteredData" class="grid gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 <template v-for="katalog in filteredKatalogs" :key="katalog.id">
+
                     <!-- Card: Stok Tersedia -->
                     <Link
                         v-if="katalog.qty > 0"
                         :href="`/customer/katalog/${katalog.id}`"
-                        class="group flex flex-col h-full rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+                        class="group flex flex-col rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background hover:border-primary/50 hover:shadow-md transition-all duration-200"
                     >
-                        <!-- Foto Container -->
+                        <!-- Thumbnail -->
                         <div class="relative overflow-hidden bg-muted aspect-square">
                             <img
-                                v-if="katalog.koi.photo"
-                                :src="storagePath(katalog.koi.photo)"
+                                v-if="thumbUrl(katalog.koi)"
+                                :src="thumbUrl(katalog.koi)!"
                                 :alt="katalog.koi.nama"
-                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
-                            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50">
-                                <span class="text-sm font-medium">Foto Tidak Tersedia</span>
+                            <div v-else class="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground bg-muted/50">
+                                <ImageOff class="h-6 w-6 opacity-40" />
+                                <span class="text-xs">Belum ada foto</span>
                             </div>
-                            <div class="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                            <div class="absolute top-2 right-2 bg-primary/90 text-primary-foreground px-2 py-0.5 rounded-full text-[10px] font-semibold">
                                 {{ katalog.qty }} ekor
                             </div>
                         </div>
                         <!-- Content -->
-                        <div class="p-4 space-y-3 flex flex-col flex-1">
-                            <div class="flex-1">
-                                <h3 class="font-bold text-foreground line-clamp-2 text-sm md:text-base leading-tight mb-1">{{ katalog.koi.nama }}</h3>
-                                <p class="text-xs text-muted-foreground font-medium">{{ katalog.koi.breeder.name_breeder }}</p>
+                        <div class="p-3 flex flex-col gap-2 flex-1">
+                            <div>
+                                <p class="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{{ katalog.koi.nama }}</p>
+                                <p class="text-xs text-muted-foreground mt-0.5">{{ katalog.koi.breeder.name_breeder }}</p>
                             </div>
-                            <div class="h-px bg-border" />
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-muted-foreground">Kode:</span>
-                                    <span class="font-mono font-semibold text-foreground text-xs">{{ katalog.koi.kode }}</span>
-                                </div>
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-xs text-muted-foreground">Harga</span>
-                                    <span class="text-lg font-bold text-primary">{{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}</span>
-                                </div>
+                            <div class="h-px bg-border mt-auto" />
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-muted-foreground font-mono">{{ katalog.koi.kode }}</span>
+                                <span class="text-sm font-bold text-primary">{{ formatCurrency(katalog.sell_idr).replace('Rp\u00a0', '') }}</span>
                             </div>
-                            <Button class="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 text-sm">
+                            <div class="w-full text-center bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold py-1.5 rounded-md transition-colors">
                                 Lihat Detail
-                            </Button>
+                            </div>
                         </div>
                     </Link>
 
                     <!-- Card: Stok Habis -->
                     <div
                         v-else
-                        class="flex flex-col h-full rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background cursor-not-allowed"
+                        class="flex flex-col rounded-xl overflow-hidden border border-sidebar-border/70 dark:border-sidebar-border bg-background opacity-70"
                     >
-                        <!-- Foto Container with overlay -->
                         <div class="relative overflow-hidden bg-muted aspect-square">
                             <img
-                                v-if="katalog.koi.photo"
-                                :src="storagePath(katalog.koi.photo)"
+                                v-if="thumbUrl(katalog.koi)"
+                                :src="thumbUrl(katalog.koi)!"
                                 :alt="katalog.koi.nama"
                                 class="w-full h-full object-cover opacity-40"
                             />
-                            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 opacity-40">
-                                <span class="text-sm font-medium">Foto Tidak Tersedia</span>
+                            <div v-else class="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground bg-muted/50 opacity-40">
+                                <ImageOff class="h-6 w-6 opacity-40" />
+                                <span class="text-xs">Belum ada foto</span>
                             </div>
-                            <!-- Stok Habis overlay -->
-                            <div class="absolute inset-0 flex items-center justify-center bg-black/40">
-                                <span class="text-red-400 font-bold text-xl tracking-wide drop-shadow-lg">Stok Habis</span>
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/35">
+                                <span class="text-red-400 font-bold text-sm tracking-wide drop-shadow">Stok Habis</span>
                             </div>
                         </div>
-                        <!-- Content -->
-                        <div class="p-4 space-y-3 flex flex-col flex-1 opacity-60">
-                            <div class="flex-1">
-                                <h3 class="font-bold text-foreground line-clamp-2 text-sm md:text-base leading-tight mb-1">{{ katalog.koi.nama }}</h3>
-                                <p class="text-xs text-muted-foreground font-medium">{{ katalog.koi.breeder.name_breeder }}</p>
+                        <div class="p-3 flex flex-col gap-2 flex-1">
+                            <div>
+                                <p class="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{{ katalog.koi.nama }}</p>
+                                <p class="text-xs text-muted-foreground mt-0.5">{{ katalog.koi.breeder.name_breeder }}</p>
                             </div>
-                            <div class="h-px bg-border" />
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-muted-foreground">Kode:</span>
-                                    <span class="font-mono font-semibold text-foreground text-xs">{{ katalog.koi.kode }}</span>
-                                </div>
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-xs text-muted-foreground">Harga</span>
-                                    <span class="text-lg font-bold text-muted-foreground">{{ formatCurrency(katalog.sell_idr).replace('Rp ', '') }}</span>
-                                </div>
+                            <div class="h-px bg-border mt-auto" />
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-muted-foreground font-mono">{{ katalog.koi.kode }}</span>
+                                <span class="text-sm font-bold text-muted-foreground">{{ formatCurrency(katalog.sell_idr).replace('Rp\u00a0', '') }}</span>
                             </div>
-                            <button disabled class="w-full mt-2 bg-muted text-muted-foreground font-semibold h-9 text-sm rounded-md cursor-not-allowed">
+                            <div class="w-full text-center bg-muted text-muted-foreground text-xs font-semibold py-1.5 rounded-md cursor-not-allowed">
                                 Stok Habis
-                            </button>
+                            </div>
                         </div>
                     </div>
+
                 </template>
             </div>
 
-            <!-- Empty State - No Search Results -->
+            <!-- Empty: no search results -->
             <div
                 v-else-if="searchQuery"
                 class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center"
             >
-                <Search class="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <p class="text-lg font-semibold text-foreground mb-2">
-                    Tidak ada hasil pencarian
-                </p>
-                <p class="text-sm text-muted-foreground mb-4">
-                    Coba cari dengan kata kunci yang berbeda
-                </p>
-                <button 
-                    @click="searchQuery = ''"
-                    class="text-sm font-medium text-primary hover:text-primary/80 transition"
-                >
+                <Search class="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p class="text-sm font-semibold text-foreground mb-1">Tidak ada hasil pencarian</p>
+                <p class="text-xs text-muted-foreground mb-3">Coba kata kunci yang berbeda</p>
+                <button @click="searchQuery = ''" class="text-xs font-medium text-primary hover:text-primary/80">
                     Bersihkan pencarian
                 </button>
             </div>
 
-            <!-- Empty State - No Data -->
+            <!-- Empty: no data -->
             <div
                 v-else
                 class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-16 text-center"
             >
-                <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                </div>
-                <p class="text-lg font-semibold text-foreground mb-2">
-                    Katalog Kosong
-                </p>
-                <p class="text-sm text-muted-foreground max-w-sm">
-                    Koleksi koi kami sedang diperbarui. Silakan kembali lagi nanti untuk melihat koi-koi berkualitas terbaru dari kami.
+                <ImageOff class="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p class="text-sm font-semibold text-foreground mb-1">Katalog Kosong</p>
+                <p class="text-xs text-muted-foreground max-w-xs">
+                    Koleksi koi kami sedang diperbarui. Silakan kembali lagi nanti.
                 </p>
             </div>
 
             <!-- Pagination -->
-            <div v-if="hasData && lastPage > 1 && !searchQuery" class="flex items-center justify-center gap-2 mt-8 pt-4 border-t border-border">
+            <div v-if="hasData && lastPage > 1 && !searchQuery" class="flex items-center justify-center gap-2 pt-4 border-t border-border">
                 <Link
-                    v-if="props.katalogs?.prev_page_url"
-                    :href="props.katalogs.prev_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                    v-if="katalogs?.prev_page_url"
+                    :href="pageUrl(currentPage - 1)"
+                    class="px-3 py-1.5 text-xs font-medium rounded-md border border-sidebar-border/70 text-foreground hover:bg-muted transition-colors"
                 >
                     ← Sebelumnya
                 </Link>
-                <button
-                    v-else
-                    disabled
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed"
-                >
+                <button v-else disabled class="px-3 py-1.5 text-xs font-medium rounded-md border border-sidebar-border/70 text-muted-foreground opacity-40 cursor-not-allowed">
                     ← Sebelumnya
                 </button>
 
@@ -288,33 +282,29 @@ const hasFilteredData = computed(() => filteredKatalogs.value.length > 0)
                     <template v-for="page in pagination" :key="page">
                         <Link
                             v-if="typeof page === 'number' && page !== currentPage"
-                            :href="`/customer/katalog?page=${page}`"
-                            class="px-2.5 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                            :href="pageUrl(page)"
+                            class="px-2.5 py-1.5 text-xs font-medium rounded-md border border-sidebar-border/70 text-foreground hover:bg-muted transition-colors"
                         >
                             {{ page }}
                         </Link>
-                        <button
+                        <span
                             v-else-if="typeof page === 'number'"
-                            class="px-2.5 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground"
+                            class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground"
                         >
                             {{ page }}
-                        </button>
-                        <span v-else class="px-1 py-2 text-muted-foreground">{{ page }}</span>
+                        </span>
+                        <span v-else class="px-1 text-xs text-muted-foreground">{{ page }}</span>
                     </template>
                 </div>
 
                 <Link
-                    v-if="props.katalogs?.next_page_url"
-                    :href="props.katalogs.next_page_url"
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-foreground hover:bg-muted transition-colors"
+                    v-if="katalogs?.next_page_url"
+                    :href="pageUrl(currentPage + 1)"
+                    class="px-3 py-1.5 text-xs font-medium rounded-md border border-sidebar-border/70 text-foreground hover:bg-muted transition-colors"
                 >
                     Selanjutnya →
                 </Link>
-                <button
-                    v-else
-                    disabled
-                    class="px-3 py-2 text-sm font-medium rounded-lg border border-sidebar-border/70 dark:border-sidebar-border text-muted-foreground opacity-50 cursor-not-allowed"
-                >
+                <button v-else disabled class="px-3 py-1.5 text-xs font-medium rounded-md border border-sidebar-border/70 text-muted-foreground opacity-40 cursor-not-allowed">
                     Selanjutnya →
                 </button>
             </div>

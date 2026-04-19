@@ -9,13 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
-// import { store } from '@/routes/register';
 </script>
 
 <template>
     <AuthBase
-        title="Create an account"
-        description="Enter your details below to create your account"
+        title="Buat Akun"
+        description="Isi data di bawah untuk membuat akun customer"
     >
         <Head title="Register" />
 
@@ -28,7 +27,7 @@ import { login } from '@/routes';
         >
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="name">Name</Label>
+                    <Label for="name">Nama Lengkap</Label>
                     <Input
                         id="name"
                         type="text"
@@ -37,13 +36,13 @@ import { login } from '@/routes';
                         :tabindex="1"
                         autocomplete="name"
                         name="name"
-                        placeholder="Full name"
+                        placeholder="Nama lengkap"
                     />
                     <InputError :message="errors.name" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="email">Email</Label>
                     <Input
                         id="email"
                         type="email"
@@ -57,11 +56,40 @@ import { login } from '@/routes';
                 </div>
 
                 <div class="grid gap-2">
+                    <Label for="no_telepon">No. Telepon</Label>
+                    <Input
+                        id="no_telepon"
+                        type="tel"
+                        required
+                        :tabindex="3"
+                        autocomplete="tel"
+                        name="no_telepon"
+                        placeholder="08xxxxxxxxxx"
+                    />
+                    <InputError :message="errors.no_telepon" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="alamat">Alamat</Label>
+                    <textarea
+                        id="alamat"
+                        name="alamat"
+                        required
+                        :tabindex="4"
+                        autocomplete="street-address"
+                        placeholder="Jalan, kota, provinsi..."
+                        rows="3"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <InputError :message="errors.alamat" />
+                </div>
+
+                <div class="grid gap-2">
                     <Label for="password">Password</Label>
                     <PasswordInput
                         id="password"
                         required
-                        :tabindex="3"
+                        :tabindex="5"
                         autocomplete="new-password"
                         name="password"
                         placeholder="Password"
@@ -70,14 +98,14 @@ import { login } from '@/routes';
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">Confirm password</Label>
+                    <Label for="password_confirmation">Konfirmasi Password</Label>
                     <PasswordInput
                         id="password_confirmation"
                         required
-                        :tabindex="4"
+                        :tabindex="6"
                         autocomplete="new-password"
                         name="password_confirmation"
-                        placeholder="Confirm password"
+                        placeholder="Ulangi password"
                     />
                     <InputError :message="errors.password_confirmation" />
                 </div>
@@ -85,22 +113,22 @@ import { login } from '@/routes';
                 <Button
                     type="submit"
                     class="mt-2 w-full"
-                    tabindex="5"
+                    tabindex="7"
                     :disabled="processing"
                     data-test="register-user-button"
                 >
                     <Spinner v-if="processing" />
-                    Create account
+                    Buat Akun
                 </Button>
             </div>
 
             <div class="text-center text-sm text-muted-foreground">
-                Already have an account?
+                Sudah punya akun?
                 <TextLink
                     :href="login()"
                     class="underline underline-offset-4"
-                    :tabindex="6"
-                    >Log in</TextLink
+                    :tabindex="8"
+                    >Masuk</TextLink
                 >
             </div>
         </Form>

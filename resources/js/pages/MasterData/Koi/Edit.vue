@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, ImagePlus } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useForm } from '@inertiajs/vue3'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,6 @@ type Koi = {
     breeder_id: number
     code: string
     name: string
-    photo: string | null
     images: KoiImage[]
 }
 
@@ -43,92 +42,57 @@ const koi = page.props.koi as Koi
 const breeders = (page.props.breeders as Breeder[]) || []
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Master Data',
-        href: '#',
-    },
-    {
-        title: 'Data Koi',
-        href: '/master-data/koi',
-    },
-    {
-        title: 'Edit',
-        href: `/master-data/koi/${koi.id}/edit`,
-    },
+    { title: 'Master Data', href: '#' },
+    { title: 'Data Koi', href: '/master-data/koi' },
+    { title: 'Edit', href: `/master-data/koi/${koi.id}/edit` },
 ]
 
-// ─── Form ───────────────────────────────────────────────
-const photoInputRef = ref<HTMLInputElement | null>(null)
-const imagesInputRef = ref<HTMLInputElement | null>(null)
-const photoError = ref(false)
+// ─── Breeder search ──────────────────────────────────────
 const breederSearch = ref('')
-const selectedImages = ref<File[]>([])
-const imagePreviews = ref<string[]>([])
-const deletedImageIds = ref<number[]>([])
-
 const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders
     const q = breederSearch.value.toLowerCase()
     return breeders.filter(b => b.name_breeder.toLowerCase().includes(q))
 })
 
+// ─── Existing images state ───────────────────────────────
+const existingImages = ref<KoiImage[]>(koi.images ? [...koi.images] : [])
+
+// ─── New image previews ───────────────────────────────────
+const fotoPreviews = ref<{ file: File; url: string }[]>([])
+
+// ─── Form ─────────────────────────────────────────────────
 const form = useForm({
     breeder_id: String(koi.breeder_id),
     code: koi.code,
     name: koi.name,
-    photo: null as File | null,
     images: [] as File[],
     delete_images: [] as number[],
 })
 
-function onPhotoChange(e: Event) {
-    const target = e.target as HTMLInputElement
-    form.photo = target.files?.[0] ?? null
-}
-
-function onImagesChange(e: Event) {
-    const target = e.target as HTMLInputElement
-    const files = target.files ? Array.from(target.files) : []
-    selectedImages.value = files
-    
-    // Generate previews
-    imagePreviews.value = []
-    files.forEach(file => {
+function handleImagesChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    if (!input.files?.length) return
+    const newFiles = Array.from(input.files)
+    form.images = [...form.images, ...newFiles]
+    newFiles.forEach(file => {
         const reader = new FileReader()
-        reader.onload = (event) => {
-            imagePreviews.value.push(event.target?.result as string)
+        reader.onload = ev => {
+            fotoPreviews.value.push({ file, url: ev.target?.result as string })
         }
         reader.readAsDataURL(file)
     })
-    
-    form.images = files
+    input.value = ''
 }
 
-function removeImagePreview(index: number) {
-    selectedImages.value.splice(index, 1)
-    imagePreviews.value.splice(index, 1)
-    form.images = selectedImages.value
-    
-    if (imagesInputRef.value) {
-        const dataTransfer = new DataTransfer()
-        selectedImages.value.forEach(file => dataTransfer.items.add(file))
-        imagesInputRef.value.files = dataTransfer.files
-    }
+function removeNewImage(index: number) {
+    fotoPreviews.value.splice(index, 1)
+    form.images = form.images.filter((_, i) => i !== index)
 }
 
-function deleteExistingImage(imageId: number) {
-    if (!deletedImageIds.value.includes(imageId)) {
-        deletedImageIds.value.push(imageId)
-        form.delete_images = deletedImageIds.value
-    }
-}
-
-function undoDeleteExistingImage(imageId: number) {
-    const index = deletedImageIds.value.indexOf(imageId)
-    if (index > -1) {
-        deletedImageIds.value.splice(index, 1)
-        form.delete_images = deletedImageIds.value
-    }
+function markDeleteExisting(id: number) {
+    form.delete_images = [...form.delete_images, id]
+    existingImages.value = existingImages.value.filter(img => img.id !== id)
 }
 
 const submit = () => {
@@ -144,6 +108,9 @@ const submit = () => {
                 timer: 3000,
                 showConfirmButton: false,
             })
+            fotoPreviews.value = []
+            form.images = []
+            form.delete_images = []
         },
         onError: () => {
             swal.fire({
@@ -166,36 +133,34 @@ const submit = () => {
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold">Edit Koi</h1>
-                    <p class="text-sm text-muted-foreground">Update koi information.</p>
+                    <p class="text-sm text-muted-foreground">Perbarui data dan foto koi.</p>
                 </div>
                 <Link
                     href="/master-data/koi"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 >
-                    Back to list
+                    Kembali
                 </Link>
             </div>
 
             <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
                 <form @submit.prevent="submit" class="space-y-6">
+
+                    <!-- Data Koi -->
                     <div class="space-y-4">
                         <div class="grid gap-2">
                             <Label for="breeder_id">Breeder *</Label>
                             <Select v-model="form.breeder_id">
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a breeder" />
+                                    <SelectValue placeholder="Pilih breeder" />
                                 </SelectTrigger>
                                 <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
                                     <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input
-                                            v-model="breederSearch"
-                                            placeholder="Search breeder..."
-                                            class="h-8"
-                                        />
+                                        <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" />
                                     </div>
                                     <div class="max-h-48 overflow-y-auto">
                                         <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">
-                                            No breeders found
+                                            Breeder tidak ditemukan
                                         </div>
                                         <SelectItem v-for="breeder in filteredBreeders" :key="breeder.id" :value="String(breeder.id)">
                                             {{ breeder.name_breeder }}
@@ -207,121 +172,90 @@ const submit = () => {
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="code">Code *</Label>
-                            <Input id="code" v-model="form.code" placeholder="e.g., KOI-001" />
+                            <Label for="code">Kode Koi *</Label>
+                            <Input id="code" v-model="form.code" placeholder="Contoh: KOI-001" />
                             <InputError :message="form.errors.code" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="name">Name *</Label>
-                            <Input id="name" v-model="form.name" placeholder="Koi name" />
+                            <Label for="name">Nama Koi *</Label>
+                            <Input id="name" v-model="form.name" placeholder="Nama koi" />
                             <InputError :message="form.errors.name" />
                         </div>
+                    </div>
 
-                        <div class="grid gap-2">
-                            <Label for="photo">Photo</Label>
-                            <Input
-                                id="photo"
-                                ref="photoInputRef"
-                                type="file"
-                                accept="image/*"
-                                @change="onPhotoChange"
-                            />
-                            <p class="text-xs text-muted-foreground">JPG, PNG, GIF (max 2MB)</p>
-                            <InputError :message="form.errors.photo" />
+                    <!-- Foto Koi -->
+                    <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
+                        <h3 class="mb-4 font-semibold">Foto Koi</h3>
+
+                        <!-- Foto tersimpan -->
+                        <div v-if="existingImages.length > 0" class="mb-4">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Tersimpan</p>
+                            <div class="flex flex-wrap gap-3">
+                                <div v-for="img in existingImages" :key="img.id"
+                                    class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
+                                    <img :src="`/storage/${img.image_path}`" alt="Foto koi" class="h-full w-full object-cover" />
+                                    <button
+                                        type="button"
+                                        @click="markDeleteExisting(img.id)"
+                                        class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Hapus foto"
+                                    >
+                                        <X class="h-5 w-5 text-white" />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="grid gap-2">
-                            <Label for="images">Additional Images (Multiple)</Label>
-                            <Input
-                                id="images"
-                                ref="imagesInputRef"
+                        <div v-if="existingImages.length === 0 && fotoPreviews.length === 0"
+                            class="mb-3 text-xs italic text-muted-foreground">
+                            Belum ada foto tersimpan.
+                        </div>
+
+                        <!-- Preview foto baru -->
+                        <div v-if="fotoPreviews.length > 0" class="mb-4">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Baru</p>
+                            <div class="flex flex-wrap gap-3">
+                                <div v-for="(preview, i) in fotoPreviews" :key="i"
+                                    class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
+                                    <img :src="preview.url" :alt="`Preview ${i + 1}`" class="h-full w-full object-cover" />
+                                    <button
+                                        type="button"
+                                        @click="removeNewImage(i)"
+                                        class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Batalkan"
+                                    >
+                                        <X class="h-5 w-5 text-white" />
+                                    </button>
+                                    <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/40 px-1 text-center text-[9px] text-white">
+                                        {{ preview.file.name }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input file -->
+                        <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+                            <ImagePlus class="h-5 w-5 flex-shrink-0" />
+                            <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
+                            <input
                                 type="file"
+                                accept="image/jpg,image/jpeg,image/png,image/webp"
                                 multiple
-                                accept="image/*"
-                                @change="onImagesChange"
+                                class="sr-only"
+                                @change="handleImagesChange"
                             />
-                            <p class="text-xs text-muted-foreground">JPG, PNG, GIF, WebP (max 2MB per file)</p>
-                            <InputError :message="form.errors['images.*']" />
-                        </div>
-                    </div>
-
-                    <!-- Existing Images -->
-                    <div v-if="koi.images && koi.images.length > 0" class="rounded-md border border-border bg-muted/50 p-3">
-                        <p class="mb-3 text-xs font-medium text-muted-foreground">Existing images:</p>
-                        <div class="flex flex-wrap gap-3">
-                            <div 
-                                v-for="image in koi.images" 
-                                :key="image.id"
-                                :class="[
-                                    'relative',
-                                    deletedImageIds.includes(image.id) && 'opacity-50'
-                                ]"
-                            >
-                                <img
-                                    :src="`/storage/${image.image_path}`"
-                                    :alt="`Koi image ${image.id}`"
-                                    class="h-20 w-20 rounded-md border border-border object-cover shadow-sm"
-                                />
-                                <button
-                                    v-if="!deletedImageIds.includes(image.id)"
-                                    type="button"
-                                    @click="deleteExistingImage(image.id)"
-                                    class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                                    title="Delete image"
-                                >
-                                    <X class="h-4 w-4" />
-                                </button>
-                                <button
-                                    v-else
-                                    type="button"
-                                    @click="undoDeleteExistingImage(image.id)"
-                                    class="absolute inset-0 rounded-md bg-black/30 flex items-center justify-center hover:bg-black/50 transition-colors"
-                                    title="Undo delete"
-                                >
-                                    <span class="text-white text-xs font-medium">Undo</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- New Image Previews -->
-                    <div v-if="imagePreviews.length > 0" class="rounded-md border border-border bg-muted/50 p-3">
-                        <p class="mb-3 text-xs font-medium text-muted-foreground">New images to upload:</p>
-                        <div class="flex flex-wrap gap-3">
-                            <div v-for="(preview, index) in imagePreviews" :key="index" class="relative">
-                                <img 
-                                    :src="preview" 
-                                    :alt="`Preview ${index + 1}`"
-                                    class="h-20 w-20 rounded-md border border-border object-cover shadow-sm"
-                                />
-                                <button
-                                    type="button"
-                                    @click="removeImagePreview(index)"
-                                    class="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                                    title="Remove from upload"
-                                >
-                                    <X class="h-4 w-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Current Photo Preview -->
-                    <div v-if="koi.photo" class="rounded-md border border-border bg-muted/50 p-3">
-                        <p class="mb-2 text-xs font-medium text-muted-foreground">Current main photo:</p>
-                        <img
-                            v-if="!photoError"
-                            :src="`/storage/${koi.photo}`"
-                            alt="Current photo"
-                            class="h-32 w-32 rounded-md border border-border object-cover shadow-sm"
-                            @error="photoError = true"
-                        />
-                        <p v-else class="text-xs text-red-500">Photo tidak dapat dimuat</p>
+                        </label>
+                        <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
                     </div>
 
                     <div class="flex items-center gap-4">
-                        <Button type="submit" :disabled="form.processing">Save</Button>
+                        <Button type="submit" :disabled="form.processing">
+                            {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
+                        </Button>
+                        <Link href="/master-data/koi" class="text-sm text-muted-foreground hover:text-foreground">
+                            Batal
+                        </Link>
                     </div>
                 </form>
             </div>

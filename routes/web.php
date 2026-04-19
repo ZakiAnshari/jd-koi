@@ -8,7 +8,6 @@ use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KatalogKoiController;
@@ -102,25 +101,16 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('log-aktivitas.index');
     Route::get('/log-aktivitas/{id}', [ActivityLogController::class, 'show'])->name('log-aktivitas.show');
     Route::delete('/log-aktivitas/clear', [ActivityLogController::class, 'destroy'])->name('log-aktivitas.clear');
-    // REPORTS
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/sales', [ReportController::class, 'salesReport'])->name('sales');
-        Route::get('/purchases', [ReportController::class, 'purchaseReport'])->name('purchases');
-        Route::get('/profit-loss', [ReportController::class, 'profitLossReport'])->name('profitLoss');
-        Route::get('/stock', [ReportController::class, 'stockReport'])->name('stock');
-        
-        Route::get('/sales/export-excel', [ReportController::class, 'exportSalesExcel'])->name('sales.excel');
-        Route::get('/purchases/export-excel', [ReportController::class, 'exportPurchasesExcel'])->name('purchases.excel');
-        Route::get('/profit-loss/export-excel', [ReportController::class, 'exportProfitLossExcel'])->name('profitLoss.excel');
-        Route::get('/stock/export-excel', [ReportController::class, 'exportStockExcel'])->name('stock.excel');
-    });
+
     // Admin Routes - Katalog Koi
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('katalog-koi', KatalogKoiController::class);
-        Route::delete('katalog-koi/{katalogKoi}/images/{katalogKoiImage}', [KatalogKoiController::class, 'destroyImage'])->name('katalog-koi.images.destroy');
         Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
         Route::get('pesanan/{pesanan}', [AdminPesananController::class, 'show'])->name('pesanan.show');
         Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');
+        // Hak Akses
+        Route::get('hak-akses/admin', [UsersController::class, 'hakAkses'])->defaults('role', 'admin')->name('hak-akses.admin');
+        Route::get('hak-akses/customer', [UsersController::class, 'hakAkses'])->defaults('role', 'customer')->name('hak-akses.customer');
     });
 });
 

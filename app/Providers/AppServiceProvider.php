@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use App\Http\Responses\LoginResponse;
+use App\Http\Responses\RegisterResponse;
 use App\Models\Pesanan;
 use App\Models\StockMovement;
 use App\Observers\PesananObserver;
 use App\Observers\StockMovementObserver;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
 
         Pesanan::observe(PesananObserver::class);
         StockMovement::observe(StockMovementObserver::class);

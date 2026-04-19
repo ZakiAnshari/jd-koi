@@ -12,6 +12,7 @@ type Koi = {
     nama: string
     kode: string
     photo?: string
+    images?: Array<{ id: number; url: string }>
     breeder: Breeder
 }
 
@@ -99,6 +100,13 @@ const storagePath = (photo?: string) => {
     return `/storage/${photo}`
 }
 
+const thumbUrl = () => {
+    if (props.pesanan.katalogKoi.koi.images && props.pesanan.katalogKoi.koi.images.length > 0) {
+        return props.pesanan.katalogKoi.koi.images[0].url
+    }
+    return storagePath(props.pesanan.katalogKoi.koi.photo)
+}
+
 const openWhatsApp = () => {
     window.open(props.whatsapp_url, '_blank')
 }
@@ -157,7 +165,13 @@ const openWhatsApp = () => {
                         <!-- Thumbnail -->
                         <div class="rounded-lg overflow-hidden bg-muted aspect-video">
                             <img
-                                v-if="pesanan.katalogKoi.koi.photo"
+                                v-if="pesanan.katalogKoi.koi.images && pesanan.katalogKoi.koi.images.length > 0"
+                                :src="pesanan.katalogKoi.koi.images[0].url"
+                                :alt="pesanan.katalogKoi.koi.nama"
+                                class="w-full h-full object-cover"
+                            />
+                            <img
+                                v-else-if="pesanan.katalogKoi.koi.photo"
                                 :src="storagePath(pesanan.katalogKoi.koi.photo)"
                                 :alt="pesanan.katalogKoi.koi.nama"
                                 class="w-full h-full object-cover"

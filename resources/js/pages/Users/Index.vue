@@ -30,13 +30,25 @@ type User = {
 
 const page = usePage()
 const users = computed(() => (page.props.users as User[] | null) ?? [])
+const activeRole = computed(() => (page.props.activeRole as string) ?? '')
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Users',
-        href: usersIndex(),
-    },
-]
+const pageTitle = computed(() => {
+    if (activeRole.value === 'admin') return 'Daftar Admin'
+    if (activeRole.value === 'customer') return 'Daftar Customer'
+    return 'Users'
+})
+
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+    if (activeRole.value === 'admin') return [
+        { title: 'Hak Akses', href: '#' },
+        { title: 'Admin', href: '/admin/hak-akses/admin' },
+    ]
+    if (activeRole.value === 'customer') return [
+        { title: 'Hak Akses', href: '#' },
+        { title: 'Customer', href: '/admin/hak-akses/customer' },
+    ]
+    return [{ title: 'Users', href: usersIndex() }]
+})
 
 // ─── DataTable State ────────────────────────────────────
 const search = ref('')
@@ -183,15 +195,15 @@ function confirmDelete(userId: number, userName: string) {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Users" />
+    <AppLayout :breadcrumbs="breadcrumbs as BreadcrumbItem[]">
+        <Head :title="pageTitle" />
 
         <div class="flex flex-col gap-4 p-6">
             <!-- Header -->
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold">Users</h1>
-                    <p class="text-sm text-muted-foreground">Manage the users in your system.</p>
+                    <h1 class="text-2xl font-semibold">{{ pageTitle }}</h1>
+                    <p class="text-sm text-muted-foreground">Kelola akun {{ activeRole || 'user' }} dalam sistem.</p>
                 </div>
 
                 <Dialog v-model:open="showModal">

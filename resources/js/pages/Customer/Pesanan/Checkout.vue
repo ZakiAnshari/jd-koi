@@ -19,6 +19,7 @@ type Koi = {
     nama: string
     kode: string
     photo?: string
+    images?: Array<{ id: number; url: string }>
     breeder: Breeder
 }
 
@@ -147,7 +148,13 @@ const submit = () => {
                     <!-- Koi Image -->
                     <div class="rounded-lg overflow-hidden bg-muted aspect-square">
                         <img
-                            v-if="katalog.koi.photo"
+                            v-if="katalog.koi.images && katalog.koi.images.length > 0"
+                            :src="katalog.koi.images[0].url"
+                            :alt="katalog.koi.nama"
+                            class="w-full h-full object-cover"
+                        />
+                        <img
+                            v-else-if="katalog.koi.photo"
                             :src="storagePath(katalog.koi.photo)"
                             :alt="katalog.koi.nama"
                             class="w-full h-full object-cover"
