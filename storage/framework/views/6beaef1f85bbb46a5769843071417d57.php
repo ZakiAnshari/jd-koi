@@ -31,6 +31,25 @@
             }
         </style>
 
+        
+        <style>
+            #page-progress {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 0%;
+                height: 2px;
+                z-index: 9999;
+                opacity: 0;
+                pointer-events: none;
+                background: #000;
+            }
+
+            #page-progress-tip {
+                display: none;
+            }
+        </style>
+
         <title inertia><?php echo e(config('app.name', 'Laravel')); ?></title>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
@@ -44,7 +63,92 @@
         <?php if (!isset($__inertiaSsrDispatched)) { $__inertiaSsrDispatched = true; $__inertiaSsrResponse = app(\Inertia\Ssr\Gateway::class)->dispatch($page); }  if ($__inertiaSsrResponse) { echo $__inertiaSsrResponse->head; } ?>
     </head>
     <body class="font-sans antialiased">
+        <div id="page-progress"><div id="page-progress-tip"></div></div>
+
         <?php if (!isset($__inertiaSsrDispatched)) { $__inertiaSsrDispatched = true; $__inertiaSsrResponse = app(\Inertia\Ssr\Gateway::class)->dispatch($page); }  if ($__inertiaSsrResponse) { echo $__inertiaSsrResponse->body; } elseif (config('inertia.use_script_element_for_initial_page')) { ?><script data-page="app" type="application/json"><?php echo json_encode($page); ?></script><div id="app"></div><?php } else { ?><div id="app" data-page="<?php echo e(json_encode($page)); ?>"></div><?php } ?>
+
+        <script>
+        (function () {
+            var bar  = document.getElementById('page-progress');
+            var tip  = document.getElementById('page-progress-tip');
+            var timers = [];
+            var delayTimer = null;
+            var shown = false;
+
+            function clearAll() {
+                timers.forEach(clearTimeout);
+                timers = [];
+            }
+
+            function after(fn, ms) {
+                var t = setTimeout(fn, ms);
+                timers.push(t);
+            }
+
+            function setWidth(w, durationMs, easing) {
+                bar.style.transition = 'width ' + durationMs + 'ms ' + (easing || 'cubic-bezier(0.4,0,0.2,1)');
+                bar.style.width = w + '%';
+            }
+
+            function show() {
+                shown = true;
+                tip.style.display = 'block';
+
+                /* reset without transition */
+                bar.style.transition = 'none';
+                bar.style.opacity    = '1';
+                bar.style.width      = '0%';
+                bar.offsetHeight; /* force reflow */
+
+                /* stage 1 – burst: 0 → 30% in 300 ms */
+                setWidth(30, 300);
+
+                /* stage 2 – steady: 30 → 60% starting at 300 ms */
+                after(function () { setWidth(60, 900); }, 300);
+
+                /* stage 3 – slowing: 60 → 80% starting at 1200 ms */
+                after(function () { setWidth(80, 1500); }, 1200);
+
+                /* stage 4 – crawl: 80 → 90% starting at 2700 ms */
+                after(function () { setWidth(90, 5000, 'cubic-bezier(0.1,0,0.05,1)'); }, 2700);
+            }
+
+            function done() {
+                clearAll();
+                shown = false;
+                tip.style.display = 'none';
+
+                /* snap to 100% */
+                setWidth(100, 180);
+
+                /* fade out */
+                after(function () {
+                    bar.style.transition = 'opacity 280ms ease';
+                    bar.style.opacity    = '0';
+                }, 180);
+
+                /* reset width silently */
+                after(function () {
+                    bar.style.transition = 'none';
+                    bar.style.width      = '0%';
+                }, 480);
+            }
+
+            document.addEventListener('inertia:start', function () {
+                clearTimeout(delayTimer);
+                clearAll();
+                shown = false;
+                delayTimer = setTimeout(show, 200);
+            });
+
+            document.addEventListener('inertia:finish', function () {
+                clearTimeout(delayTimer);
+                if (shown) {
+                    done();
+                }
+            });
+        })();
+        </script>
     </body>
 </html>
 <?php /**PATH C:\laragon\www\koi-umeda-data-management\resources\views/app.blade.php ENDPATH**/ ?>
