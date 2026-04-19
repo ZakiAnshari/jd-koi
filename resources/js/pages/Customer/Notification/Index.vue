@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
-import { CheckCheck, Check, Bell } from 'lucide-vue-next'
+import { CheckCheck, Check, Bell, Eye } from 'lucide-vue-next'
 import { read as notifRead, readAll as notifReadAll } from '@/routes/customer/notifikasi'
 
 type Notifikasi = {
@@ -116,17 +116,19 @@ function handleMarkAllRead() {
                         <button
                             @click="filterUnread = !filterUnread; currentPage = 1"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
+                                'inline-flex items-center justify-center rounded-md border p-2 transition-colors',
                                 filterUnread
                                     ? 'border-primary bg-primary text-primary-foreground'
                                     : 'border-input bg-background text-foreground hover:bg-muted'
                             ]"
+                            title="Filter belum dibaca"
                         >
-                            <Bell class="h-3.5 w-3.5" />
-                            Belum dibaca
-                            <span v-if="unreadCount > 0" class="ml-1 rounded-full bg-background/20 px-1.5 py-0.5 text-xs font-semibold">
-                                {{ unreadCount }}
-                            </span>
+                            <div class="relative">
+                                <Bell class="h-4 w-4" />
+                                <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                                    {{ unreadCount > 9 ? '9+' : unreadCount }}
+                                </span>
+                            </div>
                         </button>
                     </div>
                     <div class="flex items-center gap-2">
@@ -190,16 +192,25 @@ function handleMarkAllRead() {
                             <p class="mt-1 text-xs text-muted-foreground/70">{{ timeAgo(notif.created_at) }}</p>
                         </div>
 
-                        <!-- Mark as read button -->
-                        <button
-                            v-if="!notif.is_read"
-                            @click="handleClick(notif)"
-                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted flex-shrink-0"
-                            title="Tandai sudah dibaca"
-                        >
-                            <Check class="h-4 w-4" />
-                        </button>
-                        <div v-else class="w-9 flex-shrink-0" />
+                        <!-- Action buttons -->
+                        <div class="flex flex-shrink-0 items-center gap-1">
+                            <Link
+                                v-if="notif.pesanan_id"
+                                :href="`/customer/pesanan/${notif.pesanan_id}`"
+                                class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                title="Lihat pesanan"
+                            >
+                                <Eye class="h-4 w-4" />
+                            </Link>
+                            <button
+                                v-if="!notif.is_read"
+                                @click="handleClick(notif)"
+                                class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                title="Tandai sudah dibaca"
+                            >
+                                <Check class="h-4 w-4" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 

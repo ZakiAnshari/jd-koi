@@ -5,7 +5,8 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboard } from '@/routes'
 import type { BreadcrumbItem } from '@/types'
 import {
-    ShoppingCart, Clock, TrendingUp, Users, Fish, DollarSign, CheckCircle, Bell, XCircle, PackageSearch
+    ShoppingCart, Clock, Users, Fish, DollarSign, CheckCircle, Bell, XCircle, PackageSearch,
+    CalendarDays, TrendingUp, TrendingDown, Store
 } from 'lucide-vue-next'
 
 type ActivityLogItem = {
@@ -78,6 +79,14 @@ const timeAgo = (dateString: string) => {
     return `${days} hari lalu`
 }
 
+const revenueChange = computed(() => {
+    if (!adminStats.value) return 0
+    const now = Number(adminStats.value.revenue_bulan_ini ?? 0)
+    const prev = Number(adminStats.value.revenue_bulan_lalu ?? 0)
+    if (prev === 0) return now > 0 ? 100 : 0
+    return Math.round(((now - prev) / prev) * 100)
+})
+
 const actionBadgeClasses = (action: string) => {
     switch (action) {
         case 'create': return 'bg-emerald-100 text-emerald-700'
@@ -112,80 +121,68 @@ const statusLabel = (status: string) => {
 
             <!-- ===== ADMIN DASHBOARD ===== -->
             <template v-if="isAdmin && adminStats">
-                <!-- Row 1: 4 stat cards -->
-                <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    <!-- Total Koi -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <Fish class="w-6 h-6 text-muted-foreground" />
+                <!-- Row 1: 5 stat cards -->
+                <div class="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+                    <!-- Total Revenue -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                            <DollarSign class="w-5 h-5 text-muted-foreground" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Koi</p>
-                            <p class="text-2xl font-bold text-foreground">{{ adminStats.total_koi }}</p>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground truncate">Total Revenue</p>
+                            <p class="text-base font-bold text-foreground leading-tight">{{ formatCurrency(adminStats.total_revenue) }}</p>
+                            <p class="text-xs text-muted-foreground/70">Confirmed + Selesai</p>
                         </div>
                     </div>
-                    <!-- Total Pesanan -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <ShoppingCart class="w-6 h-6 text-muted-foreground" />
+                    <!-- Pesanan Hari Ini -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                            <CalendarDays class="w-5 h-5 text-muted-foreground" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Pesanan</p>
-                            <p class="text-2xl font-bold text-foreground">{{ adminStats.total_pesanan }}</p>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground truncate">Pesanan Hari Ini</p>
+                            <p class="text-2xl font-bold text-foreground leading-tight">{{ adminStats.pesanan_hari_ini }}</p>
+                        </div>
+                    </div>
+                    <!-- Total Customer -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                            <Users class="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground truncate">Total Customer</p>
+                            <p class="text-2xl font-bold text-foreground leading-tight">{{ adminStats.total_customer }}</p>
+                        </div>
+                    </div>
+                    <!-- Koi Tersedia -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                            <Store class="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground truncate">Koi Tersedia</p>
+                            <p class="text-2xl font-bold text-foreground leading-tight">{{ adminStats.total_koi_tersedia }}</p>
+                            <p class="text-xs text-muted-foreground/70">Katalog aktif</p>
                         </div>
                     </div>
                     <!-- Pesanan Pending -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <Clock class="w-6 h-6 text-muted-foreground" />
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                            <Clock class="w-5 h-5 text-muted-foreground" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Pesanan Pending</p>
-                            <p class="text-2xl font-bold text-foreground">{{ adminStats.pesanan_pending }}</p>
-                        </div>
-                    </div>
-                    <!-- Total Revenue -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <DollarSign class="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Revenue</p>
-                            <p class="text-xl font-bold text-foreground">{{ formatCurrency(adminStats.total_revenue) }}</p>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground truncate">Pesanan Pending</p>
+                            <p class="text-2xl font-bold text-foreground leading-tight">{{ adminStats.pesanan_pending }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Row 2: 2 stat cards -->
-                <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                    <!-- Total Customer -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <Users class="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Customer</p>
-                            <p class="text-2xl font-bold text-foreground">{{ adminStats.total_customer }}</p>
-                        </div>
-                    </div>
-                    <!-- Pesanan Completed -->
-                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <CheckCircle class="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Pesanan Selesai</p>
-                            <p class="text-2xl font-bold text-foreground">{{ adminStats.pesanan_completed }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Row 3: Pesanan Terbaru -->
+                <!-- Row 2: Pesanan Terbaru -->
                 <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h2 class="text-lg font-semibold text-foreground">Pesanan Terbaru</h2>
-                            <p class="text-sm text-muted-foreground">5 pesanan terbaru dari customer</p>
+                            <p class="text-sm text-muted-foreground">10 pesanan terbaru dari customer</p>
                         </div>
                         <Link href="/admin/pesanan" class="text-sm font-medium text-primary hover:text-primary/80">
                             Lihat Semua →
@@ -220,6 +217,67 @@ const statusLabel = (status: string) => {
                         </table>
                     </div>
                     <div v-else class="text-sm text-muted-foreground text-center py-8">Belum ada pesanan.</div>
+                </div>
+
+                <!-- Row 3: Koi Terlaris + Revenue Bulanan -->
+                <div class="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                    <!-- Koi Terlaris -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-semibold text-foreground">Koi Terlaris</h2>
+                            <p class="text-sm text-muted-foreground">5 koi paling banyak dipesan (Confirmed + Selesai)</p>
+                        </div>
+                        <div v-if="adminStats.koi_terlaris?.length" class="space-y-3">
+                            <div
+                                v-for="(koi, idx) in adminStats.koi_terlaris"
+                                :key="koi.id"
+                                class="flex items-center gap-3"
+                            >
+                                <span class="w-6 text-xs font-semibold text-muted-foreground text-right flex-shrink-0">{{ idx + 1 }}</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-2 mb-1">
+                                        <span class="text-sm font-medium text-foreground truncate">{{ koi.name }}</span>
+                                        <span class="text-xs font-semibold text-muted-foreground flex-shrink-0">{{ koi.total_dipesan }} ekor</span>
+                                    </div>
+                                    <div class="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            class="h-full rounded-full bg-foreground/30"
+                                            :style="{ width: `${Math.round((koi.total_dipesan / adminStats.koi_terlaris[0].total_dipesan) * 100)}%` }"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-sm text-muted-foreground text-center py-8">Belum ada data pesanan.</div>
+                    </div>
+
+                    <!-- Revenue Bulanan -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-6">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-semibold text-foreground">Revenue Bulanan</h2>
+                            <p class="text-sm text-muted-foreground">Perbandingan bulan ini vs bulan lalu</p>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="rounded-lg border border-border p-4">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bulan Ini</p>
+                                <p class="text-2xl font-bold text-foreground mt-1">{{ formatCurrency(adminStats.revenue_bulan_ini) }}</p>
+                            </div>
+                            <div class="rounded-lg border border-border p-4">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bulan Lalu</p>
+                                <p class="text-2xl font-bold text-foreground mt-1">{{ formatCurrency(adminStats.revenue_bulan_lalu) }}</p>
+                            </div>
+                            <div class="rounded-lg border border-border p-4 flex items-center justify-between">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Perubahan</p>
+                                <div class="flex items-center gap-1.5">
+                                    <TrendingUp v-if="revenueChange >= 0" class="w-4 h-4 text-muted-foreground" />
+                                    <TrendingDown v-else class="w-4 h-4 text-muted-foreground" />
+                                    <span class="text-sm font-bold text-foreground">
+                                        {{ revenueChange >= 0 ? '+' : '' }}{{ revenueChange }}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Legacy activity logs -->

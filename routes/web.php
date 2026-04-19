@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('pesanan', [PesananController::class, 'store'])->name('pesanan.store');
         Route::get('pesanan', [PesananController::class, 'index'])->name('pesanan.index');
         Route::get('pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
+        Route::get('pesanan/{pesanan}/download-nota', [PesananController::class, 'downloadNota'])->name('pesanan.download-nota');
         Route::delete('pesanan/{pesanan}', [PesananController::class, 'destroy'])->name('pesanan.destroy');
         Route::get('notifikasi', [NotificationController::class, 'index'])->name('notifikasi.index');
         Route::put('notifikasi/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifikasi.read-all');

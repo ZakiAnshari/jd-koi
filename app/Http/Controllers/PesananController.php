@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\KatalogKoi;
 use App\Models\Pesanan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -205,6 +206,31 @@ class PesananController extends Controller
         return Inertia::render('Customer/Pesanan/Index', [
             'pesanans' => $pesanans,
         ]);
+    }
+
+    public function downloadNota(Pesanan $pesanan)
+    {
+        if ($pesanan->customer_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        if (!in_array($pesanan->status, ['confirmed', 'completed'])) {
+            abort(403, 'Nota hanya tersedia untuk pesanan yang sudah dikonfirmasi atau selesai.');
+        }
+
+        $pesanan->load(['katalogKoi.koi.breeder', 'katalogKoi.koi.images']);
+
+        $customer = auth()->user();
+        $payment_info = [
+            'bank'           => config('app.bank_name', 'BCA'),
+            'account_name'   => config('app.bank_account_name', 'Admin JD-KOI'),
+            'account_number' => config('app.bank_account_number', '2741477086'),
+        ];
+
+        $pdf = Pdf::loadView('customer.nota', compact('pesanan', 'customer', 'payment_info'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download("nota-pesanan-{$pesanan->kode_pesanan}.pdf");
     }
 
     public function destroy(Pesanan $pesanan)

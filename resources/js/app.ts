@@ -19,7 +19,12 @@ createInertiaApp({
             .use(plugin)
             .mount(el);
     },
-    progress: false,
+    progress: {
+        delay: 250,
+        color: '#000000',
+        includeCSS: true,
+        showSpinner: false,
+    },
 });
 
 // This will set light / dark mode on page load...

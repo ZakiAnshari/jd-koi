@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import { ChevronLeft, ChevronRight, ImageOff, ArrowLeft, Tag, Hash, CalendarDays, Fish } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { checkout } from '@/routes/customer/pesanan'
@@ -32,9 +32,7 @@ type Katalog = {
     koi: Koi
 }
 
-const props = defineProps<{
-    katalog: Katalog
-}>()
+const props = defineProps<{ katalog: Katalog }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Katalog Koi', href: '/customer/katalog' },
@@ -68,187 +66,187 @@ function lightboxNext() {
 }
 
 // ─── Formatting ───────────────────────────────────────────
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)
-
-const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)
+}
+function formatDate(date: string) {
+    return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
 </script>
 
 <template>
-    <Head :title="`${katalog.koi.nama} — Katalog Koi`" />
-
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-4 sm:p-6 space-y-4">
+        <Head :title="`${katalog.koi.nama} — Katalog Koi`" />
 
-            <!-- Back link -->
-            <Link
-                href="/customer/katalog"
-                class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-                <ArrowLeft class="h-4 w-4" />
-                Kembali ke Katalog
-            </Link>
+        <div class="space-y-6 p-6">
+            <!-- Header -->
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold">{{ katalog.koi.nama }}</h1>
+                    <p class="text-sm text-muted-foreground">Koi Code: {{ katalog.koi.kode }}</p>
+                </div>
+                <Link
+                    href="/customer/katalog"
+                    class="inline-flex items-center gap-1 self-start rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+                >
+                    <ChevronLeft class="h-4 w-4" />
+                    Kembali
+                </Link>
+            </div>
 
-            <!-- Main card -->
-            <div class="rounded-xl border border-border bg-background overflow-hidden">
-                <div class="grid lg:grid-cols-[3fr_2fr]">
+            <!-- Content -->
+            <div class="grid gap-6 lg:grid-cols-3">
+                <!-- Left: Carousel -->
+                <div class="rounded-lg border border-sidebar-border/70 bg-background p-4 lg:col-span-1">
+                    <h2 class="mb-3 text-base font-semibold">Foto Koi</h2>
 
-                    <!-- ── Left: Photo panel ─────────────────────── -->
-                    <div class="bg-muted/40 border-b lg:border-b-0 lg:border-r border-border">
+                    <!-- Empty state -->
+                    <div
+                        v-if="images.length === 0"
+                        class="flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/40 py-16 text-muted-foreground"
+                    >
+                        <ImageOff class="h-10 w-10 opacity-40" />
+                        <p class="text-sm">Belum ada foto untuk koi ini.</p>
+                    </div>
 
-                        <!-- Empty state -->
-                        <div
-                            v-if="images.length === 0"
-                            class="aspect-square flex flex-col items-center justify-center gap-3 text-muted-foreground"
-                        >
-                            <ImageOff class="h-12 w-12 opacity-30" />
-                            <p class="text-sm">Belum ada foto tersedia</p>
-                        </div>
-
-                        <!-- Carousel -->
-                        <div v-else>
-                            <!-- Main image -->
-                            <div class="relative aspect-square overflow-hidden">
-                                <button
-                                    type="button"
-                                    @click="openLightbox(current)"
-                                    class="block h-full w-full cursor-zoom-in"
-                                    title="Klik untuk perbesar"
-                                >
+                    <!-- Carousel -->
+                    <div v-else>
+                        <!-- Main image -->
+                        <div class="relative overflow-hidden rounded-lg bg-muted">
+                            <div class="h-64 w-full">
+                                <button type="button" @click="openLightbox(current)" class="block h-full w-full">
                                     <img
                                         :src="images[current].url"
-                                        :alt="`${katalog.koi.nama} foto ${current + 1}`"
+                                        :alt="`Foto koi ${katalog.koi.nama} ${current + 1}`"
                                         class="h-full w-full object-cover transition-opacity duration-200"
                                     />
                                 </button>
-
-                                <!-- Arrow buttons -->
-                                <template v-if="images.length > 1">
-                                    <button
-                                        @click="prev"
-                                        class="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
-                                        aria-label="Foto sebelumnya"
-                                    >
-                                        <ChevronLeft class="h-5 w-5" />
-                                    </button>
-                                    <button
-                                        @click="next"
-                                        class="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
-                                        aria-label="Foto berikutnya"
-                                    >
-                                        <ChevronRight class="h-5 w-5" />
-                                    </button>
-
-                                    <!-- Counter -->
-                                    <div class="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-medium text-white">
-                                        {{ current + 1 }} / {{ images.length }}
-                                    </div>
-                                </template>
                             </div>
 
-                            <!-- Thumbnail strip -->
-                            <div v-if="images.length > 1" class="flex gap-2 overflow-x-auto p-3 bg-background border-t border-border">
+                            <!-- Arrows -->
+                            <template v-if="images.length > 1">
                                 <button
-                                    v-for="(img, i) in images"
-                                    :key="img.id"
-                                    @click="current = i"
-                                    :class="[
-                                        'flex-shrink-0 h-16 w-16 overflow-hidden rounded-lg border-2 transition-all',
-                                        i === current
-                                            ? 'border-primary ring-1 ring-primary'
-                                            : 'border-transparent opacity-50 hover:opacity-80 hover:border-border'
-                                    ]"
-                                    :aria-label="`Pilih foto ${i + 1}`"
+                                    @click="prev"
+                                    class="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
+                                    aria-label="Foto sebelumnya"
                                 >
-                                    <img :src="img.url" :alt="`Thumbnail ${i + 1}`" class="h-full w-full object-cover" />
+                                    <ChevronLeft class="h-5 w-5" />
                                 </button>
-                            </div>
-                        </div>
-                    </div>
+                                <button
+                                    @click="next"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
+                                    aria-label="Foto berikutnya"
+                                >
+                                    <ChevronRight class="h-5 w-5" />
+                                </button>
 
-                    <!-- ── Right: Info panel ──────────────────────── -->
-                    <div class="flex flex-col p-5 sm:p-6 gap-5">
-
-                        <!-- Name + breeder -->
-                        <div>
-                            <h1 class="text-xl font-semibold text-foreground leading-snug">
-                                {{ katalog.koi.nama }}
-                            </h1>
-                            <p class="mt-1 text-sm text-muted-foreground flex items-center gap-1.5">
-                                <Fish class="h-3.5 w-3.5 flex-shrink-0" />
-                                {{ katalog.koi.breeder.name_breeder }}
-                            </p>
+                                <!-- Counter badge -->
+                                <div class="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                                    {{ current + 1 }} / {{ images.length }}
+                                </div>
+                            </template>
                         </div>
 
-                        <!-- Price block -->
-                        <div class="rounded-lg border border-border bg-muted/40 px-4 py-3">
-                            <p class="text-xs font-medium text-muted-foreground mb-0.5">Harga Jual</p>
-                            <p class="text-2xl font-bold text-primary tracking-tight">
-                                {{ formatCurrency(katalog.sell_idr) }}
-                            </p>
-                        </div>
-
-                        <!-- Info rows -->
-                        <dl class="space-y-3 text-sm">
-                            <div class="flex items-center gap-3">
-                                <Hash class="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <dt class="w-28 text-xs font-medium text-muted-foreground">Kode</dt>
-                                <dd class="font-mono font-semibold text-foreground">{{ katalog.koi.kode }}</dd>
-                            </div>
-
-                            <div class="flex items-start gap-3">
-                                <Tag class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                <dt class="w-28 text-xs font-medium text-muted-foreground">Stok</dt>
-                                <dd>
-                                    <span
-                                        v-if="katalog.qty > 0"
-                                        class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    >
-                                        {{ katalog.qty }} ekor tersedia
-                                    </span>
-                                    <span
-                                        v-else
-                                        class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                    >
-                                        Stok Habis
-                                    </span>
-                                </dd>
-                            </div>
-
-                            <div class="flex items-center gap-3">
-                                <CalendarDays class="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <dt class="w-28 text-xs font-medium text-muted-foreground">Tanggal Masuk</dt>
-                                <dd class="text-foreground">{{ formatDate(katalog.tanggal) }}</dd>
-                            </div>
-                        </dl>
-
-                        <!-- Deskripsi -->
-                        <div v-if="katalog.koi.deskripsi" class="border-t border-border pt-4">
-                            <p class="text-xs font-medium text-muted-foreground mb-2">Deskripsi</p>
-                            <p class="text-sm text-foreground leading-relaxed">{{ katalog.koi.deskripsi }}</p>
-                        </div>
-
-                        <!-- Spacer pushes CTA down -->
-                        <div class="flex-1" />
-
-                        <!-- CTA -->
-                        <div class="pt-2 border-t border-border">
-                            <Link
-                                v-if="katalog.qty > 0"
-                                :href="checkout.url(katalog.id)"
-                                class="block w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm py-2.5 text-center transition-colors shadow-sm"
-                            >
-                                Pesan Sekarang
-                            </Link>
+                        <!-- Dot indicators -->
+                        <div v-if="images.length > 1" class="mt-3 flex items-center justify-center gap-1.5">
                             <button
-                                v-else
-                                disabled
-                                class="w-full rounded-lg bg-muted text-muted-foreground font-semibold text-sm py-2.5 cursor-not-allowed"
+                                v-for="(_, i) in images"
+                                :key="i"
+                                @click="current = i"
+                                :class="[
+                                    'h-2 rounded-full transition-all duration-200',
+                                    i === current ? 'w-5 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60',
+                                ]"
+                                :aria-label="`Foto ${i + 1}`"
+                            />
+                        </div>
+
+                        <!-- Thumbnail strip -->
+                        <div v-if="images.length > 1" class="mt-3 flex gap-2 overflow-x-auto pb-1">
+                            <button
+                                v-for="(img, i) in images"
+                                :key="img.id"
+                                @click="current = i"
+                                :class="[
+                                    'flex-shrink-0 h-10 w-10 overflow-hidden rounded-md border-2 transition-all',
+                                    i === current ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-90',
+                                ]"
                             >
-                                Stok Habis
+                                <img :src="img.url" :alt="`Thumbnail ${i + 1}`" class="h-full w-full object-cover" />
                             </button>
                         </div>
+
+                        <p class="mt-2 text-xs text-muted-foreground">
+                            {{ images.length }} foto tersedia · klik foto untuk perbesar
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right: Details -->
+                <div class="rounded-lg border border-sidebar-border/70 bg-background p-4 lg:col-span-2">
+                    <h2 class="mb-3 text-base font-semibold">Informasi Koi</h2>
+                    <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kode</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ katalog.koi.kode }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nama</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ katalog.koi.nama }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ katalog.koi.breeder.name_breeder }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tanggal Masuk</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ formatDate(katalog.tanggal) }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Harga Jual</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ formatCurrency(katalog.sell_idr) }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stok</dt>
+                            <dd class="mt-1">
+                                <span
+                                    v-if="katalog.qty > 0"
+                                    class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                >
+                                    {{ katalog.qty }} ekor tersedia
+                                </span>
+                                <span
+                                    v-else
+                                    class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                >
+                                    Stok Habis
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <!-- Deskripsi -->
+                    <div v-if="katalog.koi.deskripsi" class="mt-4 border-t border-border pt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Deskripsi</p>
+                        <p class="text-sm text-foreground leading-relaxed">{{ katalog.koi.deskripsi }}</p>
+                    </div>
+
+                    <!-- CTA -->
+                    <div class="mt-4 border-t border-border pt-4">
+                        <Link
+                            v-if="katalog.qty > 0"
+                            :href="checkout.url(katalog.id)"
+                            class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                        >
+                            Pesan Sekarang
+                        </Link>
+                        <button
+                            v-else
+                            disabled
+                            class="inline-flex items-center justify-center rounded-md bg-muted px-4 py-2 text-sm font-medium text-muted-foreground cursor-not-allowed"
+                        >
+                            Stok Habis
+                        </button>
                     </div>
                 </div>
             </div>
@@ -271,15 +269,13 @@ const formatDate = (date: string) =>
                 <template v-if="images.length > 1">
                     <button
                         @click.stop="lightboxPrev"
-                        class="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
-                        aria-label="Foto sebelumnya"
+                        class="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
                     >
                         <ChevronLeft class="h-6 w-6" />
                     </button>
                     <button
                         @click.stop="lightboxNext"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
-                        aria-label="Foto berikutnya"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
                     >
                         <ChevronRight class="h-6 w-6" />
                     </button>
@@ -290,8 +286,7 @@ const formatDate = (date: string) =>
 
                 <button
                     @click="lightboxOpen = false"
-                    class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
-                    aria-label="Tutup"
+                    class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
                 >
                     ✕
                 </button>
