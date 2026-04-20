@@ -194,14 +194,15 @@ function handleMarkAllRead() {
 
                         <!-- Action buttons -->
                         <div class="flex flex-shrink-0 items-center gap-1">
-                            <Link
+                            <!-- Tombol Detail (Eye) disembunyikan sementara -->
+                            <!-- <Link
                                 v-if="notif.pesanan_id"
                                 :href="`/customer/pesanan/${notif.pesanan_id}`"
                                 class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
                                 title="Lihat pesanan"
                             >
                                 <Eye class="h-4 w-4" />
-                            </Link>
+                            </Link> -->
                             <button
                                 v-if="!notif.is_read"
                                 @click="handleClick(notif)"

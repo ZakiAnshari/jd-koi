@@ -6,8 +6,8 @@
     <title>Invoice {{ $pesanan->kode_pesanan }}</title>
     <style>
         @page {
-            size: A4 portrait;
-            margin: 20mm 18mm 20mm 18mm;
+            size: A4 landscape;
+            margin: 15mm 25mm 15mm 25mm;
         }
 
         * {
@@ -25,6 +25,8 @@
             background: #ffffff;
             line-height: 1.65;
             width: 100%;
+            padding: 0;
+            margin: 0;
         }
 
         /* ── CLEARFIX ────────────────────────────────── */
@@ -219,9 +221,22 @@
             color: #9ca3af;
             line-height: 1.75;
         }
+
+        /* ════════════════════════════════════════════════
+           CONTAINER
+        ════════════════════════════════════════════════ */
+        .container {
+            width: 100%;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px 50px;
+            background: #ffffff;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
+<div class="container">
 
 {{-- ═══ HEADER ══════════════════════════════════════════ --}}
 <div class="cf sp-sm">
@@ -328,5 +343,6 @@
     </div>
 </div>
 
+</div>
 </body>
 </html>

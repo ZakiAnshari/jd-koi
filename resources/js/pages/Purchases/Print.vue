@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
+
+onMounted(() => {
+    window.print()
+})
 
 type Koi = {
     id: number
@@ -54,15 +58,12 @@ const totalAmount = computed(() => purchases.value.reduce((sum, p) => sum + (p.p
 <template>
     <div class="min-h-screen bg-white p-0">
         <!-- Print Content -->
-        <div class="mx-auto max-w-5xl bg-white p-8 print:p-0">
+        <div class="mx-auto max-w-5xl bg-white p-8">
             <!-- Header -->
-            <div class="mb-6 text-center">
+            <div class="mb-12 text-center">
                 <h1 class="mb-1 text-2xl font-bold text-gray-900">LAPORAN PEMBELIAN KOI</h1>
                 <p class="text-xs text-gray-600">PT. JD-KOI | {{ currentDate.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>
             </div>
-
-            <!-- Divider -->
-            <div class="mb-6 border-b-2 border-gray-900"></div>
 
             <!-- Main Table -->
             <div class="mb-8">
@@ -126,8 +127,8 @@ const totalAmount = computed(() => purchases.value.reduce((sum, p) => sum + (p.p
         background: white;
     }
 
-    .print\:p-0 {
-        padding: 0;
+    :deep(div) {
+        margin: 0;
     }
 
     /* Ensure proper page breaks */
@@ -141,7 +142,7 @@ const totalAmount = computed(() => purchases.value.reduce((sum, p) => sum + (p.p
 
     /* Hide unnecessary elements on print */
     @page {
-        margin: 0;
+        margin: 10mm;
         size: A4;
     }
 }

@@ -25,6 +25,8 @@ type User = {
     id: number
     name: string
     email: string
+    no_telepon?: string | null
+    alamat?: string | null
     created_at: string
     updated_at: string
 }
@@ -207,14 +209,16 @@ function confirmDelete(userId: number, userName: string) {
                     <p class="text-sm text-muted-foreground">Kelola akun {{ activeRole || 'user' }} dalam sistem.</p>
                 </div>
 
-                <a
+                <Button
                     v-if="activeRole === 'customer'"
+                    as="a"
                     href="/admin/hak-akses/customer/export/excel"
-                    class="inline-flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800"
+                    variant="outline"
+                    class="inline-flex items-center gap-2"
                 >
                     <Download class="h-4 w-4" />
                     Export Excel
-                </a>
+                </Button>
 
                 <Dialog v-if="activeRole !== 'customer'" v-model:open="showModal">
                     <DialogTrigger as-child>
@@ -283,25 +287,33 @@ function confirmDelete(userId: number, userName: string) {
                             <tr>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
                                     @click="toggleSort('name')">
-                                    Name <span class="ml-1">{{ sortIcon('name') }}</span>
+                                    Nama <span class="ml-1">{{ sortIcon('name') }}</span>
                                 </th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
                                     @click="toggleSort('email')">
                                     Email <span class="ml-1">{{ sortIcon('email') }}</span>
                                 </th>
+                                <th v-if="activeRole === 'customer'"
+                                    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    No. Telepon
+                                </th>
+                                <th v-if="activeRole === 'customer'"
+                                    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Alamat
+                                </th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
                                     @click="toggleSort('created_at')">
-                                    Created <span class="ml-1">{{ sortIcon('created_at') }}</span>
+                                    Tgl Daftar <span class="ml-1">{{ sortIcon('created_at') }}</span>
                                 </th>
                                 <th
                                     class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Actions
+                                    Aksi
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="paginatedUsers.length === 0">
-                                <td colspan="4" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                <td :colspan="activeRole === 'customer' ? 6 : 4" class="px-4 py-8 text-center text-sm text-muted-foreground">
                                     {{ search ? 'Tidak ada hasil untuk pencarian tersebut.' : 'Belum ada data user.' }}
                                 </td>
                             </tr>
@@ -309,8 +321,15 @@ function confirmDelete(userId: number, userName: string) {
                                 class="transition-colors hover:bg-muted/50">
                                 <td class="px-4 py-3 text-sm text-foreground">{{ user.name }}</td>
                                 <td class="px-4 py-3 text-sm text-foreground">{{ user.email }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground">{{ new
-                                    Date(user.created_at).toLocaleDateString() }}</td>
+                                <td v-if="activeRole === 'customer'" class="px-4 py-3 text-sm text-foreground">
+                                    {{ user.no_telepon || '-' }}
+                                </td>
+                                <td v-if="activeRole === 'customer'" class="max-w-[200px] px-4 py-3 text-sm text-foreground">
+                                    <span class="block truncate" :title="user.alamat ?? undefined">{{ user.alamat || '-' }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-foreground">{{
+                                    new Date(user.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                                }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
                                     <div class="flex items-center justify-end gap-2">
                                         <!-- Tombol Detail disembunyikan di halaman admin, tetap tampil di halaman customer -->
