@@ -654,9 +654,9 @@ function getKoiInfo(purchase: Purchase): { code: string; name: string } {
                                 <td class="px-4 py-3 text-right text-sm">
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
-                                            :href="`/pembelian/${purchase.id}`"
+                                            :href="`/pembelian/${purchase.id}/edit`"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
-                                            title="Detail"
+                                            title="Edit"
                                         >
                                             <Pencil :size="16" />
                                         </Link>

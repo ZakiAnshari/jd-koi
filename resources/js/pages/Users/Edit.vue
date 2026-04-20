@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { edit as usersEdit, index as usersIndex } from '@/routes/users'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,19 +13,27 @@ type User = {
     id: number
     name: string
     email: string
+    role_id: number
 }
 
 const page = usePage()
 const user = page.props.user as User
+const formUrl = (page.props.formUrl as string | undefined) ?? `/users/${user.id}`
+
+const backUrl = user.role_id === 1
+    ? '/admin/hak-akses/admin'
+    : user.role_id === 2
+        ? '/admin/hak-akses/customer'
+        : '/users'
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Users',
-        href: usersIndex(),
+        title: user.role_id === 1 ? 'Hak Akses Admin' : user.role_id === 2 ? 'Hak Akses Customer' : 'Users',
+        href: backUrl,
     },
     {
         title: 'Edit',
-        href: usersEdit(user.id),
+        href: formUrl + '/edit',
     },
 ]
 
@@ -38,7 +45,7 @@ const form = useForm({
 })
 
 const submit = () => {
-    form.put(`/users/${user.id}`, {
+    form.put(formUrl, {
         preserveScroll: true,
         onSuccess: () => {
             useSwal().fire({
@@ -76,10 +83,10 @@ const submit = () => {
                     <p class="text-sm text-muted-foreground">Update user information.</p>
                 </div>
                 <Link
-                    :href="usersIndex()"
+                    :href="backUrl"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 >
-                    Back to list
+                    Kembali
                 </Link>
             </div>
 

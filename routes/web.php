@@ -48,8 +48,8 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
     Route::post('users', [UsersController::class, 'store'])->name('users.store');
     Route::get('users/{user}', [UsersController::class, 'show'])->name('users.show');
-    Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
-    Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
+    // Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
+    // Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
     //BREEDER
     Route::get('master-data/breeder', [BreedersController::class, 'index'])->name('breeders.index');
@@ -111,7 +111,11 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
         Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');
         // Hak Akses
         Route::get('hak-akses/admin', [UsersController::class, 'hakAkses'])->defaults('role', 'admin')->name('hak-akses.admin');
+        Route::get('hak-akses/admin/{user}/edit', [UsersController::class, 'editAdmin'])->name('hak-akses.admin.edit');
+        Route::put('hak-akses/admin/{user}', [UsersController::class, 'updateAdmin'])->name('hak-akses.admin.update');
         Route::get('hak-akses/customer', [UsersController::class, 'hakAkses'])->defaults('role', 'customer')->name('hak-akses.customer');
+        Route::get('hak-akses/customer/export/excel', [UsersController::class, 'exportCustomerExcel'])->name('hak-akses.customer.export-excel');
+        Route::get('hak-akses/customer/{user}', [UsersController::class, 'showCustomer'])->name('hak-akses.customer.show');
     });
 });
 

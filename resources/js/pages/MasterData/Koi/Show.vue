@@ -13,6 +13,7 @@ type Breeder = {
 type KoiImage = {
     id: number
     image_path: string
+    url: string
     sort_order: number
 }
 
@@ -62,7 +63,7 @@ function lightboxNext() {
 }
 
 function imgSrc(img: KoiImage) {
-    return `/storage/${img.image_path}`
+    return img.url
 }
 
 function fmtDate(d: string) {

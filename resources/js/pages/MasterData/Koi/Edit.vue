@@ -26,6 +26,7 @@ type Breeder = {
 type KoiImage = {
     id: number
     image_path: string
+    url: string
     sort_order: number
 }
 
@@ -194,7 +195,7 @@ const submit = () => {
                             <div class="flex flex-wrap gap-3">
                                 <div v-for="img in existingImages" :key="img.id"
                                     class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
-                                    <img :src="`/storage/${img.image_path}`" alt="Foto koi" class="h-full w-full object-cover" />
+                                    <img :src="img.url" alt="Foto koi" class="h-full w-full object-cover" />
                                     <button
                                         type="button"
                                         @click="markDeleteExisting(img.id)"

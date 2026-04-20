@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import { Eye, Pencil, Trash2 } from 'lucide-vue-next'
+import { Download, Eye, Pencil, Trash2 } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { destroy as usersDestroy, edit as usersEdit, index as usersIndex, show as usersShow } from '@/routes/users'
+import { destroy as usersDestroy, index as usersIndex, show as usersShow } from '@/routes/users'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
@@ -207,7 +207,16 @@ function confirmDelete(userId: number, userName: string) {
                     <p class="text-sm text-muted-foreground">Kelola akun {{ activeRole || 'user' }} dalam sistem.</p>
                 </div>
 
-                <Dialog v-model:open="showModal">
+                <a
+                    v-if="activeRole === 'customer'"
+                    href="/admin/hak-akses/customer/export/excel"
+                    class="inline-flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800"
+                >
+                    <Download class="h-4 w-4" />
+                    Export Excel
+                </a>
+
+                <Dialog v-if="activeRole !== 'customer'" v-model:open="showModal">
                     <DialogTrigger as-child>
                         <Button>New user</Button>
                     </DialogTrigger>
@@ -304,12 +313,16 @@ function confirmDelete(userId: number, userName: string) {
                                     Date(user.created_at).toLocaleDateString() }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
                                     <div class="flex items-center justify-end gap-2">
-                                        <Link :href="usersShow(user.id)"
+                                        <!-- Tombol Detail disembunyikan di halaman admin, tetap tampil di halaman customer -->
+                                        <Link v-if="activeRole !== 'admin'"
+                                            :href="activeRole === 'customer' ? `/admin/hak-akses/customer/${user.id}` : usersShow(user.id)"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
                                             title="Detail">
                                             <Eye :size="16" />
                                         </Link>
-                                        <Link :href="usersEdit(user.id)"
+                                        <!-- Tombol Edit disembunyikan di halaman customer, tetap tampil di halaman admin -->
+                                        <Link v-if="activeRole !== 'customer'"
+                                            :href="`/admin/hak-akses/admin/${user.id}/edit`"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
                                             title="Edit">
                                             <Pencil :size="16" />

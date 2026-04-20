@@ -71,6 +71,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Modal state ──────────────────────────────────────────
 const showModal = ref(false)
+
+// Bersihkan error saat modal ditutup
+watch(showModal, (isOpen) => {
+    if (!isOpen) {
+        form.clearErrors()
+    }
+})
 const editingId = ref<number | null>(null)
 const tableSearch = ref('')
 const tablePerPage = ref(10)
@@ -247,32 +254,62 @@ function submit() {
     if (isEditing.value) {
         form.put(katalogUpdate.url(editingId.value!), {
             preserveScroll: true,
-            onSuccess: closeModal,
+            onSuccess: () => {
+                useSwal().fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'Data katalog berhasil diperbarui.',
+                    timer: 3000,
+                    showConfirmButton: false,
+                })
+                closeModal()
+            },
+            onError: () => {
+                // Modal tetap terbuka — error tampil langsung di field via InputError
+            },
         })
     } else {
         form.post(katalogStore.url(), {
             preserveScroll: true,
-            onSuccess: closeModal,
+            onSuccess: () => {
+                useSwal().fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'Data katalog berhasil ditambahkan.',
+                    timer: 3000,
+                    showConfirmButton: false,
+                })
+                closeModal()
+            },
+            onError: () => {
+                // Modal tetap terbuka — error tampil langsung di field via InputError
+            },
         })
     }
 }
 
 function handleDelete(katalog: KatalogKoi) {
     useSwal().fire({
-        title: 'Hapus Katalog Koi?',
-        text: `Hapus katalog koi ${katalog.koi?.code} - ${katalog.koi?.name}?`,
+        title: 'Hapus katalog koi?',
+        text: `Katalog koi "${katalog.koi?.code} - ${katalog.koi?.name}" akan dihapus permanen.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Hapus',
+        confirmButtonText: 'Ya, hapus!',
         cancelButtonText: 'Batal',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
     }).then(result => {
         if (result.isConfirmed) {
             router.delete(katalogDestroy.url(katalog.id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    useSwal().fire({ icon: 'success', title: 'Terhapus!', timer: 1500, showConfirmButton: false })
+                    useSwal().fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'Data katalog berhasil dihapus.',
+                        timer: 3000,
+                        showConfirmButton: false,
+                    })
                 },
             })
         }
