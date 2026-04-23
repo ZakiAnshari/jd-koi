@@ -26,7 +26,7 @@ const purchase = page.props.purchase as Purchase
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Pembelian',
-        href: '/pembelian',
+        href: '/master-data/koi?tab=pembelian',
     },
     {
         title: 'Detail',
@@ -58,7 +58,7 @@ function formatIDR(value: number | string | undefined): string {
                     <p class="text-sm text-muted-foreground">Informasi lengkap pembelian koi.</p>
                 </div>
                 <Link
-                    href="/pembelian"
+                    href="/master-data/koi?tab=pembelian"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 >
                     Kembali

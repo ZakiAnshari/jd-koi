@@ -37,7 +37,7 @@ type Pesanan = {
     qty: number
     harga_satuan: number
     total_harga: number
-    status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+    status: 'pending' | 'shipped' | 'azukari' | 'dead'
     catatan?: string
     created_at: string
     customer: Customer
@@ -91,9 +91,9 @@ const formatDate = (date: string) => {
 const statusBadge = (status: string) => {
     const badges: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-        confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        shipped: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        azukari: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        dead:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     }
     return badges[status] || 'bg-gray-100 text-gray-800'
 }
@@ -101,9 +101,9 @@ const statusBadge = (status: string) => {
 const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
         pending: 'Pending',
-        confirmed: 'Confirmed',
-        completed: 'Completed',
-        cancelled: 'Cancelled',
+        shipped: 'Shipped',
+        azukari: 'Azukari',
+        dead:    'Dead',
     }
     return labels[status] || status
 }
@@ -302,9 +302,9 @@ const storagePath = (photo?: string) => {
                             class="w-full px-3 py-2 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="azukari">Azukari</option>
+                            <option value="dead">Dead</option>
                         </select>
 
                         <p class="text-xs text-muted-foreground">

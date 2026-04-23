@@ -47,7 +47,7 @@ class AdminPesananController extends Controller
     public function updateStatus(Request $request, Pesanan $pesanan)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending,confirmed,completed,cancelled',
+            'status' => 'required|in:pending,shipped,azukari,dead',
         ]);
 
         $oldStatus = $pesanan->status;
@@ -64,20 +64,20 @@ class AdminPesananController extends Controller
                 $namaKoi = $pesanan->katalogKoi->koi->name ?? 'Koi';
 
                 $notifMap = [
-                    'confirmed' => [
-                        'title'   => 'Pesanan Dikonfirmasi',
-                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} telah dikonfirmasi. Terima kasih atas pembayaran Anda.",
-                        'type'    => 'order_confirmed',
+                    'shipped' => [
+                        'title'   => 'Pesanan Dikirim',
+                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} sedang dikirim.",
+                        'type'    => 'order_shipped',
                     ],
-                    'completed' => [
-                        'title'   => 'Pesanan Selesai',
-                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} telah selesai. Terima kasih telah berbelanja!",
-                        'type'    => 'order_completed',
+                    'azukari' => [
+                        'title'   => 'Pesanan Azukari',
+                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} berstatus azukari.",
+                        'type'    => 'order_azukari',
                     ],
-                    'cancelled' => [
-                        'title'   => 'Pesanan Dibatalkan',
-                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} telah dibatalkan. Silakan hubungi admin untuk informasi lebih lanjut.",
-                        'type'    => 'order_cancelled',
+                    'dead' => [
+                        'title'   => 'Pesanan Mati',
+                        'message' => "Pesanan Anda dengan kode {$pesanan->kode_pesanan} untuk koi {$namaKoi} berstatus dead. Silakan hubungi admin untuk informasi lebih lanjut.",
+                        'type'    => 'order_dead',
                     ],
                 ];
 

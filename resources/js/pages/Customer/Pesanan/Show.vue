@@ -28,7 +28,7 @@ type Pesanan = {
     qty: number
     harga_satuan: number
     total_harga: number
-    status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+    status: 'pending' | 'shipped' | 'azukari' | 'dead'
     catatan?: string
     created_at: string
     katalogKoi: KatalogKoi
@@ -78,9 +78,9 @@ const formatDate = (date: string) => {
 const statusBadge = (status: string) => {
     const badges: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-        confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        shipped: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        azukari: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        dead:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     }
     return badges[status] || 'bg-gray-100 text-gray-800'
 }
@@ -88,9 +88,9 @@ const statusBadge = (status: string) => {
 const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
         pending: 'Menunggu',
-        confirmed: 'Terkonfirmasi',
-        completed: 'Selesai',
-        cancelled: 'Dibatalkan',
+        shipped: 'Shipped',
+        azukari: 'Azukari',
+        dead:    'Dead',
     }
     return labels[status] || status
 }
@@ -271,7 +271,7 @@ const openWhatsApp = () => {
 
                         <!-- Download Nota Button -->
                         <a
-                            v-if="pesanan.status === 'confirmed' || pesanan.status === 'completed'"
+                            v-if="pesanan.status === 'shipped' || pesanan.status === 'azukari'"
                             :href="`/customer/pesanan/${pesanan.id}/download-nota`"
                             target="_blank"
                             class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-sm font-semibold transition-colors"

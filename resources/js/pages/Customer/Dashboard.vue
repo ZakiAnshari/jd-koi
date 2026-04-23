@@ -26,8 +26,8 @@ type CustomerStats = {
     nama: string
     total_pesanan: number
     pesanan_diproses: number
-    pesanan_completed: number
-    pesanan_cancelled: number
+    pesanan_azukari: number
+    pesanan_dead: number
     total_belanja: number
     pesanan_terbaru: PesananItem[]
     notifikasi_terbaru: NotifItem[]
@@ -67,16 +67,16 @@ const timeAgo = (dateString: string) => {
 const statusBadge = (status: string) => {
     const map: Record<string, string> = {
         pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-        confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-        completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+        shipped: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+        azukari: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+        dead:    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
     }
     return map[status] ?? 'bg-gray-100 text-gray-800'
 }
 
 const statusLabel = (status: string) => {
     const map: Record<string, string> = {
-        pending: 'Pending', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled',
+        pending: 'Pending', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
     }
     return map[status] ?? status
 }
@@ -137,8 +137,8 @@ const statusLabel = (status: string) => {
                         <CheckCircle class="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
-                        <p class="text-sm text-muted-foreground">Selesai</p>
-                        <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_completed }}</p>
+                        <p class="text-sm text-muted-foreground">Azukari</p>
+                        <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_azukari }}</p>
                     </div>
                 </div>
 
@@ -148,8 +148,8 @@ const statusLabel = (status: string) => {
                         <XCircle class="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
-                        <p class="text-sm text-muted-foreground">Dibatalkan</p>
-                        <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_cancelled }}</p>
+                        <p class="text-sm text-muted-foreground">Dead</p>
+                        <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_dead }}</p>
                     </div>
                 </div>
             </div>

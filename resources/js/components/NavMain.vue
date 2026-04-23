@@ -16,9 +16,7 @@ import {
 import {
     Collapsible,
     CollapsibleContent,
-    CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { ChevronRight } from 'lucide-vue-next';
 import type { NavItem } from '@/types';
 
 const props = defineProps<{
@@ -40,12 +38,7 @@ const openMenus = ref<Record<string, boolean>>({});
 watchEffect(() => {
     props.items.forEach((item) => {
         if (item.items) {
-            const anyActive = item.items.some((sub) => isActive(sub.href));
-            if (anyActive) {
-                openMenus.value[item.title] = true;
-            } else if (!(item.title in openMenus.value)) {
-                openMenus.value[item.title] = false;
-            }
+            openMenus.value[item.title] = true;
         }
     });
 });
@@ -78,16 +71,10 @@ onMounted(() => {
 
                 <Collapsible v-else v-model:open="openMenus[item.title]" as-child>
                     <SidebarMenuItem>
-                        <CollapsibleTrigger as-child>
-                            <SidebarMenuButton class="w-full" :tooltip="item.title">
-                                <component :is="item.icon" />
-                                <span class="flex-1 text-left">{{ item.title }}</span>
-                                <ChevronRight
-                                    class="h-4 w-4 transition-transform duration-200"
-                                    :class="{ 'rotate-90': openMenus[item.title] }"
-                                />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
+                        <SidebarMenuButton class="w-full cursor-default" :tooltip="item.title">
+                            <component :is="item.icon" />
+                            <span class="flex-1 text-left">{{ item.title }}</span>
+                        </SidebarMenuButton>
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem v-for="subitem in item.items" :key="subitem.title">
@@ -97,7 +84,7 @@ onMounted(() => {
                                             <span>{{ subitem.title }}</span>
                                             <span
                                                 v-if="subitem.badgeCount && subitem.badgeCount > 0"
-                                                class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white"
+                                                class="ml-auto text-xs font-semibold text-muted-foreground"
                                             >{{ subitem.badgeCount }}</span>
                                         </Link>
                                     </SidebarMenuSubButton>

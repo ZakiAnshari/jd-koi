@@ -16,9 +16,23 @@ class Koi extends Model
 
     protected $fillable = [
         'breeder_id',
+        'jenis_koi_id',
         'code',
         'name',
         'photo',
+        'age',
+        'size',
+        'box_qty',
+        'weight',
+        'total_weight',
+    ];
+
+    protected $casts = [
+        'age'          => 'integer',
+        'size'         => 'decimal:2',
+        'box_qty'      => 'integer',
+        'weight'       => 'decimal:3',
+        'total_weight' => 'decimal:3',
     ];
 
     protected function getActivityItemName(): ?string
@@ -29,6 +43,11 @@ class Koi extends Model
     public function breeder(): BelongsTo
     {
         return $this->belongsTo(Breeder::class);
+    }
+
+    public function jenisKoi(): BelongsTo
+    {
+        return $this->belongsTo(JenisKoi::class);
     }
 
     public function images(): HasMany

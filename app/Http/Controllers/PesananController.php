@@ -214,7 +214,7 @@ class PesananController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        if (!in_array($pesanan->status, ['confirmed', 'completed'])) {
+        if (!in_array($pesanan->status, ['shipped', 'azukari'])) {
             abort(403, 'Nota hanya tersedia untuk pesanan yang sudah dikonfirmasi atau selesai.');
         }
 

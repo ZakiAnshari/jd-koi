@@ -74,7 +74,7 @@ class DashboardController extends Controller
 
             $lastMonth = now()->subMonth();
 
-            $koiTerlaris = Pesanan::whereIn('pesanans.status', ['confirmed', 'completed'])
+            $koiTerlaris = Pesanan::whereIn('pesanans.status', ['shipped', 'azukari'])
                 ->join('katalog_kois', 'pesanans.katalog_koi_id', '=', 'katalog_kois.id')
                 ->join('kois', 'katalog_kois.koi_id', '=', 'kois.id')
                 ->select('kois.id', 'kois.name', DB::raw('SUM(pesanans.qty) as total_dipesan'))
@@ -94,16 +94,16 @@ class DashboardController extends Controller
                 'total_katalog'      => KatalogKoi::count(),
                 'total_pesanan'      => Pesanan::count(),
                 'pesanan_pending'    => Pesanan::where('status', 'pending')->count(),
-                'pesanan_confirmed'  => Pesanan::where('status', 'confirmed')->count(),
-                'pesanan_completed'  => Pesanan::where('status', 'completed')->count(),
+                'pesanan_shipped'    => Pesanan::where('status', 'shipped')->count(),
+                'pesanan_azukari'   => Pesanan::where('status', 'azukari')->count(),
                 'pesanan_hari_ini'   => Pesanan::whereDate('created_at', today())->count(),
                 'total_customer'     => $customerRoleId ? User::where('role_id', $customerRoleId)->count() : 0,
                 'total_koi_tersedia' => KatalogKoi::where('qty', '>', 0)->count(),
-                'total_revenue'      => Pesanan::whereIn('status', ['confirmed', 'completed'])->sum('total_harga'),
-                'revenue_bulan_ini'  => Pesanan::whereIn('status', ['confirmed', 'completed'])
+                'total_revenue'      => Pesanan::whereIn('status', ['shipped', 'azukari'])->sum('total_harga'),
+                'revenue_bulan_ini'  => Pesanan::whereIn('status', ['shipped', 'azukari'])
                     ->whereMonth('created_at', $currentMonth)->whereYear('created_at', $currentYear)
                     ->sum('total_harga'),
-                'revenue_bulan_lalu' => Pesanan::whereIn('status', ['confirmed', 'completed'])
+                'revenue_bulan_lalu' => Pesanan::whereIn('status', ['shipped', 'azukari'])
                     ->whereMonth('created_at', $lastMonth->month)->whereYear('created_at', $lastMonth->year)
                     ->sum('total_harga'),
                 'koi_terlaris'       => $koiTerlaris,
@@ -141,10 +141,10 @@ class DashboardController extends Controller
             $customerStats = [
                 'nama'              => $user->name,
                 'total_pesanan'     => $user->pesanans()->count(),
-                'pesanan_diproses'  => $user->pesanans()->whereIn('status', ['pending', 'confirmed'])->count(),
-                'pesanan_completed' => $user->pesanans()->where('status', 'completed')->count(),
-                'pesanan_cancelled' => $user->pesanans()->where('status', 'cancelled')->count(),
-                'total_belanja'     => $user->pesanans()->where('status', 'completed')->sum('total_harga'),
+                'pesanan_diproses'  => $user->pesanans()->whereIn('status', ['pending', 'shipped'])->count(),
+                'pesanan_azukari'   => $user->pesanans()->where('status', 'azukari')->count(),
+                'pesanan_dead'      => $user->pesanans()->where('status', 'dead')->count(),
+                'total_belanja'     => $user->pesanans()->where('status', 'azukari')->sum('total_harga'),
                 'pesanan_terbaru'   => $pesananTerbaru,
                 'notifikasi_terbaru' => $notifikasiTerbaru,
             ];

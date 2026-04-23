@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Database, Package, ShoppingCart, RotateCcw, ShoppingBag, Bell, ShieldCheck } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Package, ShoppingCart, RotateCcw, ShoppingBag, Bell, ShieldCheck, Fish, Grid } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -41,56 +41,57 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (isAdmin.value) {
         items.push({
-            title: 'Master Data',
-            icon: Database,
-            items: [
-                {
-                    title: 'Breeder',
-                    href: '/master-data/breeder',
-                    icon: FolderGit2,
-                },
-                {
-                    title: 'Data Koi',
-                    href: '/master-data/koi',
-                    icon: BookOpen,
-                },
-                // {
-                //     title: 'Customer',
-                //     href: '/master-data/customer',
-                //     icon: Users,
-                // },
-            ],
+            title: 'Breeder',
+            href: '/master-data/breeder',
+            icon: FolderGit2,
+        });
+
+        items.push({
+            title: 'Jenis Koi',
+            href: '/master-data/jenis-koi',
+            icon: Fish,
+        });
+
+        items.push({
+            title: 'Data Koi',
+            href: '/master-data/koi',
+            icon: Grid,
         });
 
         items.push({
             title: 'Transaksi',
             icon: BarChart3,
             items: [
-                {
-                    title: 'Pembelian',
-                    href: '/pembelian',
-                    icon: Package,
-                },
+                // {
+                //     title: 'Pembelian',
+                //     href: '/pembelian',
+                //     icon: Package,
+                // },
 
-                {
-                    title: 'Katalog Koi',
-                    href: adminKatalogKoiIndex().url,
-                    icon: ShoppingBag,
-                },
+                // {
+                //     title: 'Katalog Koi',
+                //     href: adminKatalogKoiIndex().url,
+                //     icon: ShoppingBag,
+                // },
                 {
                     title: 'Pesanan',
                     href: '/admin/pesanan',
                     icon: ShoppingCart,
                     badgeCount: pendingPesananCount.value,
                 },
+                {
+                    title: 'Rekap Transaksi',
+                    href: '/admin/rekap-transaksi',
+                    icon: BarChart3,
+                },
             ],
         });
 
-        items.push({
-            title: 'Stok Koi',
-            href: '/inventory',
-            icon: Database,
-        });
+        // items.push({
+        //     title: 'Stok Koi',
+        //     href: '/inventory',
+        //     icon: Database,
+        // });
 
         items.push({
             title: 'Log Aktivitas',

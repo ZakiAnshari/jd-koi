@@ -249,7 +249,7 @@
         <div class="inv-number">{{ $pesanan->kode_pesanan }}</div>
         <div class="inv-meta">
             {{ $pesanan->created_at->format('d M Y') }}, {{ $pesanan->created_at->format('H:i') }} WIB<br>
-            Status: {{ $pesanan->status === 'confirmed' ? 'Terkonfirmasi' : 'Selesai' }}
+            Status: {{ $pesanan->status === 'shipped' ? 'Shipped' : ($pesanan->status === 'azukari' ? 'Azukari' : ucfirst($pesanan->status)) }}
         </div>
     </div>
 </div>

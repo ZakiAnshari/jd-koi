@@ -125,28 +125,49 @@ class KatalogKoiController extends Controller
 
     public function edit(KatalogKoi $katalogKoi)
     {
-        return redirect()->route('admin.katalog-koi.index');
+        $katalogKoi->load(['koi', 'pembelian']);
+
+        return Inertia::render('Admin/KatalogKoi/Edit', [
+            'katalog' => [
+                'id'          => $katalogKoi->id,
+                'tanggal'     => $katalogKoi->tanggal,
+                'qty'         => $katalogKoi->qty,
+                'sell_jpy'    => $katalogKoi->sell_jpy,
+                'kurs'        => $katalogKoi->kurs,
+                'sell_idr'    => $katalogKoi->sell_idr,
+                'fee'         => $katalogKoi->fee,
+                'stock_jpy'   => $katalogKoi->stock_jpy,
+                'stock_idr'   => $katalogKoi->stock_idr,
+                'koi'         => $katalogKoi->koi ? [
+                    'id'   => $katalogKoi->koi->id,
+                    'code' => $katalogKoi->koi->code,
+                    'name' => $katalogKoi->koi->name,
+                ] : null,
+                'pembelian'   => $katalogKoi->pembelian ? [
+                    'id'        => $katalogKoi->pembelian->id,
+                    'date'      => $katalogKoi->pembelian->date,
+                    'price_jpy' => $katalogKoi->pembelian->price_jpy,
+                    'price_idr' => $katalogKoi->pembelian->price_idr,
+                ] : null,
+            ],
+        ]);
     }
 
     public function update(Request $request, KatalogKoi $katalogKoi)
     {
         $validated = $request->validate([
-            'tanggal'      => 'required|date',
-            'koi_id'       => 'required|exists:kois,id',
-            'pembelian_id' => 'required|exists:purchases,id',
-            'qty'          => 'required|integer|min:1',
-            'sell_jpy'     => 'required|numeric|min:0',
-            'kurs'         => 'required|numeric|min:0',
-            'sell_idr'     => 'required|numeric|min:0',
-            'stock_jpy'    => 'required|numeric|min:0',
-            'stock_idr'    => 'required|numeric|min:0',
-            'fee'          => 'nullable|numeric|min:0',
+            'tanggal'  => 'required|date',
+            'qty'      => 'required|integer|min:1',
+            'sell_jpy' => 'required|numeric|min:0',
+            'kurs'     => 'required|numeric|min:0',
+            'sell_idr' => 'required|numeric|min:0',
+            'fee'      => 'nullable|numeric|min:0',
         ]);
 
         $validated['fee'] = $validated['fee'] ?? 0;
         $katalogKoi->update($validated);
 
-        return redirect()->route('admin.katalog-koi.index')
+        return redirect()->to('/master-data/koi?tab=katalog')
             ->with('success', 'Katalog Koi berhasil diperbarui.');
     }
 

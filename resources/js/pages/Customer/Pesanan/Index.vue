@@ -18,7 +18,7 @@ type Pesanan = {
     qty: number
     harga_satuan: number
     total_harga: number
-    status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+    status: 'pending' | 'shipped' | 'azukari' | 'dead'
     catatan?: string
     created_at: string
     katalog_koi: KatalogKoi
@@ -98,13 +98,13 @@ const formatDate = (d: string) =>
 
 const statusBadge = (s: string) => ({
     pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    shipped: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    azukari: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    dead:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 } as Record<string, string>)[s] ?? 'bg-gray-100 text-gray-800'
 
 const statusLabel = (s: string) => ({
-    pending: 'Menunggu', confirmed: 'Terkonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan',
+    pending: 'Menunggu', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
 } as Record<string, string>)[s] ?? s
 
 function deletePesanan(pesanan: Pesanan) {

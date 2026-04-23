@@ -18,37 +18,36 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 
-type Breeder = {
-    id: number
-    name_breeder: string
-}
-
-type KoiImage = {
-    id: number
-    image_path: string
-    url: string
-    sort_order: number
-}
+type Breeder = { id: number; name_breeder: string }
+type JenisKoi = { id: number; nama_jenis: string }
+type KoiImage = { id: number; image_path: string; url: string; sort_order: number }
 
 type Koi = {
     id: number
     breeder_id: number
+    jenis_koi_id: number | null
     code: string
     name: string
+    age: number | null
+    size: number | null
+    box_qty: number | null
+    weight: number | null
+    total_weight: number | null
     images: KoiImage[]
 }
 
 const page = usePage()
-const koi = page.props.koi as Koi
+const koi      = page.props.koi as Koi
 const breeders = (page.props.breeders as Breeder[]) || []
+const jenisKois = (page.props.jenisKois as JenisKoi[]) || []
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
-    { title: 'Data Koi', href: '/master-data/koi' },
+    { title: 'Data Koi', href: '/master-data/koi?tab=koi' },
     { title: 'Edit', href: `/master-data/koi/${koi.id}/edit` },
 ]
 
-// ─── Breeder search ──────────────────────────────────────
+// ─── Breeder search ───────────────────────────────────────
 const breederSearch = ref('')
 const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders
@@ -56,18 +55,30 @@ const filteredBreeders = computed(() => {
     return breeders.filter(b => b.name_breeder.toLowerCase().includes(q))
 })
 
-// ─── Existing images state ───────────────────────────────
-const existingImages = ref<KoiImage[]>(koi.images ? [...koi.images] : [])
+// ─── Jenis Koi search ─────────────────────────────────────
+const jenisSearch = ref('')
+const filteredJenisKois = computed(() => {
+    if (!jenisSearch.value) return jenisKois
+    const q = jenisSearch.value.toLowerCase()
+    return jenisKois.filter(j => j.nama_jenis.toLowerCase().includes(q))
+})
 
-// ─── New image previews ───────────────────────────────────
-const fotoPreviews = ref<{ file: File; url: string }[]>([])
+// ─── Images state ─────────────────────────────────────────
+const existingImages = ref<KoiImage[]>(koi.images ? [...koi.images] : [])
+const fotoPreviews   = ref<{ file: File; url: string }[]>([])
 
 // ─── Form ─────────────────────────────────────────────────
 const form = useForm({
-    breeder_id: String(koi.breeder_id),
-    code: koi.code,
-    name: koi.name,
-    images: [] as File[],
+    breeder_id:   String(koi.breeder_id),
+    jenis_koi_id: koi.jenis_koi_id ? String(koi.jenis_koi_id) : '',
+    code:         koi.code,
+    name:         koi.name,
+    age:          koi.age != null ? String(koi.age) : '',
+    size:         koi.size != null ? String(koi.size) : '',
+    box_qty:      koi.box_qty != null ? String(koi.box_qty) : '',
+    weight:       koi.weight != null ? String(koi.weight) : '',
+    total_weight: koi.total_weight != null ? String(koi.total_weight) : '',
+    images:       [] as File[],
     delete_images: [] as number[],
 })
 
@@ -137,7 +148,7 @@ const submit = () => {
                     <p class="text-sm text-muted-foreground">Perbarui data dan foto koi.</p>
                 </div>
                 <Link
-                    href="/master-data/koi"
+                    href="/master-data/koi?tab=koi"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 >
                     Kembali
@@ -147,24 +158,25 @@ const submit = () => {
             <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
                 <form @submit.prevent="submit" class="space-y-6">
 
-                    <!-- Data Koi -->
+                    <!-- Data Identitas -->
                     <div class="space-y-4">
+                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Data Identitas</h3>
+
+                        <!-- Breeder -->
                         <div class="grid gap-2">
-                            <Label for="breeder_id">Breeder *</Label>
+                            <Label>Breeder *</Label>
                             <Select v-model="form.breeder_id">
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih breeder" />
                                 </SelectTrigger>
                                 <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
                                     <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" />
+                                        <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
                                     </div>
                                     <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">
-                                            Breeder tidak ditemukan
-                                        </div>
-                                        <SelectItem v-for="breeder in filteredBreeders" :key="breeder.id" :value="String(breeder.id)">
-                                            {{ breeder.name_breeder }}
+                                        <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Breeder tidak ditemukan</div>
+                                        <SelectItem v-for="b in filteredBreeders" :key="b.id" :value="String(b.id)">
+                                            {{ b.name_breeder }}
                                         </SelectItem>
                                     </div>
                                 </SelectContent>
@@ -172,16 +184,67 @@ const submit = () => {
                             <InputError :message="form.errors.breeder_id" />
                         </div>
 
+                        <!-- Jenis Koi -->
                         <div class="grid gap-2">
-                            <Label for="code">Kode Koi *</Label>
-                            <Input id="code" v-model="form.code" placeholder="Contoh: KOI-001" />
-                            <InputError :message="form.errors.code" />
+                            <Label>Jenis Koi</Label>
+                            <Select v-model="form.jenis_koi_id">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih jenis koi (opsional)" />
+                                </SelectTrigger>
+                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                    <div class="sticky top-0 border-b bg-background p-2">
+                                        <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto">
+                                        <div v-if="filteredJenisKois.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Jenis koi tidak ditemukan</div>
+                                        <SelectItem v-for="j in filteredJenisKois" :key="j.id" :value="String(j.id)">
+                                            {{ j.nama_jenis }}
+                                        </SelectItem>
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                            <InputError :message="form.errors.jenis_koi_id" />
                         </div>
 
-                        <div class="grid gap-2">
-                            <Label for="name">Nama Koi *</Label>
-                            <Input id="name" v-model="form.name" placeholder="Nama koi" />
-                            <InputError :message="form.errors.name" />
+                        <!-- Code & Name -->
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div class="grid gap-2">
+                                <Label for="code">Kode Koi *</Label>
+                                <Input id="code" v-model="form.code" placeholder="Contoh: KOI-001" />
+                                <InputError :message="form.errors.code" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="name">Nama Koi *</Label>
+                                <Input id="name" v-model="form.name" placeholder="Nama koi" />
+                                <InputError :message="form.errors.name" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Fisik -->
+                    <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                            <div class="grid gap-2">
+                                <Label for="age">Age (bulan)</Label>
+                                <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" />
+                                <InputError :message="form.errors.age" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="size">Size (cm)</Label>
+                                <Input id="size" v-model="form.size" type="number" min="0" step="0.01" placeholder="0.00" />
+                                <InputError :message="form.errors.size" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="box_qty">Box QTY</Label>
+                                <Input id="box_qty" v-model="form.box_qty" type="number" min="0" placeholder="0" />
+                                <InputError :message="form.errors.box_qty" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="weight">Weight (kg)</Label>
+                                <Input id="weight" v-model="form.weight" type="number" min="0" step="0.001" placeholder="0.000" />
+                                <InputError :message="form.errors.weight" />
+                            </div>
                         </div>
                     </div>
 
@@ -189,19 +252,15 @@ const submit = () => {
                     <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
                         <h3 class="mb-4 font-semibold">Foto Koi</h3>
 
-                        <!-- Foto tersimpan -->
                         <div v-if="existingImages.length > 0" class="mb-4">
                             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Tersimpan</p>
                             <div class="flex flex-wrap gap-3">
                                 <div v-for="img in existingImages" :key="img.id"
                                     class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
                                     <img :src="img.url" alt="Foto koi" class="h-full w-full object-cover" />
-                                    <button
-                                        type="button"
-                                        @click="markDeleteExisting(img.id)"
+                                    <button type="button" @click="markDeleteExisting(img.id)"
                                         class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Hapus foto"
-                                    >
+                                        title="Hapus foto">
                                         <X class="h-5 w-5 text-white" />
                                     </button>
                                 </div>
@@ -213,39 +272,26 @@ const submit = () => {
                             Belum ada foto tersimpan.
                         </div>
 
-                        <!-- Preview foto baru -->
                         <div v-if="fotoPreviews.length > 0" class="mb-4">
                             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Baru</p>
                             <div class="flex flex-wrap gap-3">
                                 <div v-for="(preview, i) in fotoPreviews" :key="i"
                                     class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
                                     <img :src="preview.url" :alt="`Preview ${i + 1}`" class="h-full w-full object-cover" />
-                                    <button
-                                        type="button"
-                                        @click="removeNewImage(i)"
+                                    <button type="button" @click="removeNewImage(i)"
                                         class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Batalkan"
-                                    >
+                                        title="Batalkan">
                                         <X class="h-5 w-5 text-white" />
                                     </button>
-                                    <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/40 px-1 text-center text-[9px] text-white">
-                                        {{ preview.file.name }}
-                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Input file -->
                         <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
                             <ImagePlus class="h-5 w-5 flex-shrink-0" />
                             <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
-                            <input
-                                type="file"
-                                accept="image/jpg,image/jpeg,image/png,image/webp"
-                                multiple
-                                class="sr-only"
-                                @change="handleImagesChange"
-                            />
+                            <input type="file" accept="image/jpg,image/jpeg,image/png,image/webp"
+                                multiple class="sr-only" @change="handleImagesChange" />
                         </label>
                         <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
                     </div>
@@ -254,7 +300,7 @@ const submit = () => {
                         <Button type="submit" :disabled="form.processing">
                             {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
                         </Button>
-                        <Link href="/master-data/koi" class="text-sm text-muted-foreground hover:text-foreground">
+                        <Link href="/master-data/koi?tab=koi" class="text-sm text-muted-foreground hover:text-foreground">
                             Batal
                         </Link>
                     </div>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\BreedersController;
+use App\Http\Controllers\JenisKoisController;
 use App\Http\Controllers\KoisController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\PurchasesController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KatalogKoiController;
 use App\Http\Controllers\PesananController;
 use App\Http\Controllers\AdminPesananController;
+use App\Http\Controllers\RekapTransaksiController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
@@ -51,6 +53,11 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     // Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
     // Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
+    //JENIS KOI
+    Route::get('master-data/jenis-koi', [JenisKoisController::class, 'index'])->name('jenis-kois.index');
+    Route::post('master-data/jenis-koi', [JenisKoisController::class, 'store'])->name('jenis-kois.store');
+    Route::put('master-data/jenis-koi/{jenisKoi}', [JenisKoisController::class, 'update'])->name('jenis-kois.update');
+    Route::delete('master-data/jenis-koi/{jenisKoi}', [JenisKoisController::class, 'destroy'])->name('jenis-kois.destroy');
     //BREEDER
     Route::get('master-data/breeder', [BreedersController::class, 'index'])->name('breeders.index');
     Route::get('master-data/breeder/create', [BreedersController::class, 'create'])->name('breeders.create');
@@ -109,6 +116,9 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
         Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
         Route::get('pesanan/{pesanan}', [AdminPesananController::class, 'show'])->name('pesanan.show');
         Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');
+        // Rekap Transaksi
+        Route::get('rekap-transaksi', [RekapTransaksiController::class, 'index'])->name('rekap-transaksi.index');
+        Route::get('rekap-transaksi/{pesanan}', [RekapTransaksiController::class, 'show'])->name('rekap-transaksi.show');
         // Hak Akses
         Route::get('hak-akses/admin', [UsersController::class, 'hakAkses'])->defaults('role', 'admin')->name('hak-akses.admin');
         Route::get('hak-akses/admin/{user}/edit', [UsersController::class, 'editAdmin'])->name('hak-akses.admin.edit');

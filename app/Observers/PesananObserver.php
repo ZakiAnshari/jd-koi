@@ -7,7 +7,7 @@ use App\Models\Pesanan;
 
 class PesananObserver
 {
-    private const STOCK_STATUSES = ['confirmed', 'completed'];
+    private const STOCK_STATUSES = ['shipped', 'azukari'];
 
     /**
      * Adjust catalog stock when pesanan status changes.

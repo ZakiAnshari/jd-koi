@@ -99,16 +99,16 @@ const actionBadgeClasses = (action: string) => {
 const statusBadge = (status: string) => {
     const badges: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-        confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        shipped: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        azukari: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        dead:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     }
     return badges[status] || 'bg-gray-100 text-gray-800'
 }
 
 const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
-        pending: 'Pending', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled',
+        pending: 'Pending', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
     }
     return labels[status] || status
 }
@@ -357,8 +357,8 @@ const statusLabel = (status: string) => {
                             <CheckCircle class="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div>
-                            <p class="text-sm text-muted-foreground">Selesai</p>
-                            <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_completed }}</p>
+                            <p class="text-sm text-muted-foreground">Azukari</p>
+                            <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_azukari }}</p>
                         </div>
                     </div>
                     <!-- Dibatalkan -->
@@ -367,8 +367,8 @@ const statusLabel = (status: string) => {
                             <XCircle class="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div>
-                            <p class="text-sm text-muted-foreground">Dibatalkan</p>
-                            <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_cancelled }}</p>
+                            <p class="text-sm text-muted-foreground">Dead</p>
+                            <p class="text-3xl font-bold text-foreground">{{ customerStats.pesanan_dead }}</p>
                         </div>
                     </div>
                 </div>

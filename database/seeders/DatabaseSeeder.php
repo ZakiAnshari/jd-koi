@@ -18,5 +18,11 @@ class DatabaseSeeder extends Seeder
         
         // Then seed users
         $this->call(UserSeeder::class);
+
+        // Seed jenis koi
+        $this->call(JenisKoiSeeder::class);
+
+        // Seed breeder
+        $this->call(BreederSeeder::class);
     }
 }

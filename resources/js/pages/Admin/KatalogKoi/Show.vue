@@ -99,7 +99,7 @@ function profitClass(v: number) {
                     </p>
                 </div>
                 <Link
-                    href="/admin/katalog-koi"
+                    href="/master-data/koi?tab=katalog"
                     class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
                 >
                     <ChevronLeft class="h-4 w-4" />
