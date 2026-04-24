@@ -175,8 +175,7 @@ class KatalogKoiController extends Controller
     {
         $katalogKoi->delete();
 
-        return redirect()->route('admin.katalog-koi.index')
-            ->with('success', 'Katalog Koi berhasil dihapus.');
+        return redirect()->to('/master-data/koi?tab=katalog');
     }
 
     // Customer Routes

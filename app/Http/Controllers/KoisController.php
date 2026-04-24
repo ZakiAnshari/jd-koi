@@ -296,7 +296,7 @@ class KoisController extends Controller
 
         ActivityLog::log('update', "Mengubah data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
 
-        return to_route('kois.index');
+        return redirect()->to('/master-data/koi?tab=koi');
     }
 
     public function destroy(Koi $koi)

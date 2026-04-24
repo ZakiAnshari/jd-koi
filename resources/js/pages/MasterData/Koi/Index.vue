@@ -232,7 +232,7 @@ const form = useForm({
     pembelian_mode: 'none' as 'none' | 'existing' | 'create',
     pembelian_existing_id: '', pembelian_date: '', pembelian_qty: '1',
     pembelian_price_jpy: '', pembelian_price_idr: '',
-    katalog_mode: 'none' as 'none' | 'existing' | 'create',
+    katalog_mode: 'create' as 'none' | 'existing' | 'create',
     katalog_existing_id: '', katalog_tanggal: '', katalog_qty: '1',
     katalog_sell_jpy: '', katalog_kurs: '', katalog_sell_idr: '', katalog_fee: '0',
 })

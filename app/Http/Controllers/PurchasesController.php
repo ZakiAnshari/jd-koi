@@ -148,7 +148,7 @@ class PurchasesController extends Controller
         $this->deletePurchaseStockMovement($purchase);
         $purchase->delete();
 
-        return to_route('purchases.index');
+        return redirect()->to('/master-data/koi?tab=pembelian');
     }
 
     protected function syncPurchaseStockMovement(Purchase $purchase): void
