@@ -4,7 +4,6 @@ import { computed, ref } from 'vue'
 import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { checkout } from '@/routes/customer/pesanan'
 
 type KoiImage = {
     id: number
@@ -235,7 +234,7 @@ function formatDate(date: string) {
                     <div class="mt-4 border-t border-border pt-4">
                         <Link
                             v-if="katalog.qty > 0"
-                            :href="checkout.url(katalog.id)"
+                            :href="`/customer/checkout/${katalog.id}`"
                             class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                         >
                             Pesan Sekarang

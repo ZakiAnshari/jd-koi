@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
 import { CheckCheck, Check, Bell, Eye } from 'lucide-vue-next'
-import { read as notifRead, readAll as notifReadAll } from '@/routes/customer/notifikasi'
 
 type Notifikasi = {
     id: number
@@ -74,11 +73,11 @@ const timeAgo = (dateString: string) => {
 }
 
 function handleClick(notif: Notifikasi) {
-    if (!notif.is_read) router.put(notifRead.url(notif.id), {}, { preserveScroll: true })
+    if (!notif.is_read) router.put(`/customer/notifikasi/${notif.id}/read`, {}, { preserveScroll: true })
 }
 
 function handleMarkAllRead() {
-    router.put(notifReadAll.url(), {}, { preserveScroll: true })
+    router.put('/customer/notifikasi/read-all', {}, { preserveScroll: true })
 }
 </script>
 

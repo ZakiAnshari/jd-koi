@@ -3,8 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Models\ActivityLog;
-use App\Models\Notification;
-use App\Models\Pesanan;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -48,20 +46,6 @@ class HandleInertiaRequests extends Middleware
                 ? ActivityLog::whereDate('created_at', now()->toDateString())->count()
                 : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'pendingPesananCount' => function () use ($request) {
-                if ($request->user()?->role_id === 1) {
-                    return Pesanan::where('status', 'pending')->count();
-                }
-                return 0;
-            },
-            'unreadNotifications' => function () {
-                if (auth()->check()) {
-                    return Notification::where('user_id', auth()->id())
-                        ->where('is_read', false)
-                        ->count();
-                }
-                return 0;
-            },
         ];
     }
 }

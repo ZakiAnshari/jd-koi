@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import InputError from '@/components/InputError.vue'
 import type { BreadcrumbItem } from '@/types'
-import { store as pesananStore, show as pesananShow } from '@/routes/customer/pesanan'
 
 type Breeder = {
     name_breeder: string
@@ -77,7 +76,7 @@ const handleSuccess = (page: any) => {
             window.open(whatsappUrl, '_blank')
         }
         if (pesananId) {
-            router.visit(pesananShow.url(pesananId))
+            router.visit(`/customer/pesanan/${pesananId}`)
         }
     })
 }
@@ -120,7 +119,7 @@ const onQtyInput = () => {
 const totalPrice = computed(() => quantity.value * props.katalog.sell_idr)
 
 const submit = () => {
-    form.post(pesananStore.url(), {
+    form.post('/customer/pesanan', {
         onSuccess: (page) => handleSuccess(page),
     })
 }

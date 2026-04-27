@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BreadcrumbItem } from '@/types'
 import { Eye, Trash2, PackageSearch } from 'lucide-vue-next'
-import { show as pesananShow, destroy as pesananDestroy } from '@/routes/customer/pesanan'
 import { useSwal } from '@/composables/useSwal'
 
 type Koi = { id: number; name: string; code: string }
@@ -118,7 +117,7 @@ function deletePesanan(pesanan: Pesanan) {
         confirmButtonText: 'Ya, hapus',
         cancelButtonText: 'Batal',
     }).then(r => {
-        if (r.isConfirmed) router.delete(pesananDestroy.url(pesanan.id), { preserveScroll: true })
+        if (r.isConfirmed) router.delete(`/customer/pesanan/${pesanan.id}`, { preserveScroll: true })
     })
 }
 </script>
@@ -230,7 +229,7 @@ function deletePesanan(pesanan: Pesanan) {
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
-                                            :href="pesananShow.url(pesanan.id)"
+                                            :href="`/customer/pesanan/${pesanan.id}`"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
                                             title="Detail"
                                         >

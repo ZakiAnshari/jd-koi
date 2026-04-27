@@ -20,6 +20,7 @@ import {
 
 type Breeder = { id: number; name_breeder: string }
 type JenisKoi = { id: number; nama_jenis: string }
+type Customer = { id: number; name: string }
 type KoiImage = { id: number; image_path: string; url: string; sort_order: number }
 
 type Koi = {
@@ -34,12 +35,23 @@ type Koi = {
     weight: number | null
     total_weight: number | null
     images: KoiImage[]
+    customer_id: number | null
+    sale_tanggal: string | null
+    sale_qty: number | null
+    sell_jpy: string | null
+    kurs: string | null
+    sell_idr: string | null
+    fee: string | null
+    sale_status: string | null
+    sale_invoice: string | null
+    sale_shipped_date: string | null
 }
 
 const page = usePage()
-const koi      = page.props.koi as Koi
-const breeders = (page.props.breeders as Breeder[]) || []
+const koi       = page.props.koi as Koi
+const breeders  = (page.props.breeders  as Breeder[])  || []
 const jenisKois = (page.props.jenisKois as JenisKoi[]) || []
+const customers = (page.props.customers as Customer[]) || []
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -53,6 +65,14 @@ const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders
     const q = breederSearch.value.toLowerCase()
     return breeders.filter(b => b.name_breeder.toLowerCase().includes(q))
+})
+
+// ─── Customer search ──────────────────────────────────────
+const customerSearch = ref('')
+const filteredCustomers = computed(() => {
+    if (!customerSearch.value) return customers
+    const q = customerSearch.value.toLowerCase()
+    return customers.filter(c => c.name.toLowerCase().includes(q))
 })
 
 // ─── Jenis Koi search ─────────────────────────────────────
@@ -78,8 +98,17 @@ const form = useForm({
     box_qty:      koi.box_qty != null ? String(koi.box_qty) : '',
     weight:       koi.weight != null ? String(koi.weight) : '',
     total_weight: koi.total_weight != null ? String(koi.total_weight) : '',
-    images:       [] as File[],
+    images:        [] as File[],
     delete_images: [] as number[],
+    customer_id:   koi.customer_id ? String(koi.customer_id) : '',
+    sale_tanggal:  koi.sale_tanggal ?? '',
+    sale_qty:      koi.sale_qty != null ? String(koi.sale_qty) : '',
+    sell_jpy:      koi.sell_jpy != null ? String(Number(koi.sell_jpy)) : '',
+    kurs:          koi.kurs != null ? String(Number(koi.kurs)) : '',
+    sell_idr:      koi.sell_idr != null ? String(Number(koi.sell_idr)) : '',
+    fee:           koi.fee != null ? String(Number(koi.fee)) : '0',
+    sale_status:        koi.sale_status ?? '',
+    sale_shipped_date:  koi.sale_shipped_date ?? '',
 })
 
 function handleImagesChange(e: Event) {
@@ -148,7 +177,7 @@ const submit = () => {
                     <p class="text-sm text-muted-foreground">Perbarui data dan foto koi.</p>
                 </div>
                 <Link
-                    href="/master-data/koi?tab=koi"
+                    href="/master-data/koi"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
                 >
                     Kembali
@@ -296,11 +325,99 @@ const submit = () => {
                         <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
                     </div>
 
+                    <!-- Penjualan -->
+                    <div class="rounded-lg border border-border p-4 space-y-4">
+                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Penjualan</h3>
+
+                        <!-- Invoice (read-only) -->
+                        <div class="grid gap-2" v-if="koi.sale_invoice">
+                            <Label>Invoice</Label>
+                            <div class="flex items-center h-9 rounded-md border border-input bg-muted px-3 text-sm font-mono text-muted-foreground">
+                                {{ koi.sale_invoice }}
+                            </div>
+                        </div>
+
+                        <!-- Customer -->
+                        <div class="grid gap-2">
+                            <Label>Customer</Label>
+                            <Select v-model="form.customer_id">
+                                <SelectTrigger><SelectValue placeholder="Pilih customer (opsional)" /></SelectTrigger>
+                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                    <div class="sticky top-0 border-b bg-background p-2">
+                                        <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto">
+                                        <div v-if="filteredCustomers.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Tidak ditemukan</div>
+                                        <SelectItem v-for="c in filteredCustomers" :key="c.id" :value="String(c.id)">{{ c.name }}</SelectItem>
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                            <InputError :message="form.errors.customer_id" />
+                        </div>
+
+                        <!-- Status -->
+                        <div class="grid gap-2">
+                            <Label>Status</Label>
+                            <Select v-model="form.sale_status">
+                                <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cancel">Cancel</SelectItem>
+                                    <SelectItem value="dead_refund">Dead Refund</SelectItem>
+                                    <SelectItem value="refund">Refund</SelectItem>
+                                    <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="shipped">Shipped</SelectItem>
+                                    <SelectItem value="azukari">Azukari</SelectItem>
+                                    <SelectItem value="dead">Dead</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError :message="form.errors.sale_status" />
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div class="grid gap-2">
+                                <Label>Tanggal Penjualan</Label>
+                                <Input v-model="form.sale_tanggal" type="date" />
+                                <InputError :message="form.errors.sale_tanggal" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Tanggal Shipped</Label>
+                                <Input v-model="form.sale_shipped_date" type="date" />
+                                <InputError :message="(form.errors as any).sale_shipped_date" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Qty</Label>
+                                <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" />
+                                <InputError :message="form.errors.sale_qty" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Harga Jual JPY</Label>
+                                <Input v-model="form.sell_jpy" type="number" min="0" step="0.01" placeholder="0" />
+                                <InputError :message="form.errors.sell_jpy" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Kurs (IDR/JPY)</Label>
+                                <Input v-model="form.kurs" type="number" min="0" step="0.01" placeholder="0" />
+                                <InputError :message="form.errors.kurs" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Harga Jual IDR</Label>
+                                <Input v-model="form.sell_idr" type="number" min="0" step="0.01" placeholder="0" />
+                                <InputError :message="form.errors.sell_idr" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label>Fee IDR</Label>
+                                <Input v-model="form.fee" type="number" min="0" step="0.01" placeholder="0" />
+                                <InputError :message="form.errors.fee" />
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-4">
                         <Button type="submit" :disabled="form.processing">
                             {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
                         </Button>
-                        <Link href="/master-data/koi?tab=koi" class="text-sm text-muted-foreground hover:text-foreground">
+                        <Link href="/master-data/koi" class="text-sm text-muted-foreground hover:text-foreground">
                             Batal
                         </Link>
                     </div>

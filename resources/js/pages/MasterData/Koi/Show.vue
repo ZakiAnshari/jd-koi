@@ -24,6 +24,15 @@ type Koi = {
     images?: KoiImage[]
     breeder?: Breeder
     jenis_koi?: JenisKoi
+    customer?: { id: number; name: string } | null
+    customer_id: number | null
+    sale_tanggal: string | null
+    sale_qty: number | null
+    sell_jpy: string | null
+    kurs: string | null
+    sell_idr: string | null
+    fee: string | null
+    sale_status: string | null
     created_at: string
 }
 
@@ -53,6 +62,25 @@ function lightboxNext() { lightboxIndex.value = (lightboxIndex.value + 1) % imag
 function fmtDate(d: string) {
     return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
+
+const fmtIDR = (v: string | number | null) =>
+    v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(v)) : '-'
+
+const STATUS_LABEL: Record<string, string> = {
+    cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
+    cancel_refund: 'Cancel Refund', pending: 'Pending', shipped: 'Shipped',
+    azukari: 'Azukari', dead: 'Dead',
+}
+const STATUS_CLASS: Record<string, string> = {
+    shipped:      'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    pending:      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+    azukari:      'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+    refund:       'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+    cancel:       'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    cancel_refund:'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    dead_refund:  'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+    dead:         'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+}
 </script>
 
 <template>
@@ -67,7 +95,7 @@ function fmtDate(d: string) {
                     <p class="text-sm text-muted-foreground">Koi Code: {{ koi.code }}</p>
                 </div>
                 <Link
-                    href="/master-data/koi?tab=koi"
+                    href="/master-data/koi"
                     class="inline-flex items-center gap-1 self-start rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
                 >
                     <ChevronLeft class="h-4 w-4" />
@@ -189,6 +217,44 @@ function fmtDate(d: string) {
                                 <dd class="mt-1 font-medium text-foreground">
                                     {{ koi.weight != null ? koi.weight + ' kg' : '-' }}
                                 </dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Penjualan -->
+                    <div class="rounded-lg border border-sidebar-border/70 bg-background p-4">
+                        <h2 class="mb-3 text-base font-semibold">Penjualan</h2>
+                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.customer?.name ?? '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</dt>
+                                <dd class="mt-1">
+                                    <template v-if="koi.sale_status">
+                                        <span :class="['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', STATUS_CLASS[koi.sale_status] ?? '']">
+                                            {{ STATUS_LABEL[koi.sale_status] ?? koi.sale_status }}
+                                        </span>
+                                    </template>
+                                    <span v-else class="font-medium text-foreground">-</span>
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.sale_qty ?? '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Harga Jual JPY</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.sell_jpy != null ? '¥' + Number(koi.sell_jpy).toLocaleString('id-ID') : '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Harga Jual IDR</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.sell_idr) }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
                             </div>
                         </dl>
                     </div>

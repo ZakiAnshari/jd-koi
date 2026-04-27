@@ -11,11 +11,7 @@ use App\Http\Controllers\StocksController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\KatalogKoiController;
-use App\Http\Controllers\PesananController;
-use App\Http\Controllers\AdminPesananController;
 use App\Http\Controllers\RekapTransaksiController;
-use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,21 +22,8 @@ Route::redirect('/', '/login')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
-
-    // Customer Routes - Katalog Koi
-    Route::prefix('customer')->name('customer.')->group(function () {
-        Route::get('katalog', [KatalogKoiController::class, 'katalogCustomer'])->name('katalog.index');
-        Route::get('katalog/{katalogKoi}', [KatalogKoiController::class, 'katalogDetail'])->name('katalog.detail');
-        Route::get('checkout/{katalogKoi}', [PesananController::class, 'checkout'])->name('pesanan.checkout');
-        Route::post('pesanan', [PesananController::class, 'store'])->name('pesanan.store');
-        Route::get('pesanan', [PesananController::class, 'index'])->name('pesanan.index');
-        Route::get('pesanan/{pesanan}', [PesananController::class, 'show'])->name('pesanan.show');
-        Route::get('pesanan/{pesanan}/download-nota', [PesananController::class, 'downloadNota'])->name('pesanan.download-nota');
-        Route::delete('pesanan/{pesanan}', [PesananController::class, 'destroy'])->name('pesanan.destroy');
-        Route::get('notifikasi', [NotificationController::class, 'index'])->name('notifikasi.index');
-        Route::put('notifikasi/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifikasi.read-all');
-        Route::put('notifikasi/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifikasi.read');
-    });
+    Route::get('rekap-transaksi', [RekapTransaksiController::class, 'index'])->name('rekap-transaksi.index');
+    Route::get('rekap-transaksi/{koi}', [RekapTransaksiController::class, 'show'])->name('rekap-transaksi.show');
 });
 
 // Admin-Only Routes
@@ -110,15 +93,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     Route::get('/log-aktivitas/{id}', [ActivityLogController::class, 'show'])->name('log-aktivitas.show');
     Route::delete('/log-aktivitas/clear', [ActivityLogController::class, 'destroy'])->name('log-aktivitas.clear');
 
-    // Admin Routes - Katalog Koi
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::resource('katalog-koi', KatalogKoiController::class);
-        Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
-        Route::get('pesanan/{pesanan}', [AdminPesananController::class, 'show'])->name('pesanan.show');
-        Route::put('pesanan/{pesanan}/status', [AdminPesananController::class, 'updateStatus'])->name('pesanan.update-status');
-        // Rekap Transaksi
-        Route::get('rekap-transaksi', [RekapTransaksiController::class, 'index'])->name('rekap-transaksi.index');
-        Route::get('rekap-transaksi/{pesanan}', [RekapTransaksiController::class, 'show'])->name('rekap-transaksi.show');
         // Hak Akses
         Route::get('hak-akses/admin', [UsersController::class, 'hakAkses'])->defaults('role', 'admin')->name('hak-akses.admin');
         Route::get('hak-akses/admin/{user}/edit', [UsersController::class, 'editAdmin'])->name('hak-akses.admin.edit');

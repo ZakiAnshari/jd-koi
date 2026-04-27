@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\LogsActivity;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,6 +26,16 @@ class Koi extends Model
         'box_qty',
         'weight',
         'total_weight',
+        'customer_id',
+        'sale_tanggal',
+        'sale_qty',
+        'sell_jpy',
+        'kurs',
+        'sell_idr',
+        'fee',
+        'sale_status',
+        'sale_invoice',
+        'sale_shipped_date',
     ];
 
     protected $casts = [
@@ -33,6 +44,13 @@ class Koi extends Model
         'box_qty'      => 'integer',
         'weight'       => 'decimal:3',
         'total_weight' => 'decimal:3',
+        'sale_tanggal'      => 'date',
+        'sale_shipped_date' => 'date',
+        'sale_qty'     => 'integer',
+        'sell_jpy'     => 'decimal:2',
+        'kurs'         => 'decimal:2',
+        'sell_idr'     => 'decimal:2',
+        'fee'          => 'decimal:2',
     ];
 
     protected function getActivityItemName(): ?string
@@ -48,6 +66,11 @@ class Koi extends Model
     public function jenisKoi(): BelongsTo
     {
         return $this->belongsTo(JenisKoi::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'customer_id');
     }
 
     public function images(): HasMany

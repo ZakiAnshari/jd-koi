@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Package, ShoppingCart, RotateCcw, ShoppingBag, Bell, ShieldCheck, Fish, Grid } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Package, RotateCcw, ShieldCheck, Fish, Grid, ClipboardList } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,18 +17,11 @@ import {
 import type { NavItem } from '@/types';
 import { computed } from 'vue';
 import { dashboard } from '@/routes';
-import { index as customerKatalogIndex } from '@/routes/customer/katalog';
-import { index as customerPesananIndex } from '@/routes/customer/pesanan';
-import { index as customerNotifikasiIndex } from '@/routes/customer/notifikasi';
-
-const adminKatalogKoiIndex = () => ({ url: '/admin/katalog-koi' });
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user);
 const isAdmin = computed(() => authUser.value?.role_id === 1);
 const activityLogTodayCount = computed(() => Number(page.props.activityLogTodayCount ?? 0));
-const unreadNotifications = computed(() => Number((page.props as any).unreadNotifications ?? 0));
-const pendingPesananCount = computed(() => Number((page.props as any).pendingPesananCount ?? 0));
 
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -58,34 +51,6 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Grid,
         });
 
-        items.push({
-            title: 'Transaksi',
-            icon: BarChart3,
-            items: [
-                // {
-                //     title: 'Pembelian',
-                //     href: '/pembelian',
-                //     icon: Package,
-                // },
-
-                // {
-                //     title: 'Katalog Koi',
-                //     href: adminKatalogKoiIndex().url,
-                //     icon: ShoppingBag,
-                // },
-                {
-                    title: 'Pesanan',
-                    href: '/admin/pesanan',
-                    icon: ShoppingCart,
-                    badgeCount: pendingPesananCount.value,
-                },
-                {
-                    title: 'Rekap Transaksi',
-                    href: '/admin/rekap-transaksi',
-                    icon: BarChart3,
-                },
-            ],
-        });
 
         // items.push({
         //     title: 'Stok Koi',
@@ -94,29 +59,23 @@ const mainNavItems = computed<NavItem[]>(() => {
         // });
 
         items.push({
+            title: 'Rekap Transaksi',
+            href: '/rekap-transaksi',
+            icon: ClipboardList,
+        });
+
+        items.push({
             title: 'Log Aktivitas',
             href: '/log-aktivitas',
             icon: RotateCcw,
             badgeCount: activityLogTodayCount.value,
         });
 
-
     } else {
         items.push({
-            title: 'Katalog',
-            href: customerKatalogIndex().url,
-            icon: ShoppingBag,
-        });
-        items.push({
-            title: 'Pesanan Saya',
-            href: customerPesananIndex().url,
-            icon: ShoppingCart,
-        });
-        items.push({
-            title: 'Notifikasi',
-            href: customerNotifikasiIndex().url,
-            icon: Bell,
-            badgeCount: unreadNotifications.value,
+            title: 'Rekap Transaksi',
+            href: '/rekap-transaksi',
+            icon: ClipboardList,
         });
     }
 
