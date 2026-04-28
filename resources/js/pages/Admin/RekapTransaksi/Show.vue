@@ -26,7 +26,7 @@ type Koi = {
     sale_tanggal: string | null
     sale_shipped_date: string | null
     sale_qty: number | null
-    sell_jpy: string | null
+    unit_price: string | null
     kurs: string | null
     sell_idr: string | null
     fee: string | null
@@ -60,6 +60,19 @@ function fmtDate(d: string | null) {
 }
 const fmtIDR = (v: string | number | null) =>
     v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(v)) : '-'
+
+const salesPriceJpy = computed(() => {
+    const p = Number(props.koi.unit_price) || 0
+    const q = Number(props.koi.sale_qty)   || 1
+    return p > 0 ? p * q : null
+})
+const unitPriceIdr = computed(() => {
+    const p = Number(props.koi.unit_price) || 0
+    const k = Number(props.koi.kurs)       || 0
+    return p > 0 && k > 0 ? Math.round(p * k) : null
+})
+const salesPriceIdr = computed(() => Number(props.koi.sell_idr) || 0)
+const margin        = computed(() => salesPriceIdr.value - (unitPriceIdr.value ?? 0) - Number(props.koi.fee ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -194,20 +207,38 @@ const STATUS_CLASS: Record<string, string> = {
                         <h2 class="mb-3 text-base font-semibold">Harga Transaksi</h2>
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sell JPY</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.sell_jpy != null ? '¥' + Number(koi.sell_jpy).toLocaleString('id-ID') : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ koi.unit_price != null ? '¥' + Number(koi.unit_price).toLocaleString('ja-JP') : '-' }}
+                                </dd>
+                                <dd v-if="unitPriceIdr" class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">≈ {{ fmtIDR(unitPriceIdr) }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kurs</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.kurs != null ? Number(koi.kurs).toLocaleString('id-ID') : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ salesPriceJpy != null ? '¥' + salesPriceJpy.toLocaleString('ja-JP') : '-' }}
+                                </dd>
+                                <dd v-if="salesPriceIdr" class="mt-0.5 text-xs text-green-600 dark:text-green-400">≈ {{ fmtIDR(salesPriceIdr) }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sell IDR</dt>
-                                <dd class="mt-1 font-semibold text-primary">{{ fmtIDR(koi.sell_idr) }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kurs (JPY→IDR)</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ koi.kurs != null ? 'Rp ' + Number(koi.kurs).toLocaleString('id-ID') + ' / ¥1' : '-' }}
+                                </dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Diterima</dt>
+                                <dd class="mt-1 font-semibold text-foreground">{{ fmtIDR(salesPriceIdr - Number(koi.fee ?? 0)) }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Margin / Profit</dt>
+                                <dd class="mt-1 font-semibold" :class="margin >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                    {{ fmtIDR(margin) }}
+                                </dd>
                             </div>
                         </dl>
                     </div>

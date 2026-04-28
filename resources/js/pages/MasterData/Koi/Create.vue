@@ -129,9 +129,9 @@ const form = useForm({
     katalog_existing_id: '',
     katalog_tanggal:     '',
     katalog_qty:         '1',
-    katalog_sell_jpy:    '',
-    katalog_kurs:        '',
+    katalog_unit_price:  '',
     katalog_sell_idr:    '',
+    katalog_stock_price: '',
     katalog_fee:         '0',
 })
 
@@ -153,37 +153,18 @@ watch(() => form.pembelian_price_jpy, (jpy) => {
     }
 })
 
-// Auto-calc sell_idr ketika sell_jpy × kurs berubah
-watch([() => form.katalog_sell_jpy, () => form.katalog_kurs], ([jpy, kurs]) => {
-    if (jpy && kurs) {
-        form.katalog_sell_idr = String(Math.round(Number(jpy) * Number(kurs)))
-    }
+// Auto-calc sell_idr = unit_price × qty
+watch([() => form.katalog_unit_price, () => form.katalog_qty], ([price, qty]) => {
+    const p = Number(price) || 0
+    const q = Number(qty) || 1
+    form.katalog_sell_idr = String(Math.round(p * q))
 })
 
 // ─── Computed helpers untuk Katalog ──────────────────────
-const selectedPembelianForKatalog = computed<{ price_jpy: number; price_idr: number } | null>(() => {
-    if (!pembelianEnabled.value) return null
-    if (pembelianMode.value === 'existing' && form.pembelian_existing_id) {
-        const p = pembelians.find(p => p.id === Number(form.pembelian_existing_id))
-        return p ? { price_jpy: p.price_jpy, price_idr: p.price_idr } : null
-    }
-    if (pembelianMode.value === 'create') {
-        return {
-            price_jpy: Number(form.pembelian_price_jpy) || 0,
-            price_idr: Number(form.pembelian_price_idr) || 0,
-        }
-    }
-    return null
-})
-
-const katalogMargin          = computed(() => (Number(form.katalog_sell_idr) || 0) - (selectedPembelianForKatalog.value?.price_idr ?? 0))
-const katalogProfit          = computed(() => katalogMargin.value - (Number(form.katalog_fee) || 0))
-const katalogProfitPositive  = computed(() => katalogProfit.value >= 0)
-const katalogProfitPct       = computed(() => {
-    const base = selectedPembelianForKatalog.value?.price_idr ?? 0
-    return base > 0 ? (katalogProfit.value / base * 100).toFixed(2) : '0.00'
-})
-const katalogNeedsPembelian  = computed(() => katalogEnabled.value && katalogMode.value === 'create' && !pembelianEnabled.value)
+const katalogSalesPrice     = computed(() => (Number(form.katalog_unit_price) || 0) * (Number(form.katalog_qty) || 1))
+const katalogMargin         = computed(() => katalogSalesPrice.value - (Number(form.katalog_stock_price) || 0))
+const katalogMarginPositive = computed(() => katalogMargin.value >= 0)
+const katalogNeedsPembelian = computed(() => katalogEnabled.value && katalogMode.value === 'create' && !pembelianEnabled.value)
 
 // ─── Image handlers ───────────────────────────────────────
 function handleImagesChange(e: Event) {
@@ -558,25 +539,7 @@ function submit() {
                             </div>
 
                             <template v-if="!katalogNeedsPembelian">
-                                <!-- Info harga beli dari pembelian -->
-                                <div v-if="selectedPembelianForKatalog" class="rounded-lg bg-muted/50 p-4 text-sm">
-                                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Harga Beli (dari Pembelian)</p>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Harga JPY</p>
-                                            <p class="font-medium">{{ fmtJPY(selectedPembelianForKatalog.price_jpy) }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Harga IDR</p>
-                                            <p class="font-medium">{{ fmtIDR(selectedPembelianForKatalog.price_idr) }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else class="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground italic">
-                                    Pilih atau isi data pembelian di atas untuk menampilkan harga beli.
-                                </div>
-
-                                <!-- Tanggal & Qty -->
+                                <!-- Tanggal -->
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <div class="grid gap-2">
                                         <Label for="kat_tanggal">Tanggal Katalog <span class="text-red-500">*</span></Label>
@@ -584,64 +547,54 @@ function submit() {
                                         <InputError :message="form.errors.katalog_tanggal" />
                                     </div>
                                     <div class="grid gap-2">
-                                        <Label for="kat_qty">Qty/Stok <span class="text-red-500">*</span></Label>
-                                        <Input id="kat_qty" v-model="form.katalog_qty" type="number" min="1" placeholder="1" />
-                                        <InputError :message="form.errors.katalog_qty" />
+                                        <Label for="kat_fee">Fee IDR</Label>
+                                        <Input id="kat_fee" v-model="form.katalog_fee" type="number" min="0" placeholder="0" />
+                                        <InputError :message="form.errors.katalog_fee" />
                                     </div>
                                 </div>
 
-                                <!-- Harga Jual -->
-                                <div class="grid gap-4 sm:grid-cols-3">
-                                    <div class="grid gap-2">
-                                        <Label for="kat_sell_jpy">Harga Jual JPY <span class="text-red-500">*</span></Label>
-                                        <Input id="kat_sell_jpy" v-model="form.katalog_sell_jpy" type="number" min="0" placeholder="0" />
-                                        <InputError :message="form.errors.katalog_sell_jpy" />
+                                <!-- Kalkulasi harga -->
+                                <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kalkulasi Harga</p>
+
+                                    <!-- Unit Price & Qty -->
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div class="grid gap-2">
+                                            <Label for="kat_unit_price">Unit Price (IDR) <span class="text-red-500">*</span></Label>
+                                            <Input id="kat_unit_price" v-model="form.katalog_unit_price" type="number" min="0" placeholder="0" />
+                                            <InputError :message="(form.errors as any).katalog_unit_price" />
+                                        </div>
+                                        <div class="grid gap-2">
+                                            <Label for="kat_qty">Qty/Stok <span class="text-red-500">*</span></Label>
+                                            <Input id="kat_qty" v-model="form.katalog_qty" type="number" min="1" placeholder="1" />
+                                            <InputError :message="form.errors.katalog_qty" />
+                                        </div>
                                     </div>
+
+                                    <!-- Sales Price (auto) -->
                                     <div class="grid gap-2">
-                                        <Label for="kat_kurs">Kurs (IDR/JPY) <span class="text-red-500">*</span></Label>
-                                        <Input id="kat_kurs" v-model="form.katalog_kurs" type="number" min="0" placeholder="0" />
-                                        <InputError :message="form.errors.katalog_kurs" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="kat_sell_idr">
-                                            Harga Jual IDR <span class="text-red-500">*</span>
-                                            <span class="ml-1 text-xs font-normal text-muted-foreground">(auto JPY×kurs)</span>
+                                        <Label class="flex items-center gap-1.5">
+                                            Sales Price (IDR)
+                                            <span class="text-xs font-normal text-muted-foreground">(Unit Price × Qty)</span>
                                         </Label>
-                                        <Input id="kat_sell_idr" v-model="form.katalog_sell_idr" type="number" min="0" placeholder="0" />
+                                        <Input :model-value="katalogSalesPrice" type="number" disabled readonly class="font-semibold bg-muted/50" />
                                         <InputError :message="form.errors.katalog_sell_idr" />
                                     </div>
-                                </div>
 
-                                <!-- Fee -->
-                                <div class="grid gap-2 sm:w-1/3">
-                                    <Label for="kat_fee">Fee IDR</Label>
-                                    <Input id="kat_fee" v-model="form.katalog_fee" type="number" min="0" placeholder="0" />
-                                    <InputError :message="form.errors.katalog_fee" />
-                                </div>
-
-                                <!-- Perhitungan otomatis -->
-                                <div class="rounded-lg bg-muted/60 p-4 space-y-2 text-sm">
-                                    <p class="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Perhitungan Otomatis</p>
-                                    <div class="flex justify-between">
-                                        <span class="text-muted-foreground">Harga Beli IDR:</span>
-                                        <span class="font-medium">{{ fmtIDR(selectedPembelianForKatalog?.price_idr ?? 0) }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-muted-foreground">Harga Jual IDR:</span>
-                                        <span class="font-medium">{{ fmtIDR(Number(form.katalog_sell_idr) || 0) }}</span>
-                                    </div>
-                                    <div class="flex justify-between border-t border-border pt-2">
-                                        <span class="text-muted-foreground">Margin:</span>
-                                        <span class="font-medium">{{ fmtIDR(katalogMargin) }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-muted-foreground">Fee:</span>
-                                        <span class="font-medium">{{ fmtIDR(Number(form.katalog_fee) || 0) }}</span>
-                                    </div>
-                                    <div class="flex justify-between border-t border-border pt-2"
-                                        :class="katalogProfitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                                        <span class="font-semibold">Profit:</span>
-                                        <span class="font-bold">{{ fmtIDR(katalogProfit) }} ({{ katalogProfitPct }}%)</span>
+                                    <!-- Stock Price & Margin -->
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
+                                        <div class="grid gap-2">
+                                            <Label for="kat_stock_price">Stock Price (IDR) <span class="text-red-500">*</span></Label>
+                                            <Input id="kat_stock_price" v-model="form.katalog_stock_price" type="number" min="0" placeholder="0" />
+                                            <InputError :message="(form.errors as any).katalog_stock_price" />
+                                        </div>
+                                        <div class="grid gap-2">
+                                            <Label>Margin (IDR)</Label>
+                                            <div class="flex h-9 items-center rounded-md border px-3 text-sm font-semibold"
+                                                :class="katalogMarginPositive ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400' : 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400'">
+                                                {{ fmtIDR(katalogMargin) }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </template>

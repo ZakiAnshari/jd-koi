@@ -30,8 +30,7 @@ type KoiRow = {
     sale_shipped_date: string | null
     sale_status: string | null
     sale_qty: number | null
-    buy_jpy: string | null
-    sell_jpy: string | null
+    unit_price: string | null
     sell_idr: string | null
     box_qty: number | null
     weight: string | null
@@ -233,6 +232,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 const fmtJpy = (v: string | number | null) =>
     v != null && v !== '' ? '¥' + Number(v).toLocaleString('ja-JP') : '-'
+const fmtIDR = (v: string | number | null) =>
+    v != null && v !== '' ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(v)) : '-'
 
 const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
@@ -384,8 +385,8 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aksi</th>
                             </tr>
                         </thead>
@@ -420,8 +421,8 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <td class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.breeder?.name_breeder ?? '-' }}</td>
                                 <td class="px-4 py-3 text-center text-sm">{{ koi.size != null ? Number(koi.size).toFixed(0) + ' cm' : '-' }}</td>
                                 <td class="px-4 py-3 text-center text-sm">{{ koi.sale_qty ?? '-' }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.buy_jpy) }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.sell_jpy) }}</td>
+                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price) }}</td>
+                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price != null && koi.sale_qty != null ? Number(koi.unit_price) * Number(koi.sale_qty) : null) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a :href="`/rekap-transaksi/${koi.id}`"
                                         class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"

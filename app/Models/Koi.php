@@ -33,6 +33,8 @@ class Koi extends Model
         'kurs',
         'sell_idr',
         'buy_jpy',
+        'unit_price',
+        'stock_price',
         'fee',
         'sale_status',
         'sale_invoice',
@@ -51,8 +53,10 @@ class Koi extends Model
         'sell_jpy'     => 'decimal:2',
         'buy_jpy'      => 'decimal:2',
         'kurs'         => 'decimal:2',
-        'sell_idr'     => 'decimal:2',
-        'fee'          => 'decimal:2',
+        'sell_idr'    => 'decimal:2',
+        'unit_price'  => 'decimal:2',
+        'stock_price' => 'decimal:2',
+        'fee'         => 'decimal:2',
     ];
 
     protected function getActivityItemName(): ?string

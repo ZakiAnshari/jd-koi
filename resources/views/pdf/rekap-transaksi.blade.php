@@ -313,37 +313,56 @@
                         </div>
 
                         <!-- Right: Harga -->
+                        @php
+                            $unitPriceJpy  = $koi->unit_price ? (float) $koi->unit_price : null;
+                            $qty           = $koi->sale_qty   ? (int)   $koi->sale_qty   : 1;
+                            $salesPriceJpy = $unitPriceJpy ? $unitPriceJpy * $qty : null;
+                            $unitPriceIdr  = ($unitPriceJpy && $koi->kurs) ? round($unitPriceJpy * (float) $koi->kurs) : null;
+                            $salesPriceIdr = $koi->sell_idr ? (float) $koi->sell_idr : null;
+                            $fee           = $koi->fee ? (float) $koi->fee : 0;
+                            $margin        = $salesPriceIdr !== null && $unitPriceIdr !== null
+                                             ? $salesPriceIdr - $unitPriceIdr - $fee
+                                             : null;
+                        @endphp
                         <div class="g2-right">
                             <div class="section-title">Informasi Harga</div>
                             <div class="price-box">
                                 <table class="dt">
                                     <tr>
-                                        <td class="lbl">Harga JPY</td>
+                                        <td class="lbl">Unit Price (JPY)</td>
                                         <td class="val">
-                                            {{ $koi->sell_jpy ? '¥ ' . number_format($koi->sell_jpy, 0, ',', '.') : '-' }}
+                                            {{ $unitPriceJpy ? '¥ ' . number_format($unitPriceJpy, 0, ',', '.') : '-' }}
+                                            @if($unitPriceIdr)
+                                                <br><span style="font-size:9px; color:#888;">≈ Rp {{ number_format($unitPriceIdr, 0, ',', '.') }}</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="lbl">Sales Price (JPY)</td>
+                                        <td class="val" style="font-weight:bold;">
+                                            {{ $salesPriceJpy ? '¥ ' . number_format($salesPriceJpy, 0, ',', '.') : '-' }}
+                                            @if($salesPriceIdr)
+                                                <br><span style="font-size:9px; color:#888;">≈ Rp {{ number_format($salesPriceIdr, 0, ',', '.') }}</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     @if($koi->kurs && $koi->kurs > 0)
                                         <tr>
                                             <td class="lbl">Kurs</td>
-                                            <td class="val">Rp {{ number_format($koi->kurs, 0, ',', '.') }}</td>
+                                            <td class="val">Rp {{ number_format($koi->kurs, 0, ',', '.') }} / ¥1</td>
                                         </tr>
                                     @endif
-                                    <tr>
-                                        <td class="lbl">Harga IDR</td>
-                                        <td class="val" style="font-weight:bold;">
-                                            {{ $koi->sell_idr ? 'Rp ' . number_format($koi->sell_idr, 0, ',', '.') : '-' }}
-                                        </td>
-                                    </tr>
-                                    @if($isAdmin && $koi->fee)
+                                    @if($isAdmin && $fee)
                                         <tr>
                                             <td class="lbl">Fee</td>
-                                            <td class="val">Rp {{ number_format($koi->fee, 0, ',', '.') }}</td>
+                                            <td class="val">Rp {{ number_format($fee, 0, ',', '.') }}</td>
                                         </tr>
+                                    @endif
+                                    @if($isAdmin && $margin !== null)
                                         <tr style="border-top: 1px solid #2255bb;">
-                                            <td class="lbl" style="color:#2255bb; font-weight:bold;">Profit</td>
-                                            <td class="val" style="color:#2255bb; font-weight:bold;">
-                                                Rp {{ number_format($koi->sell_idr - $koi->fee, 0, ',', '.') }}
+                                            <td class="lbl" style="color:{{ $margin >= 0 ? '#1e7e34' : '#c0392b' }}; font-weight:bold;">Margin / Profit</td>
+                                            <td class="val" style="color:{{ $margin >= 0 ? '#1e7e34' : '#c0392b' }}; font-weight:bold;">
+                                                Rp {{ number_format($margin, 0, ',', '.') }}
                                             </td>
                                         </tr>
                                     @endif

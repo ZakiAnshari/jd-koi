@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { X, ImagePlus } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useForm } from '@inertiajs/vue3'
@@ -41,6 +41,8 @@ type Koi = {
     sell_jpy: string | null
     kurs: string | null
     sell_idr: string | null
+    unit_price: string | null
+    stock_price: string | null
     fee: string | null
     sale_status: string | null
     sale_invoice: string | null
@@ -100,16 +102,79 @@ const form = useForm({
     total_weight: koi.total_weight != null ? String(koi.total_weight) : '',
     images:        [] as File[],
     delete_images: [] as number[],
-    customer_id:   koi.customer_id ? String(koi.customer_id) : '',
-    sale_tanggal:  koi.sale_tanggal ?? '',
-    sale_qty:      koi.sale_qty != null ? String(koi.sale_qty) : '',
-    sell_jpy:      koi.sell_jpy != null ? String(Number(koi.sell_jpy)) : '',
-    kurs:          koi.kurs != null ? String(Number(koi.kurs)) : '',
-    sell_idr:      koi.sell_idr != null ? String(Number(koi.sell_idr)) : '',
-    fee:           koi.fee != null ? String(Number(koi.fee)) : '0',
-    sale_status:        koi.sale_status ?? '',
-    sale_shipped_date:  koi.sale_shipped_date ?? '',
+    customer_id:       koi.customer_id ? String(koi.customer_id) : '',
+    sale_tanggal:      koi.sale_tanggal ?? '',
+    sale_qty:          koi.sale_qty != null ? String(koi.sale_qty) : '1',
+    unit_price:        koi.unit_price != null ? String(Number(koi.unit_price)) : '',
+    kurs:              koi.kurs != null ? String(Number(koi.kurs)) : '',
+    sell_idr:          koi.sell_idr != null ? String(Number(koi.sell_idr)) : '',
+    fee:               koi.fee != null ? String(Number(koi.fee)) : '0',
+    sale_status:       koi.sale_status ?? '',
+    sale_shipped_date: koi.sale_shipped_date ?? '',
 })
+
+// ─── Exchange rate ────────────────────────────────────────
+const exchangeRate        = ref(0)
+const exchangeRateLoading = ref(false)
+const exchangeRateError   = ref(false)
+const kursInput           = ref(form.kurs || '')
+const kursIsManual        = ref(!!form.kurs)
+
+async function fetchExchangeRate() {
+    if (kursIsManual.value) return
+    exchangeRateLoading.value = true; exchangeRateError.value = false
+    try {
+        const res  = await fetch('https://api.exchangerate-api.com/v4/latest/JPY')
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        exchangeRate.value = Math.round(Number(data?.rates?.IDR ?? 0))
+        if (!exchangeRate.value) throw new Error()
+    } catch { exchangeRateError.value = true; exchangeRate.value = 110 }
+    finally  { exchangeRateLoading.value = false }
+}
+fetchExchangeRate()
+watch(exchangeRate, rate => { if (rate > 0 && !kursIsManual.value) kursInput.value = String(rate) })
+function resetKurs() { kursIsManual.value = false; kursInput.value = String(exchangeRate.value) }
+
+// Sync kursInput → form.kurs
+watch(kursInput, v => { form.kurs = v })
+
+// unit_price (JPY) × qty × kurs → sell_idr (IDR)
+watch([() => form.unit_price, () => form.sale_qty, kursInput], ([price, qty, kurs]) => {
+    const p = Number(price) || 0
+    const q = Number(qty)   || 1
+    const k = Number(kurs)  || 0
+    form.sell_idr = p > 0 && k > 0 ? String(Math.round(p * q * k)) : form.sell_idr
+})
+
+const unitPriceIdr = computed(() => {
+    const p = Number(form.unit_price) || 0
+    const k = Number(kursInput.value) || 0
+    return p > 0 && k > 0 ? Math.round(p * k) : null
+})
+const salesPriceJpy = computed(() => {
+    const p = Number(form.unit_price) || 0
+    const q = Number(form.sale_qty)   || 1
+    return p > 0 ? p * q : null
+})
+const salesPriceIdr = computed(() => {
+    const jpy = salesPriceJpy.value
+    const k   = Number(kursInput.value) || 0
+    return jpy && k > 0 ? Math.round(jpy * k) : null
+})
+const margin         = computed(() => (salesPriceIdr.value ?? 0) - (unitPriceIdr.value ?? 0) - Number(form.fee || 0))
+const marginPositive = computed(() => margin.value >= 0)
+
+function fmtInput(val: string | number): string {
+    const n = String(val).replace(/\D/g, '')
+    return n ? Number(n).toLocaleString('id-ID') : ''
+}
+function parseInput(e: Event): string {
+    return (e.target as HTMLInputElement).value.replace(/\D/g, '')
+}
+
+const fmtIDR = (v: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v)
 
 function handleImagesChange(e: Event) {
     const input = e.target as HTMLInputElement
@@ -374,6 +439,7 @@ const submit = () => {
                             <InputError :message="form.errors.sale_status" />
                         </div>
 
+                        <!-- Tanggal -->
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div class="grid gap-2">
                                 <Label>Tanggal Penjualan</Label>
@@ -385,30 +451,112 @@ const submit = () => {
                                 <Input v-model="form.sale_shipped_date" type="date" />
                                 <InputError :message="(form.errors as any).sale_shipped_date" />
                             </div>
-                            <div class="grid gap-2">
-                                <Label>Qty</Label>
-                                <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" />
-                                <InputError :message="form.errors.sale_qty" />
+                        </div>
+
+                        <!-- Kalkulasi harga -->
+                        <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kalkulasi Harga</p>
+
+                            <!-- Kurs -->
+                            <div class="space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <Label class="text-xs font-medium text-muted-foreground">Kurs JPY → IDR</Label>
+                                    <div class="flex items-center gap-1.5">
+                                        <span v-if="exchangeRateLoading" class="text-[10px] text-muted-foreground animate-pulse">Memuat...</span>
+                                        <template v-else>
+                                            <span v-if="kursIsManual" class="text-[10px] text-orange-500 font-medium">manual</span>
+                                            <span v-else-if="exchangeRateError" class="text-[10px] text-orange-500">fallback</span>
+                                            <span v-else class="text-[10px] text-green-600 dark:text-green-400 font-medium">dari API</span>
+                                            <button v-if="kursIsManual" type="button" @click="resetKurs"
+                                                class="text-[10px] underline text-muted-foreground hover:text-foreground">reset</button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rp</span>
+                                    <Input
+                                        type="text" inputmode="numeric"
+                                        :value="fmtInput(kursInput)"
+                                        @input="e => { kursIsManual = true; kursInput = parseInput(e) }"
+                                        placeholder="0"
+                                        class="h-9 text-sm pl-9"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">/ ¥1</span>
+                                </div>
+                                <p class="text-[11px] text-muted-foreground">
+                                    Kurs digunakan untuk mengkonversi harga JPY ke IDR. Nilai diambil dari API dan dapat diubah manual.
+                                </p>
                             </div>
-                            <div class="grid gap-2">
-                                <Label>Harga Jual JPY</Label>
-                                <Input v-model="form.sell_jpy" type="number" min="0" step="0.01" placeholder="0" />
-                                <InputError :message="form.errors.sell_jpy" />
+
+                            <!-- Unit Price (JPY) & Qty -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Unit Price (JPY)</Label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                        <Input
+                                            type="text" inputmode="numeric"
+                                            :value="fmtInput(form.unit_price)"
+                                            @input="e => { form.unit_price = parseInput(e) }"
+                                            placeholder="0"
+                                            class="h-9 text-sm pl-7"
+                                        />
+                                    </div>
+                                    <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                        <span class="text-muted-foreground">≈ IDR</span>
+                                        <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
+                                    </div>
+                                    <InputError :message="(form.errors as any).unit_price" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Qty</Label>
+                                    <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" class="h-9 text-sm" />
+                                    <InputError :message="form.errors.sale_qty" />
+                                </div>
                             </div>
-                            <div class="grid gap-2">
-                                <Label>Kurs (IDR/JPY)</Label>
-                                <Input v-model="form.kurs" type="number" min="0" step="0.01" placeholder="0" />
-                                <InputError :message="form.errors.kurs" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label>Harga Jual IDR</Label>
-                                <Input v-model="form.sell_idr" type="number" min="0" step="0.01" placeholder="0" />
+
+                            <!-- Sales Price (JPY auto) -->
+                            <div class="space-y-1.5">
+                                <Label class="text-xs font-medium text-muted-foreground">
+                                    Sales Price (JPY) <span class="font-normal opacity-60">auto</span>
+                                </Label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-green-500">¥</span>
+                                    <Input
+                                        type="text" inputmode="numeric"
+                                        :value="salesPriceJpy ? fmtInput(String(salesPriceJpy)) : ''"
+                                        readonly
+                                        placeholder="0"
+                                        class="h-9 text-sm pl-7 bg-muted/50 cursor-not-allowed"
+                                    />
+                                </div>
+                                <div v-if="salesPriceIdr" class="rounded border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                    <span class="text-muted-foreground">≈ IDR</span>
+                                    <span class="font-semibold text-green-700 dark:text-green-400">{{ fmtIDR(salesPriceIdr) }}</span>
+                                </div>
                                 <InputError :message="form.errors.sell_idr" />
                             </div>
-                            <div class="grid gap-2">
-                                <Label>Fee IDR</Label>
-                                <Input v-model="form.fee" type="number" min="0" step="0.01" placeholder="0" />
-                                <InputError :message="form.errors.fee" />
+
+                            <!-- Fee & Margin -->
+                            <div class="grid grid-cols-2 gap-3 pt-1">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Fee (IDR)</Label>
+                                    <Input
+                                        type="text" inputmode="numeric"
+                                        :value="fmtInput(form.fee)"
+                                        @input="e => { form.fee = parseInput(e) }"
+                                        placeholder="0"
+                                        class="h-9 text-sm"
+                                    />
+                                    <InputError :message="form.errors.fee" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Margin / Profit</Label>
+                                    <div class="flex h-9 items-center rounded-md border px-3 text-sm font-semibold"
+                                        :class="marginPositive ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400' : 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400'">
+                                        {{ fmtIDR(margin) }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
