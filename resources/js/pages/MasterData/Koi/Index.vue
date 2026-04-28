@@ -168,14 +168,15 @@ watch(showModal, (open) => {
 watch(exchangeRate, (rate) => {
     if (rate > 0 && !isSaleKursManual.value) form.kurs = String(rate)
 })
-watch(() => form.sell_jpy, (jpy) => {
-    if (!isSaleIdrManual.value && form.kurs && jpy)
-        form.sell_idr = String(Math.round(Number(jpy) * Number(form.kurs)))
-})
-watch(() => form.kurs, (kurs) => {
-    if (!isSaleIdrManual.value && kurs && form.sell_jpy)
-        form.sell_idr = String(Math.round(Number(form.sell_jpy) * Number(kurs)))
-})
+function recalcSellIdr() {
+    if (form.sell_jpy && form.kurs) {
+        const qty = Number(form.sale_qty) || 1
+        form.sell_idr = String(Math.round(Number(form.sell_jpy) * Number(form.kurs) * qty))
+    }
+}
+watch(() => form.sell_jpy, recalcSellIdr)
+watch(() => form.kurs,     recalcSellIdr)
+watch(() => form.sale_qty, recalcSellIdr)
 
 // ─── Computed IDR previews ─────────────────────────────────
 const buyIdrPreview  = computed(() =>
