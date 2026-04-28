@@ -190,8 +190,8 @@ const filteredBreeders  = computed(() => !breederSearch.value  ? breeders.value 
 const filteredJenisKois = computed(() => !jenisSearch.value   ? jenisKois.value  : jenisKois.value.filter(j => j.nama_jenis.toLowerCase().includes(jenisSearch.value.toLowerCase())))
 const filteredCustomers = computed(() => !customerSearch.value ? customers.value : customers.value.filter(c => c.name.toLowerCase().includes(customerSearch.value.toLowerCase())))
 
-const saleProfit         = computed(() => (Number(form.sell_idr) || 0) - (Number(form.fee) || 0))
-const saleProfitPositive = computed(() => saleProfit.value >= 0)
+const saleMargin         = computed(() => (Number(form.sell_idr) || 0) - (buyIdrPreview.value || 0))
+const saleMarginPositive = computed(() => saleMargin.value >= 0)
 
 // ─── Status badge ─────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
@@ -545,13 +545,13 @@ function confirmDeleteKoi(id: number, name: string) {
                                     </div>
 
                                     <!-- Ringkasan kalkulasi -->
-                                    <div v-if="form.sell_idr" class="rounded-md border border-border bg-muted/20 px-4 py-3 text-xs space-y-2">
+                                    <div v-if="form.buy_jpy || form.sell_jpy" class="rounded-md border border-border bg-muted/20 px-4 py-3 text-xs space-y-2">
                                         <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ringkasan</p>
-                                        <div v-if="form.buy_jpy" class="flex justify-between"><span class="text-muted-foreground">Unit Price IDR</span><span>{{ fmtIDR(buyIdrPreview ?? 0) }}</span></div>
+                                        <div class="flex justify-between"><span class="text-muted-foreground">Unit Price IDR</span><span>{{ fmtIDR(buyIdrPreview ?? 0) }}</span></div>
                                         <div class="flex justify-between"><span class="text-muted-foreground">Sales Price IDR</span><span>{{ fmtIDR(Number(form.sell_idr) || 0) }}</span></div>
                                         <div class="flex justify-between"><span class="text-muted-foreground">Fee</span><span>{{ fmtIDR(Number(form.fee) || 0) }}</span></div>
-                                        <div class="flex justify-between pt-2 border-t border-border font-semibold text-sm" :class="saleProfitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                                            <span>Estimasi Profit</span><span>{{ fmtIDR(saleProfit) }}</span>
+                                        <div class="flex justify-between pt-2 border-t border-border font-semibold text-sm" :class="saleMarginPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                            <span>Margin</span><span>{{ fmtIDR(saleMargin) }}</span>
                                         </div>
                                     </div>
 

@@ -3,7 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { Fish, Banknote, CheckCircle, Clock, XCircle } from 'lucide-vue-next'
+import { Fish, Banknote, CheckCircle, Clock, XCircle, Eye } from 'lucide-vue-next'
 
 type CustomerStats = {
     nama: string
@@ -167,8 +167,9 @@ const activeStatuses = computed(() =>
                                 <td class="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">{{ fmtIDR(trx.sell_idr) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <Link :href="`/rekap-transaksi/${trx.id}`"
-                                        class="text-xs text-primary hover:underline whitespace-nowrap">
-                                        Detail
+                                        class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                        title="Detail">
+                                        <Eye :size="15" />
                                     </Link>
                                 </td>
                             </tr>

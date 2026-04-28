@@ -31,6 +31,11 @@ class DashboardController extends Controller
         $totalKoiSold   = (clone $baseQuery)->count();
         $totalFee       = (clone $baseQuery)->sum('fee');
 
+        // Margin = sell_idr - (buy_jpy × kurs × sale_qty)
+        $totalMargin = (clone $baseQuery)
+            ->selectRaw('SUM(sell_idr - (COALESCE(buy_jpy,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) as margin')
+            ->value('margin') ?? 0;
+
         // ── Stats keseluruhan ────────────────────────────────
         $totalKoi      = Koi::count();
         $totalCustomer = User::where('role_id', 2)->count();
@@ -76,6 +81,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'stats' => [
                 'total_sales_idr'   => $totalSalesIdr,
+                'total_margin'      => $totalMargin,
                 'total_koi_sold'    => $totalKoiSold,
                 'total_fee'         => $totalFee,
                 'total_koi'         => $totalKoi,
