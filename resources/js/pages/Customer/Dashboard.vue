@@ -3,7 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { Fish, DollarSign, ClipboardList, CheckCircle, Clock, XCircle } from 'lucide-vue-next'
+import { Fish, Banknote, CheckCircle, Clock, XCircle } from 'lucide-vue-next'
 
 type CustomerStats = {
     nama: string
@@ -95,7 +95,7 @@ const activeStatuses = computed(() =>
             <div class="grid gap-4 grid-cols-2 md:grid-cols-3">
                 <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-                        <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <Banknote class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div class="min-w-0">
                         <p class="text-xs text-muted-foreground">Total Belanja</p>

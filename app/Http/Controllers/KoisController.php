@@ -56,6 +56,7 @@ class KoisController extends Controller
             'sale_tanggal' => 'nullable|date',
             'sale_qty'     => 'nullable|integer|min:1',
             'sell_jpy'     => 'nullable|numeric|min:0',
+            'buy_jpy'      => 'nullable|numeric|min:0',
             'kurs'         => 'nullable|numeric|min:0',
             'sell_idr'     => 'nullable|numeric|min:0',
             'fee'          => 'nullable|numeric|min:0',
@@ -76,6 +77,7 @@ class KoisController extends Controller
             'sale_tanggal' => $validated['sale_tanggal'] ?? null,
             'sale_qty'     => $validated['sale_qty'] ?? null,
             'sell_jpy'     => $validated['sell_jpy'] ?? null,
+            'buy_jpy'      => $validated['buy_jpy'] ?? null,
             'kurs'         => $validated['kurs'] ?? null,
             'sell_idr'     => $validated['sell_idr'] ?? null,
             'fee'          => $validated['fee'] ?? 0,
@@ -108,7 +110,7 @@ class KoisController extends Controller
         $koi->load('images');
 
         return Inertia::render('MasterData/Koi/Edit', [
-            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'kurs', 'sell_idr', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
+            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
             'breeders'  => $breeders,
             'jenisKois' => $jenisKois,
             'customers' => $customers,
@@ -120,7 +122,7 @@ class KoisController extends Controller
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
 
         return Inertia::render('MasterData/Koi/Show', [
-            'koi' => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'created_at', 'updated_at', 'breeder', 'jenis_koi', 'customer', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'kurs', 'sell_idr', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
+            'koi' => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'created_at', 'updated_at', 'breeder', 'jenis_koi', 'customer', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
         ]);
     }
 
@@ -143,6 +145,7 @@ class KoisController extends Controller
             'sale_tanggal'    => 'nullable|date',
             'sale_qty'        => 'nullable|integer|min:1',
             'sell_jpy'        => 'nullable|numeric|min:0',
+            'buy_jpy'         => 'nullable|numeric|min:0',
             'kurs'            => 'nullable|numeric|min:0',
             'sell_idr'        => 'nullable|numeric|min:0',
             'fee'             => 'nullable|numeric|min:0',

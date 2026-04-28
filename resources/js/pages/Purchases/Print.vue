@@ -58,60 +58,65 @@ const totalAmount = computed(() => purchases.value.reduce((sum, p) => sum + (p.p
 <template>
     <div class="min-h-screen bg-white p-0">
         <!-- Print Content -->
-        <div class="mx-auto max-w-5xl bg-white p-8">
+        <div class="mx-auto max-w-4xl bg-white p-10">
             <!-- Header -->
-            <div class="mb-12 text-center">
-                <h1 class="mb-1 text-2xl font-bold text-gray-900">LAPORAN PEMBELIAN KOI</h1>
-                <p class="text-xs text-gray-600">PT. JD-KOI | {{ currentDate.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>
+            <div class="mb-10 border-b border-gray-200 pb-8">
+                <div class="mb-2">
+                    <h1 class="text-2xl font-light tracking-tight text-gray-900">LAPORAN PEMBELIAN KOI</h1>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p class="text-sm text-gray-600">PT. JD-KOI | Data Pembelian</p>
+                    <p class="text-sm text-gray-500">{{ currentDate.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>
+                </div>
             </div>
 
             <!-- Main Table -->
             <div class="mb-8">
-                <table class="w-full border-collapse">
+                <table class="w-full">
                     <thead>
-                        <tr class="bg-gray-800 text-white">
-                            <th class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold">No</th>
-                            <th class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold">Tanggal</th>
-                            <th class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold">Kode</th>
-                            <th class="border border-gray-300 px-2 py-2 text-left text-xs font-semibold">Nama Koi</th>
-                            <th class="border border-gray-300 px-2 py-2 text-center text-xs font-semibold">Qty</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">Harga JPY</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">Harga IDR</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right text-xs font-semibold">Total IDR</th>
+                        <tr class="border-b-2 border-gray-900">
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-gray-900 tracking-wider">No</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-gray-900 tracking-wider">Tanggal</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-gray-900 tracking-wider">Kode</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-gray-900 tracking-wider">Nama Koi</th>
+                            <th class="px-3 py-3 text-center text-xs font-semibold text-gray-900 tracking-wider">Qty</th>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-900 tracking-wider">Harga JPY</th>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-900 tracking-wider">Harga IDR</th>
+                            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-900 tracking-wider">Total IDR</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="purchases.length === 0">
-                            <td colspan="8" class="border border-gray-300 px-2 py-3 text-center text-xs text-gray-500">
+                            <td colspan="8" class="px-3 py-4 text-center text-sm text-gray-500">
                                 Tidak ada data
                             </td>
                         </tr>
-                        <tr v-for="(purchase, idx) in purchases" :key="purchase.id">
-                            <td class="border border-gray-300 px-2 py-2 text-center text-xs font-medium text-gray-900">{{ idx + 1 }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-xs text-gray-700">{{ new Date(purchase.date).toLocaleDateString('id-ID') }}</td>
-                            <td class="border border-gray-300 px-2 py-2 font-mono text-xs font-bold text-gray-900">{{ getKoiInfo(purchase).code }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-xs text-gray-700">{{ getKoiInfo(purchase).name }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-center text-xs text-gray-700">{{ purchase.qty }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-mono text-xs text-gray-700">{{ formatJPY(purchase.price_jpy) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-mono text-xs text-gray-700">{{ formatIDR(purchase.price_idr) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-mono text-xs font-semibold text-gray-900">{{ formatIDR(purchase.price_idr * purchase.qty) }}</td>
+                        <tr v-for="(purchase, idx) in purchases" :key="purchase.id" class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="px-3 py-3 text-center text-sm text-gray-700">{{ idx + 1 }}</td>
+                            <td class="px-3 py-3 text-sm text-gray-700">{{ new Date(purchase.date).toLocaleDateString('id-ID') }}</td>
+                            <td class="px-3 py-3 font-mono text-sm font-medium text-gray-900">{{ getKoiInfo(purchase).code }}</td>
+                            <td class="px-3 py-3 text-sm text-gray-700">{{ getKoiInfo(purchase).name }}</td>
+                            <td class="px-3 py-3 text-center text-sm text-gray-700">{{ purchase.qty }}</td>
+                            <td class="px-3 py-3 text-right font-mono text-sm text-gray-700">{{ formatJPY(purchase.price_jpy) }}</td>
+                            <td class="px-3 py-3 text-right font-mono text-sm text-gray-700">{{ formatIDR(purchase.price_idr) }}</td>
+                            <td class="px-3 py-3 text-right font-mono text-sm font-medium text-gray-900">{{ formatIDR(purchase.price_idr * purchase.qty) }}</td>
                         </tr>
 
                         <!-- Total Row -->
-                        <tr class="bg-gray-100 font-bold text-gray-900">
-                            <td colspan="7" class="border border-gray-300 px-2 py-2 text-right text-xs uppercase">Total</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-mono text-xs">{{ formatIDR(totalAmount) }}</td>
+                        <tr class="border-t-2 border-gray-900 bg-gray-50">
+                            <td colspan="7" class="px-3 py-4 text-right text-sm font-semibold text-gray-900">Total</td>
+                            <td class="px-3 py-4 text-right font-mono text-sm font-semibold text-gray-900">{{ formatIDR(totalAmount) }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <!-- Spacer for Signature -->
-            <div class="mt-12 flex justify-end">
-                <div class="w-48 text-center">
-                    <div class="mb-8 h-16"></div>
-                    <p class="border-t border-gray-900 pt-1 text-xs font-semibold text-gray-900">______________________</p>
-                    <p class="mt-0.5 text-xs text-gray-700">Penyetuju</p>
+            <div class="mt-16 flex justify-end">
+                <div class="w-40 text-center">
+                    <div class="mb-10 h-14"></div>
+                    <p class="border-t border-gray-900 pt-2 text-sm font-medium text-gray-900">_________________</p>
+                    <p class="mt-1 text-xs text-gray-600">Penyetuju</p>
                 </div>
             </div>
         </div>
@@ -142,7 +147,7 @@ const totalAmount = computed(() => purchases.value.reduce((sum, p) => sum + (p.p
 
     /* Hide unnecessary elements on print */
     @page {
-        margin: 10mm;
+        margin: 15mm;
         size: A4;
     }
 }

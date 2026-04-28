@@ -24,6 +24,7 @@ type KoiRow = {
     sale_shipped_date: string | null
     sale_status: string | null
     sale_qty: number | null
+    buy_jpy: string | null
     sell_jpy: string | null
     sell_idr: string | null
     box_qty: number | null
@@ -170,6 +171,32 @@ function clearSelection() {
     selectedIds.value = new Set(selectedIds.value)
 }
 
+function downloadPdf() {
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = '/rekap-transaksi/export-pdf'
+    form.target = '_blank'
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
+    const csrf = document.createElement('input')
+    csrf.type = 'hidden'
+    csrf.name = '_token'
+    csrf.value = token
+    form.appendChild(csrf)
+
+    Array.from(selectedIds.value).forEach(id => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'ids[]'
+        input.value = String(id)
+        form.appendChild(input)
+    })
+
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+}
+
 // ─── Display helpers ──────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
     pending: 'Pending', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
@@ -312,7 +339,7 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
             <div v-if="isSomeSelected" class="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 p-4">
                 <span class="text-sm font-medium">{{ selectedCount }} item{{ selectedCount > 1 ? 's' : '' }} dipilih</span>
                 <div class="flex gap-2">
-                    <Button size="sm" variant="outline" @click="() => router.post('/rekap-transaksi/export-pdf', { ids: Array.from(selectedIds) })">
+                    <Button size="sm" variant="outline" @click="downloadPdf">
                         <Download class="w-4 h-4 mr-1" /> Download PDF
                     </Button>
                     <Button size="sm" variant="outline" @click="clearSelection">
@@ -367,8 +394,8 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <td class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.breeder?.name_breeder ?? '-' }}</td>
                                 <td class="px-4 py-3 text-center text-sm">{{ koi.size != null ? Number(koi.size).toFixed(0) + ' cm' : '-' }}</td>
                                 <td class="px-4 py-3 text-center text-sm">{{ koi.sale_qty ?? '-' }}</td>
+                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.buy_jpy) }}</td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.sell_jpy) }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.sell_idr) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <a :href="`/rekap-transaksi/${koi.id}`"
                                         class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"

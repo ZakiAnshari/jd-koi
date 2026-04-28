@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboard } from '@/routes'
 import type { BreadcrumbItem } from '@/types'
-import { Users, Fish, DollarSign, TrendingUp, FolderGit2, ClipboardList } from 'lucide-vue-next'
+import { Users, Fish, Banknote, Percent, Store } from 'lucide-vue-next'
 
 type ActivityLogItem = {
     id: number
@@ -88,7 +88,7 @@ const STATUS_COLOR: Record<string, string> = {
                 <div class="grid gap-4 grid-cols-2 md:grid-cols-3">
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-                            <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <Banknote class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-muted-foreground">Total Penjualan</p>
@@ -98,7 +98,7 @@ const STATUS_COLOR: Record<string, string> = {
 
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950/40 flex items-center justify-center flex-shrink-0">
-                            <TrendingUp class="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <Percent class="w-5 h-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-muted-foreground">Total Fee</p>
@@ -144,7 +144,7 @@ const STATUS_COLOR: Record<string, string> = {
 
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                            <FolderGit2 class="w-5 h-5 text-muted-foreground" />
+                            <Store class="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-muted-foreground">Total Breeder</p>
