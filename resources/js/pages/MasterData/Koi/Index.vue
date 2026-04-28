@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
-import { X, ImagePlus, Eye, Pencil, Trash2 } from 'lucide-vue-next'
+import { X, ImagePlus, Eye, Pencil, Trash2, ExternalLink } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
@@ -471,8 +471,12 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <Select v-model="form.customer_id">
                                                 <SelectTrigger><SelectValue placeholder="Pilih customer" /></SelectTrigger>
                                                 <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
-                                                    <div class="sticky top-0 bg-background p-2 border-b">
-                                                        <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
+                                                    <div class="sticky top-0 bg-background p-2 border-b flex items-center gap-1.5">
+                                                        <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8 flex-1" @keydown.stop />
+                                                        <a href="/master-data/customer" target="_blank" title="Buka halaman Customer"
+                                                            class="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                                                            <ExternalLink class="w-3.5 h-3.5" />
+                                                        </a>
                                                     </div>
                                                     <div class="max-h-44 overflow-y-auto">
                                                         <div v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada customer</div>
@@ -514,8 +518,14 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <InputError :message="form.errors.sale_qty" />
                                         </div>
                                         <div class="grid gap-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">Harga Jual IDR <span class="font-normal opacity-60">(auto)</span></Label>
-                                            <Input type="text" inputmode="numeric" :value="fmtInput(form.sell_idr)" @input="e => { isSaleIdrManual = true; form.sell_idr = parseInput(e) }" placeholder="0" class="h-9 text-sm" />
+                                            <Label class="text-xs font-medium text-red-500 dark:text-red-400">Harga Jual IDR <span class="font-normal opacity-70">(auto · tidak bisa diubah)</span></Label>
+                                            <Input
+                                                type="text" inputmode="numeric"
+                                                :value="fmtInput(form.sell_idr)"
+                                                readonly
+                                                placeholder="0"
+                                                class="h-9 text-sm bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 cursor-not-allowed opacity-80"
+                                            />
                                             <InputError :message="form.errors.sell_idr" />
                                         </div>
                                         <div class="grid gap-1.5">
@@ -523,6 +533,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <Select v-model="feePct" @update:model-value="(val) => { feePct = val; form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100))) }">
                                                 <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="0">No Fee</SelectItem>
                                                     <SelectItem value="5">5%</SelectItem>
                                                     <SelectItem value="7.5">7.5%</SelectItem>
                                                     <SelectItem value="10">10%</SelectItem>
