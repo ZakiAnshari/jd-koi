@@ -22,6 +22,7 @@ class KoisController extends Controller
                 'breeder:id,name_breeder',
                 'jenisKoi:id,nama_jenis',
                 'customer:id,name',
+                'images:id,koi_id,image_path,sort_order',
             ])
             ->orderBy('code')
             ->get();
@@ -179,6 +180,20 @@ class KoisController extends Controller
         $id   = $koi->id;
         $koi->delete();
         ActivityLog::log('delete', "Menghapus data Koi \"{$name}\" (ID: {$id})", 'kois');
+
+        return to_route('kois.index');
+    }
+
+    public function updateStatus(Request $request, Koi $koi)
+    {
+        $validated = $request->validate([
+            'sale_status' => 'required|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
+        ]);
+
+        $koi->sale_status = $validated['sale_status'];
+        $koi->save();
+
+        ActivityLog::log('update', "Mengubah status Koi \"{$koi->code} - {$koi->name}\" menjadi \"{$validated['sale_status']}\" (ID: {$koi->id})", 'kois');
 
         return to_route('kois.index');
     }

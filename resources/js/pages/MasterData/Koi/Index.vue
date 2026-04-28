@@ -31,12 +31,14 @@ import {
 type Breeder  = { id: number; name_breeder: string }
 type JenisKoi = { id: number; nama_jenis: string }
 type Customer = { id: number; name: string }
+type KoiImage = { id: number; koi_id: number; image_path: string; sort_order: number; url: string }
 type Koi = {
     id: number; breeder_id: number; jenis_koi_id: number | null
     code: string; name: string; age: number | null; size: number | null
     box_qty: number | null; weight: number | null; total_weight: number | null
     breeder?: Breeder; jenis_koi?: JenisKoi; customer?: Customer | null
     customer_id: number | null; sale_status: string | null; created_at: string
+    images?: KoiImage[]
 }
 
 // ─── Page props ───────────────────────────────────────────
@@ -96,9 +98,35 @@ function getJenisName(koi: Koi) {
     if (!koi.jenis_koi_id) return '-'
     return jenisKois.value.find(j => j.id === koi.jenis_koi_id)?.nama_jenis ?? '-'
 }
+function getFirstImage(koi: Koi): string | null {
+    if (koi.images && koi.images.length > 0) {
+        return koi.images[0].url
+    }
+    return null
+}
+function openImageModal(koi: Koi) {
+    selectedKoiImages.value = koi.images || []
+    showImageModal.value = true
+}
+function quickUpdateStatus(id: number, status: string) {
+    router.put(`/master-data/koi/${id}/status`, { sale_status: status || null }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            useSwal().fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Status berhasil diperbarui.',
+                timer: 2000,
+                showConfirmButton: false,
+            })
+        },
+    })
+}
 
 // ─── Modal state ──────────────────────────────────────────
 const showModal = ref(false)
+const showImageModal = ref(false)
+const selectedKoiImages = ref<KoiImage[]>([])
 
 const breederSearch  = ref('')
 const jenisSearch    = ref('')
@@ -455,8 +483,8 @@ function confirmDeleteKoi(id: number, name: string) {
             </div>
 
             <!-- DataTable -->
-            <div class="overflow-hidden rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
-                <div class="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="border border-sidebar-border/70 dark:border-sidebar-border rounded-lg overflow-visible">
+                <div class="flex flex-col gap-2 border-b border-border p-4 rounded-t-lg sm:flex-row sm:items-center sm:justify-between">
                     <Input :model-value="kSearch" @update:model-value="v => { kSearch = String(v); kPage = 1 }" placeholder="Cari code, nama, atau breeder..." class="max-w-sm" />
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">Show</span>
@@ -467,10 +495,11 @@ function confirmDeleteKoi(id: number, name: string) {
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto rounded-b-lg">
                     <table class="min-w-full divide-y divide-border">
                         <thead class="bg-muted">
                             <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="kToggleSort('code')">Code <span class="ml-1">{{ kSortIcon('code') }}</span></th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="kToggleSort('name')">Nama <span class="ml-1">{{ kSortIcon('name') }}</span></th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
@@ -481,21 +510,42 @@ function confirmDeleteKoi(id: number, name: string) {
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="paginatedKois.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-sm text-muted-foreground">{{ kSearch ? 'Tidak ada hasil.' : 'Belum ada data koi.' }}</td>
+                                <td colspan="7" class="px-4 py-8 text-center text-sm text-muted-foreground">{{ kSearch ? 'Tidak ada hasil.' : 'Belum ada data koi.' }}</td>
                             </tr>
                             <tr v-for="koi in paginatedKois" :key="koi.id" class="transition-colors hover:bg-muted/50">
+                                <td class="px-4 py-3">
+                                    <button type="button" @click="openImageModal(koi)" class="relative h-10 w-10 overflow-hidden rounded-full border border-border bg-muted">
+                                        <img v-if="getFirstImage(koi)" :src="getFirstImage(koi)!" class="h-full w-full object-cover" />
+                                        <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+                                            <ImagePlus :size="16" />
+                                        </div>
+                                    </button>
+                                </td>
                                 <td class="px-4 py-3 text-sm font-medium">{{ koi.code }}</td>
                                 <td class="px-4 py-3 text-sm">{{ koi.name }}</td>
                                 <td class="px-4 py-3 text-sm">{{ getBreederName(koi) }}</td>
                                 <td class="px-4 py-3 text-sm">{{ fmtDate(koi.created_at) }}</td>
                                 <td class="px-4 py-3 text-center">
-                                    <span v-if="koi.sale_status" :class="['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', statusClass(koi.sale_status)]">
-                                        {{ statusLabel(koi.sale_status) }}
-                                    </span>
-                                    <span v-else class="text-xs text-muted-foreground">-</span>
+                                    <span v-if="koi.sale_status" :class="statusClass(koi.sale_status)" class="inline-block rounded-full px-3 py-1 text-xs font-semibold">{{ statusLabel(koi.sale_status) }}</span>
+                                    <span v-else class="text-sm text-muted-foreground">-</span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        <Select :model-value="koi.sale_status || ''" @update:model-value="(val) => quickUpdateStatus(koi.id, val)">
+                                            <SelectTrigger class="h-9 w-32 border border-input bg-background rounded-md px-3 py-1.5 text-sm hover:bg-muted/50">
+                                                <SelectValue :placeholder="'Pilih Status'" />
+                                            </SelectTrigger>
+                                            <SelectContent side="top" class="z-50">
+                                                <SelectItem value="cancel">Cancel</SelectItem>
+                                                <SelectItem value="dead_refund">Dead Refund</SelectItem>
+                                                <SelectItem value="refund">Refund</SelectItem>
+                                                <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="shipped">Shipped</SelectItem>
+                                                <SelectItem value="azukari">Azukari</SelectItem>
+                                                <SelectItem value="dead">Dead</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         <Link :href="`/master-data/koi/${koi.id}`" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted" title="Detail"><Eye :size="16" /></Link>
                                         <Link :href="`/master-data/koi/${koi.id}/edit`" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted" title="Edit"><Pencil :size="16" /></Link>
                                         <button type="button" class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800" title="Hapus" @click="confirmDeleteKoi(koi.id, koi.name)"><Trash2 :size="16" /></button>
@@ -519,5 +569,27 @@ function confirmDeleteKoi(id: number, name: string) {
             </div>
 
         </div>
+
+        <!-- Image Modal -->
+        <Dialog v-model:open="showImageModal">
+            <DialogContent class="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Foto Koi</DialogTitle>
+                    <DialogDescription>Daftar foto untuk koi ini.</DialogDescription>
+                </DialogHeader>
+                <div v-if="selectedKoiImages.length > 0" class="grid grid-cols-2 gap-3">
+                    <div v-for="img in selectedKoiImages" :key="img.id" class="relative aspect-square overflow-hidden rounded-lg border">
+                        <img :src="img.url" class="h-full w-full object-cover" />
+                    </div>
+                </div>
+                <div v-else class="py-8 text-center text-muted-foreground">
+                    <ImagePlus class="mx-auto h-12 w-12 opacity-50" />
+                    <p class="mt-2 text-sm">Tidak ada foto</p>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" @click="showImageModal = false">Tutup</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>

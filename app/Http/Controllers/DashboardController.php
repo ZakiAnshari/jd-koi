@@ -3,11 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Breeder;
 use App\Models\Koi;
-use App\Models\Purchase;
-use App\Models\Role;
-use App\Models\Sale;
-use App\Models\Stock;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,49 +19,73 @@ class DashboardController extends Controller
             return redirect()->route('customer.dashboard');
         }
 
-        $isAdmin = true;
-
         $currentMonth = now()->month;
         $currentYear  = now()->year;
-        $completedSaleStatuses = ['azukari', 'shipped', 'sold'];
 
-        $totalSales = Sale::whereIn('status', $completedSaleStatuses)
-            ->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('sell_idr');
-        $totalProfit = Sale::whereIn('status', $completedSaleStatuses)
-            ->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('profit');
-        $totalKoiSold = Sale::whereIn('status', $completedSaleStatuses)
-            ->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('qty');
-        $totalStock = Stock::sum('qty');
+        // ── Stats bulan ini ──────────────────────────────────
+        $baseQuery = Koi::whereNotNull('sale_status')
+            ->whereMonth('sale_tanggal', $currentMonth)
+            ->whereYear('sale_tanggal', $currentYear);
 
-        $latestActivityLogs = [];
-        if ($isAdmin) {
-            $latestActivityLogs = ActivityLog::with('user:id,name')
-                ->orderByDesc('created_at')->limit(10)->get()
-                ->map(fn (ActivityLog $log) => [
-                    'id'          => $log->id,
-                    'user'        => $log->user ? ['name' => $log->user->name] : null,
-                    'action'      => $log->action,
-                    'description' => $log->description,
-                    'created_at'  => $log->created_at->toDateTimeString(),
-                ]);
-        }
+        $totalSalesIdr  = (clone $baseQuery)->sum('sell_idr');
+        $totalKoiSold   = (clone $baseQuery)->count();
+        $totalFee       = (clone $baseQuery)->sum('fee');
 
-        $adminStats = [];
-        if ($isAdmin) {
-            $customerRoleId = Role::where('name', 'customer')->value('id');
+        // ── Stats keseluruhan ────────────────────────────────
+        $totalKoi      = Koi::count();
+        $totalCustomer = User::where('role_id', 2)->count();
+        $totalBreeder  = Breeder::count();
 
-            $adminStats = [
-                'total_koi'       => Koi::count(),
-                'total_pembelian' => Purchase::count(),
-                'total_customer'  => $customerRoleId ? User::where('role_id', $customerRoleId)->count() : 0,
-            ];
-        }
+        // ── Breakdown status bulan ini ───────────────────────
+        $statusBreakdown = Koi::whereNotNull('sale_status')
+            ->whereMonth('sale_tanggal', $currentMonth)
+            ->whereYear('sale_tanggal', $currentYear)
+            ->selectRaw('sale_status, count(*) as total')
+            ->groupBy('sale_status')
+            ->pluck('total', 'sale_status');
+
+        // ── Transaksi terbaru ────────────────────────────────
+        $recentTransactions = Koi::with(['breeder:id,name_breeder', 'customer:id,name'])
+            ->whereNotNull('sale_status')
+            ->orderByDesc('sale_tanggal')
+            ->limit(8)
+            ->get(['id', 'code', 'name', 'sale_invoice', 'sale_tanggal', 'sale_status', 'sell_idr', 'breeder_id', 'customer_id'])
+            ->map(fn ($k) => [
+                'id'           => $k->id,
+                'code'         => $k->code,
+                'name'         => $k->name,
+                'sale_invoice' => $k->sale_invoice,
+                'sale_tanggal' => $k->sale_tanggal,
+                'sale_status'  => $k->sale_status,
+                'sell_idr'     => $k->sell_idr,
+                'breeder'      => $k->breeder?->name_breeder,
+                'customer'     => $k->customer?->name,
+            ]);
+
+        // ── Activity log ─────────────────────────────────────
+        $latestActivityLogs = ActivityLog::with('user:id,name')
+            ->orderByDesc('created_at')->limit(10)->get()
+            ->map(fn (ActivityLog $log) => [
+                'id'          => $log->id,
+                'user'        => $log->user ? ['name' => $log->user->name] : null,
+                'action'      => $log->action,
+                'description' => $log->description,
+                'created_at'  => $log->created_at->toDateTimeString(),
+            ]);
 
         return Inertia::render('Dashboard', [
-            'summary'            => compact('totalSales', 'totalProfit', 'totalKoiSold', 'totalStock'),
+            'stats' => [
+                'total_sales_idr'   => $totalSalesIdr,
+                'total_koi_sold'    => $totalKoiSold,
+                'total_fee'         => $totalFee,
+                'total_koi'         => $totalKoi,
+                'total_customer'    => $totalCustomer,
+                'total_breeder'     => $totalBreeder,
+                'status_breakdown'  => $statusBreakdown,
+                'current_month'     => now()->translatedFormat('F Y'),
+            ],
+            'recentTransactions' => $recentTransactions,
             'latestActivityLogs' => $latestActivityLogs,
-            'adminStats'         => $adminStats,
-            'customerStats'      => [],
         ]);
     }
 }

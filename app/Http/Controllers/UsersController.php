@@ -61,6 +61,22 @@ class UsersController extends Controller
         return to_route('admin.hak-akses.admin');
     }
 
+    public function storeCustomer(\Illuminate\Http\Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name'                  => ['required', 'string', 'max:255'],
+            'email'                 => ['required', 'email', 'max:255', 'unique:users,email'],
+            'no_telepon'            => ['nullable', 'string', 'max:20'],
+            'alamat'                => ['nullable', 'string', 'max:500'],
+            'password'              => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = User::create(array_merge($validated, ['role_id' => 2]));
+        ActivityLog::log('create', "Menambahkan data Customer \"{$user->name}\" (ID: {$user->id})", 'users');
+
+        return to_route('admin.hak-akses.customer');
+    }
+
     public function edit(User $user): Response
     {
         return Inertia::render('Users/Edit', [

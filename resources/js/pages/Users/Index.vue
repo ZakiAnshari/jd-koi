@@ -3,7 +3,6 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { Download, Eye, Pencil, Trash2 } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { destroy as usersDestroy, index as usersIndex, show as usersShow } from '@/routes/users'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
 import { useForm } from '@inertiajs/vue3'
@@ -123,7 +122,7 @@ function sortIcon(key: keyof User) {
     return sortOrder.value === 'asc' ? '↑' : '↓'
 }
 
-// ─── Modal + Form ───────────────────────────────────────
+// ─── Modal + Form (Admin) ───────────────────────────────
 const showModal = ref(false)
 
 const form = useForm({
@@ -146,6 +145,44 @@ const submit = () => {
             })
             form.reset()
             showModal.value = false
+        },
+        onError: () => {
+            useSwal().fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Terjadi kesalahan saat menyimpan data.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+        },
+    })
+}
+
+// ─── Modal + Form (Customer) ─────────────────────────────
+const showCustomerModal = ref(false)
+
+const customerForm = useForm({
+    name: '',
+    email: '',
+    no_telepon: '',
+    alamat: '',
+    password: '',
+    password_confirmation: '',
+})
+
+const submitCustomer = () => {
+    customerForm.post('/admin/hak-akses/customer', {
+        preserveScroll: true,
+        onSuccess: () => {
+            useSwal().fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data customer berhasil ditambahkan.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+            customerForm.reset()
+            showCustomerModal.value = false
         },
         onError: () => {
             useSwal().fire({
@@ -209,17 +246,75 @@ function confirmDelete(userId: number, userName: string) {
                     <p class="text-sm text-muted-foreground">Kelola akun {{ activeRole || 'user' }} dalam sistem.</p>
                 </div>
 
-                <Button
-                    v-if="activeRole === 'customer'"
-                    as="a"
-                    href="/admin/hak-akses/customer/export/excel"
-                    variant="outline"
-                    class="inline-flex items-center gap-2"
-                >
-                    <Download class="h-4 w-4" />
-                    Export Excel
-                </Button>
+                <!-- Tombol Export + Tambah Customer -->
+                <div v-if="activeRole === 'customer'" class="flex items-center gap-2">
+                    <Button
+                        as="a"
+                        href="/admin/hak-akses/customer/export/excel"
+                        variant="outline"
+                        class="inline-flex items-center gap-2"
+                    >
+                        <Download class="h-4 w-4" />
+                        Export Excel
+                    </Button>
 
+                    <Dialog v-model:open="showCustomerModal">
+                        <DialogTrigger as-child>
+                            <Button class="inline-flex items-center gap-2">+ Tambah Customer</Button>
+                        </DialogTrigger>
+                        <DialogContent class="sm:max-w-[480px]">
+                            <DialogHeader>
+                                <DialogTitle>Tambah Customer</DialogTitle>
+                                <DialogDescription>Buat akun customer baru.</DialogDescription>
+                            </DialogHeader>
+                            <form @submit.prevent="submitCustomer" class="space-y-3">
+                                <div class="grid gap-1.5">
+                                    <Label>Nama Lengkap <span class="text-red-500">*</span></Label>
+                                    <Input v-model="customerForm.name" placeholder="Nama lengkap" />
+                                    <InputError :message="customerForm.errors.name" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label>Email <span class="text-red-500">*</span></Label>
+                                    <Input v-model="customerForm.email" type="email" placeholder="email@example.com" />
+                                    <InputError :message="customerForm.errors.email" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label>No. Telepon</Label>
+                                    <Input v-model="customerForm.no_telepon" placeholder="08xxxxxxxxxx" />
+                                    <InputError :message="customerForm.errors.no_telepon" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label>Alamat</Label>
+                                    <textarea
+                                        v-model="customerForm.alamat"
+                                        rows="2"
+                                        placeholder="Alamat lengkap..."
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    />
+                                    <InputError :message="customerForm.errors.alamat" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label>Password <span class="text-red-500">*</span></Label>
+                                    <Input v-model="customerForm.password" type="password" placeholder="Min. 8 karakter" />
+                                    <InputError :message="customerForm.errors.password" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label>Konfirmasi Password <span class="text-red-500">*</span></Label>
+                                    <Input v-model="customerForm.password_confirmation" type="password" placeholder="Ulangi password" />
+                                    <InputError :message="customerForm.errors.password_confirmation" />
+                                </div>
+                                <DialogFooter class="pt-2">
+                                    <Button type="button" variant="outline" @click="showCustomerModal = false">Batal</Button>
+                                    <Button type="submit" :disabled="customerForm.processing">
+                                        {{ customerForm.processing ? 'Menyimpan...' : 'Simpan' }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                <!-- Tombol New User (Admin) -->
                 <Dialog v-if="activeRole !== 'customer'" v-model:open="showModal">
                     <DialogTrigger as-child>
                         <Button>New user</Button>

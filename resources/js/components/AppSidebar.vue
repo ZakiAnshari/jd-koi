@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Package, RotateCcw, ShieldCheck, Fish, Grid, ClipboardList } from 'lucide-vue-next';
+import { BookOpen, FolderGit2, LayoutGrid, User, Users, BarChart3, Package, RotateCcw, ShieldCheck, Fish, Grid, ClipboardList, UserCircle } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -76,6 +76,12 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: 'Rekap Transaksi',
             href: '/rekap-transaksi',
             icon: ClipboardList,
+        });
+
+        items.push({
+            title: 'Profil Saya',
+            href: '/customer/profile',
+            icon: UserCircle,
         });
     }
 

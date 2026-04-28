@@ -3,9 +3,16 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { Search, RotateCcw, Eye } from 'lucide-vue-next'
+import { Search, RotateCcw, Eye, MessageCircle, FileText, X, Download } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 type Breeder  = { id: number; name_breeder: string }
 type Customer = { id: number; name: string }
@@ -51,15 +58,63 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Rekap Transaksi', href: '/rekap-transaksi' },
 ]
 
-const fStatus   = ref(filters.status      ?? '')
+// ─── Filter state ─────────────────────────────────────────
+const fStatus   = ref<string|null>(filters.status      || null)
 const fCode     = ref(filters.code        ?? '')
 const fInvoice  = ref(filters.invoice     ?? '')
 const fDateFrom = ref(filters.date_from   ?? '')
 const fDateTo   = ref(filters.date_to     ?? '')
-const fBreeder  = ref(filters.breeder_id  ?? '')
-const fCustomer = ref(filters.customer_id ?? '')
+const fBreeder  = ref<string|null>(filters.breeder_id  ? filters.breeder_id  : null)
+const fCustomer = ref<string|null>(filters.customer_id ? filters.customer_id : null)
 const fPerPage  = ref(filters.per_page    ?? '50')
 
+// ─── Search filters ───────────────────────────────────────
+const statusSearch   = ref('')
+const breederSearch  = ref('')
+const customerSearch = ref('')
+
+// ─── Selection state ──────────────────────────────────────
+const selectedIds = ref<Set<number>>(new Set())
+
+// ─── Select options ───────────────────────────────────────
+const statusOptions = [
+    { value: 'pending',       label: 'Pending' },
+    { value: 'shipped',       label: 'Shipped' },
+    { value: 'azukari',       label: 'Azukari' },
+    { value: 'dead',          label: 'Dead' },
+    { value: 'cancel',        label: 'Cancel' },
+    { value: 'refund',        label: 'Refund' },
+    { value: 'dead_refund',   label: 'Dead Refund' },
+    { value: 'cancel_refund', label: 'Cancel Refund' },
+]
+
+const filteredStatusOptions = computed(() =>
+    !statusSearch.value ? statusOptions : statusOptions.filter(s => s.label.toLowerCase().includes(statusSearch.value.toLowerCase()))
+)
+
+const breederOptions = computed(() =>
+    breeders.value.map(b => ({ value: String(b.id), label: b.name_breeder }))
+)
+
+const filteredBreederOptions = computed(() =>
+    !breederSearch.value ? breederOptions.value : breederOptions.value.filter(b => b.label.toLowerCase().includes(breederSearch.value.toLowerCase()))
+)
+
+const customerOptions = computed(() =>
+    customers.value.map(c => ({ value: String(c.id), label: c.name }))
+)
+
+const filteredCustomerOptions = computed(() =>
+    !customerSearch.value ? customerOptions.value : customerOptions.value.filter(c => c.label.toLowerCase().includes(customerSearch.value.toLowerCase()))
+)
+
+const perPageOptions = [
+    { value: '25',  label: '25' },
+    { value: '50',  label: '50' },
+    { value: '100', label: '100' },
+]
+
+// ─── Actions ─────────────────────────────────────────────
 function applyFilter() {
     router.get('/rekap-transaksi', {
         status:      fStatus.value    || undefined,
@@ -74,17 +129,48 @@ function applyFilter() {
 }
 
 function resetFilter() {
-    fStatus.value = ''; fCode.value = ''; fInvoice.value = ''
+    fStatus.value = null; fCode.value = ''; fInvoice.value = ''
     fDateFrom.value = ''; fDateTo.value = ''
-    fBreeder.value = ''; fCustomer.value = ''
+    fBreeder.value = null; fCustomer.value = null
     fPerPage.value = '50'
     router.get('/rekap-transaksi', {}, { preserveState: false, replace: true })
 }
 
 function goTo(url: string | null) { if (url) router.visit(url) }
 
-function changePerPage(val: string) { fPerPage.value = val; applyFilter() }
+function changePerPage(val: string | null) {
+    if (val) { fPerPage.value = val; applyFilter() }
+}
 
+// ─── Selection functions ──────────────────────────────────
+const isAllSelected = computed(() => kois.value.data.length > 0 && kois.value.data.every(k => selectedIds.value.has(k.id)))
+const isSomeSelected = computed(() => selectedIds.value.size > 0)
+const selectedCount = computed(() => selectedIds.value.size)
+
+function toggleSelect(id: number) {
+    if (selectedIds.value.has(id)) {
+        selectedIds.value.delete(id)
+    } else {
+        selectedIds.value.add(id)
+    }
+    selectedIds.value = new Set(selectedIds.value)
+}
+
+function toggleSelectAll() {
+    if (isAllSelected.value) {
+        kois.value.data.forEach(k => selectedIds.value.delete(k.id))
+    } else {
+        kois.value.data.forEach(k => selectedIds.value.add(k.id))
+    }
+    selectedIds.value = new Set(selectedIds.value)
+}
+
+function clearSelection() {
+    selectedIds.value.clear()
+    selectedIds.value = new Set(selectedIds.value)
+}
+
+// ─── Display helpers ──────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
     pending: 'Pending', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
     cancel: 'Cancel', refund: 'Refund', dead_refund: 'Dead Refund', cancel_refund: 'Cancel Refund',
@@ -110,69 +196,94 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
 </script>
 
 <template>
-    <Head title="Rekap Transaksi" />
+    <Head title="Rekap Transaksi"/>
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-4 p-4">
 
-            <!-- ── Filters (no card) ── -->
+            <!-- ── Filters ── -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+
+                <!-- Status -->
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-semibold text-muted-foreground">Status:</label>
-                    <select v-model="fStatus"
-                        class="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                        <option value="" disabled>-- Pilih Status --</option>
-                        <option value="">Semua</option>
-                        <option v-for="(label, val) in STATUS_LABELS" :key="val" :value="val">{{ label }}</option>
-                    </select>
+                    <Select v-model="fStatus">
+                        <SelectTrigger class="w-full"><SelectValue placeholder="Semua Status" /></SelectTrigger>
+                        <SelectContent class="p-0 w-[--radix-select-trigger-width]">
+                            <div class="sticky top-0 bg-background p-2 border-b">
+                                <Input v-model="statusSearch" placeholder="Cari status..." class="h-8" @keydown.stop />
+                            </div>
+                            <div class="max-h-44 overflow-y-auto">
+                                <div v-if="filteredStatusOptions.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada status</div>
+                                <SelectItem v-for="s in filteredStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</SelectItem>
+                            </div>
+                        </SelectContent>
+                    </Select>
                 </div>
 
+                <!-- CODE -->
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-semibold text-muted-foreground">CODE:</label>
-                    <Input v-model="fCode" class="h-8 text-sm" @keyup.enter="applyFilter" />
+                    <Input v-model="fCode" class="h-[38px] text-sm" @keyup.enter="applyFilter" />
                 </div>
 
+                <!-- Invoice -->
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-semibold text-muted-foreground">Invoice:</label>
-                    <Input v-model="fInvoice" class="h-8 text-sm" @keyup.enter="applyFilter" />
+                    <Input v-model="fInvoice" class="h-[38px] text-sm" @keyup.enter="applyFilter" />
                 </div>
 
+                <!-- Sales Date -->
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-semibold text-muted-foreground">Sales Date:</label>
                     <div class="flex items-center gap-1">
-                        <Input v-model="fDateFrom" type="date" class="h-8 text-sm flex-1" />
+                        <Input v-model="fDateFrom" type="date" class="h-[38px] text-sm flex-1" />
                         <span class="text-muted-foreground text-xs">~</span>
-                        <Input v-model="fDateTo" type="date" class="h-8 text-sm flex-1" />
+                        <Input v-model="fDateTo" type="date" class="h-[38px] text-sm flex-1" />
                     </div>
                 </div>
 
+                <!-- Breeder -->
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-semibold text-muted-foreground">Bleeder:</label>
-                    <select v-model="fBreeder"
-                        class="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                        <option value="" disabled>-- Pilih Bleeder --</option>
-                        <option value="">Semua</option>
-                        <option v-for="b in breeders" :key="b.id" :value="String(b.id)">{{ b.name_breeder }}</option>
-                    </select>
+                    <label class="text-xs font-semibold text-muted-foreground">Breeder:</label>
+                    <Select v-model="fBreeder">
+                        <SelectTrigger class="w-full"><SelectValue placeholder="Semua Breeder" /></SelectTrigger>
+                        <SelectContent class="p-0 w-[--radix-select-trigger-width]">
+                            <div class="sticky top-0 bg-background p-2 border-b">
+                                <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
+                            </div>
+                            <div class="max-h-44 overflow-y-auto">
+                                <div v-if="filteredBreederOptions.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada breeder</div>
+                                <SelectItem v-for="b in filteredBreederOptions" :key="b.value" :value="b.value">{{ b.label }}</SelectItem>
+                            </div>
+                        </SelectContent>
+                    </Select>
                 </div>
 
+                <!-- Customer (admin only) -->
                 <div v-if="isAdmin" class="flex flex-col gap-1">
                     <label class="text-xs font-semibold text-muted-foreground">Customer:</label>
-                    <select v-model="fCustomer"
-                        class="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                        <option value="" disabled>-- Pilih Customer --</option>
-                        <option value="">Semua</option>
-                        <option v-for="c in customers" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                    </select>
+                    <Select v-model="fCustomer">
+                        <SelectTrigger class="w-full"><SelectValue placeholder="Semua Customer" /></SelectTrigger>
+                        <SelectContent class="p-0 w-[--radix-select-trigger-width]">
+                            <div class="sticky top-0 bg-background p-2 border-b">
+                                <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
+                            </div>
+                            <div class="max-h-44 overflow-y-auto">
+                                <div v-if="filteredCustomerOptions.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada customer</div>
+                                <SelectItem v-for="c in filteredCustomerOptions" :key="c.value" :value="c.value">{{ c.label }}</SelectItem>
+                            </div>
+                        </SelectContent>
+                    </Select>
                 </div>
 
-                <!-- Tombol di baris yang sama, rata kiri -->
+                <!-- Tombol Reset + Filter -->
                 <div class="flex items-end gap-2 col-span-2 md:col-span-1">
                     <button @click="resetFilter"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted transition">
+                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted transition h-[38px]">
                         <RotateCcw class="w-3.5 h-3.5" /> Reset
                     </button>
                     <button @click="applyFilter"
-                        class="inline-flex items-center gap-1.5 rounded-md bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 text-sm font-medium transition">
+                        class="inline-flex items-center gap-1.5 rounded-md bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 text-sm font-medium transition h-[38px]">
                         <Search class="w-3.5 h-3.5" /> Filter
                     </button>
                 </div>
@@ -185,14 +296,28 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                 </p>
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs text-muted-foreground">Show</span>
-                    <select :value="fPerPage" @change="changePerPage(($event.target as HTMLSelectElement).value)"
-                        class="rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none">
-                        <option value="" disabled>Pilih</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
+                    <div class="w-20">
+                        <Select :model-value="fPerPage" @update:model-value="changePerPage">
+                            <SelectTrigger class="w-full"><SelectValue placeholder="50" /></SelectTrigger>
+                            <SelectContent class="w-[--radix-select-trigger-width]">
+                                <SelectItem v-for="p in perPageOptions" :key="p.value" :value="p.value">{{ p.label }}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <span class="text-xs text-muted-foreground">entries</span>
+                </div>
+            </div>
+
+            <!-- ── Selection action bar ── -->
+            <div v-if="isSomeSelected" class="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 p-4">
+                <span class="text-sm font-medium">{{ selectedCount }} item{{ selectedCount > 1 ? 's' : '' }} dipilih</span>
+                <div class="flex gap-2">
+                    <Button size="sm" variant="outline" @click="() => router.post('/rekap-transaksi/export-pdf', { ids: Array.from(selectedIds) })">
+                        <Download class="w-4 h-4 mr-1" /> Download PDF
+                    </Button>
+                    <Button size="sm" variant="outline" @click="clearSelection">
+                        <X class="w-4 h-4 mr-1" /> Batal
+                    </Button>
                 </div>
             </div>
 
@@ -202,12 +327,15 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                     <table class="min-w-full divide-y divide-border">
                         <thead class="bg-muted">
                             <tr>
+                                <th class="w-12 px-4 py-3 text-center">
+                                    <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-border" />
+                                </th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
                                 <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bleeder</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price</th>
@@ -217,11 +345,14 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="kois.data.length === 0">
-                                <td :colspan="isAdmin ? 11 : 10" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                <td :colspan="isAdmin ? 12 : 11" class="px-4 py-8 text-center text-sm text-muted-foreground">
                                     Tidak ada data transaksi.
                                 </td>
                             </tr>
                             <tr v-for="koi in kois.data" :key="koi.id" class="transition-colors hover:bg-muted/50">
+                                <td class="w-12 px-4 py-3 text-center">
+                                    <input type="checkbox" :checked="selectedIds.has(koi.id)" @change="toggleSelect(koi.id)" class="w-4 h-4 rounded border-border" />
+                                </td>
                                 <td class="px-4 py-3 text-sm font-mono text-muted-foreground whitespace-nowrap">{{ koi.sale_invoice ?? '-' }}</td>
                                 <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">{{ koi.code }}</td>
                                 <td class="px-4 py-3 text-sm whitespace-nowrap">{{ fmtDate(koi.sale_tanggal) }}</td>
@@ -264,7 +395,7 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                     </div>
                 </div>
             </div>
-
         </div>
     </AppLayout>
 </template>
+

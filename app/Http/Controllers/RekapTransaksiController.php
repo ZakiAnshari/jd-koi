@@ -8,11 +8,19 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RekapTransaksiController extends Controller
 {
-    public function show(Koi $koi): Response
+    public function show(Request $request, Koi $koi): Response
     {
+        $user = $request->user();
+
+        // Customer hanya boleh lihat koi miliknya
+        if ($user->role_id !== 1 && $koi->customer_id !== $user->id) {
+            abort(403);
+        }
+
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
         return Inertia::render('Admin/RekapTransaksi/Show', ['koi' => $koi]);
     }
@@ -56,8 +64,8 @@ class RekapTransaksiController extends Controller
             $query->whereDate('sale_tanggal', '<=', $request->date_to);
         }
 
-        // Filter: breeder (admin only)
-        if ($isAdmin && $request->filled('breeder_id')) {
+        // Filter: breeder
+        if ($request->filled('breeder_id')) {
             $query->where('breeder_id', $request->breeder_id);
         }
 
@@ -85,5 +93,48 @@ class RekapTransaksiController extends Controller
             'isAdmin'   => $isAdmin,
             'filters'   => $request->only(['status', 'code', 'invoice', 'date_from', 'date_to', 'breeder_id', 'customer_id', 'jenis_koi_id', 'per_page']),
         ]);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $user  = $request->user();
+        $isAdmin = $user->role_id === 1;
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('error', 'Tidak ada item yang dipilih');
+        }
+
+        $query = Koi::whereIn('id', $ids)->with([
+            'breeder:id,name_breeder',
+            'jenisKoi:id,nama_jenis',
+            'images',
+            'customer:id,name',
+        ]);
+
+        // Customer hanya bisa export miliknya sendiri
+        if (!$isAdmin) {
+            $query->where('customer_id', $user->id);
+        }
+
+        $kois = $query->orderBy('sale_tanggal')->get();
+
+        if ($kois->isEmpty()) {
+            return back()->with('error', 'Data tidak ditemukan atau akses ditolak');
+        }
+
+        $pdf = Pdf::loadView('pdf.rekap-transaksi', [
+            'kois' => $kois,
+            'isAdmin' => $isAdmin,
+            'user' => $user,
+        ])->setPaper('A4', 'portrait')
+        ->setOption('enable_php', true)
+        ->setOption('dpi', 150)
+        ->setOption('margin-top', 20)
+        ->setOption('margin-right', 20)
+        ->setOption('margin-bottom', 20)
+        ->setOption('margin-left', 20);
+
+        return $pdf->download('rekap-transaksi-' . now()->format('Ymd-His') . '.pdf');
     }
 }

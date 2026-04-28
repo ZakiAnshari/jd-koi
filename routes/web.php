@@ -12,6 +12,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RekapTransaksiController;
+use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
     Route::get('rekap-transaksi', [RekapTransaksiController::class, 'index'])->name('rekap-transaksi.index');
     Route::get('rekap-transaksi/{koi}', [RekapTransaksiController::class, 'show'])->name('rekap-transaksi.show');
+    Route::post('rekap-transaksi/export-pdf', [RekapTransaksiController::class, 'exportPdf'])->name('rekap-transaksi.export-pdf');
+
+    // Customer Profile
+    Route::get('customer/profile', [CustomerProfileController::class, 'edit'])->name('customer.profile.edit');
+    Route::put('customer/profile', [CustomerProfileController::class, 'update'])->name('customer.profile.update');
+    Route::put('customer/profile/password', [CustomerProfileController::class, 'updatePassword'])->name('customer.profile.password');
 });
 
 // Admin-Only Routes
@@ -57,6 +64,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
     Route::get('master-data/koi/{koi}/edit', [KoisController::class, 'edit'])->name('kois.edit');
     Route::put('master-data/koi/{koi}', [KoisController::class, 'update'])->name('kois.update');
     Route::delete('master-data/koi/{koi}', [KoisController::class, 'destroy'])->name('kois.destroy');
+    Route::put('master-data/koi/{koi}/status', [KoisController::class, 'updateStatus'])->name('kois.updateStatus');
     Route::delete('master-data/koi/{koi}/images/{koiImage}', [KoisController::class, 'deleteImage'])->name('kois.images.destroy');
     //CUSTUMER
     Route::get('master-data/customer', [CustomersController::class, 'index'])->name('customers.index');
@@ -99,6 +107,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
         Route::get('hak-akses/admin/{user}/edit', [UsersController::class, 'editAdmin'])->name('hak-akses.admin.edit');
         Route::put('hak-akses/admin/{user}', [UsersController::class, 'updateAdmin'])->name('hak-akses.admin.update');
         Route::get('hak-akses/customer', [UsersController::class, 'hakAkses'])->defaults('role', 'customer')->name('hak-akses.customer');
+        Route::post('hak-akses/customer', [UsersController::class, 'storeCustomer'])->name('hak-akses.customer.store');
         Route::get('hak-akses/customer/export/excel', [UsersController::class, 'exportCustomerExcel'])->name('hak-akses.customer.export-excel');
         Route::get('hak-akses/customer/{user}', [UsersController::class, 'showCustomer'])->name('hak-akses.customer.show');
     });

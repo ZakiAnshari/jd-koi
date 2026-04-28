@@ -22,7 +22,7 @@ defineProps<{
                         <div
                             class="mb-1 flex h-30 w-30 items-center justify-center"
                         >
-                            <img src="@/components/ui/images/KOI-4.png" alt="KOI Logo" class="size-30 object-contain" />
+                            <img src="/JD-KOI.PNG" alt="KOI Logo" class="size-30 object-contain" />
                         </div>
                         <span class="sr-only">{{ title }}</span>
                     </Link>
