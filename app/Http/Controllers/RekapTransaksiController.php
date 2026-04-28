@@ -34,6 +34,7 @@ class RekapTransaksiController extends Controller
             'breeder:id,name_breeder',
             'jenisKoi:id,nama_jenis',
             'customer:id,name',
+            'images:id,koi_id,image_path,sort_order',
         ])->whereNotNull('sale_status');
 
         // Customer hanya lihat data miliknya sendiri

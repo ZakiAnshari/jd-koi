@@ -3,7 +3,7 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { Search, RotateCcw, Eye, MessageCircle, FileText, X, Download } from 'lucide-vue-next'
+import { Search, RotateCcw, Eye, X, Download, ImagePlus } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,6 +13,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 
 type Breeder  = { id: number; name_breeder: string }
 type Customer = { id: number; name: string }
@@ -35,6 +41,7 @@ type KoiRow = {
     breeder: Breeder | null
     jenis_koi: { id: number; nama_jenis: string } | null
     customer: Customer | null
+    images: { id: number; url: string }[]
 }
 
 type Paginator = {
@@ -76,6 +83,17 @@ const customerSearch = ref('')
 
 // ─── Selection state ──────────────────────────────────────
 const selectedIds = ref<Set<number>>(new Set())
+
+// ─── Photo modal ──────────────────────────────────────────
+const showPhotoModal  = ref(false)
+const photoModalImages = ref<{ id: number; url: string }[]>([])
+const photoModalCode   = ref('')
+
+function openPhotoModal(koi: KoiRow) {
+    photoModalImages.value = koi.images ?? []
+    photoModalCode.value   = koi.code
+    showPhotoModal.value   = true
+}
 
 // ─── Select options ───────────────────────────────────────
 const statusOptions = [
@@ -357,6 +375,7 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <th class="w-12 px-4 py-3 text-center">
                                     <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-border" />
                                 </th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
@@ -372,13 +391,20 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="kois.data.length === 0">
-                                <td :colspan="isAdmin ? 12 : 11" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                <td :colspan="isAdmin ? 13 : 12" class="px-4 py-8 text-center text-sm text-muted-foreground">
                                     Tidak ada data transaksi.
                                 </td>
                             </tr>
                             <tr v-for="koi in kois.data" :key="koi.id" class="transition-colors hover:bg-muted/50">
                                 <td class="w-12 px-4 py-3 text-center">
                                     <input type="checkbox" :checked="selectedIds.has(koi.id)" @change="toggleSelect(koi.id)" class="w-4 h-4 rounded border-border" />
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <button type="button" @click="openPhotoModal(koi)"
+                                        class="relative h-9 w-9 overflow-hidden rounded-lg border border-border bg-muted mx-auto flex items-center justify-center hover:ring-2 hover:ring-primary/40 transition-all">
+                                        <img v-if="koi.images?.length" :src="koi.images[0].url" class="h-full w-full object-cover" />
+                                        <ImagePlus v-else class="w-4 h-4 text-muted-foreground" />
+                                    </button>
                                 </td>
                                 <td class="px-4 py-3 text-sm font-mono text-muted-foreground whitespace-nowrap">{{ koi.sale_invoice ?? '-' }}</td>
                                 <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">{{ koi.code }}</td>
@@ -423,6 +449,24 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                 </div>
             </div>
         </div>
+        <!-- Photo Modal -->
+        <Dialog v-model:open="showPhotoModal">
+            <DialogContent class="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Foto Koi — {{ photoModalCode }}</DialogTitle>
+                </DialogHeader>
+                <div v-if="photoModalImages.length > 0" class="grid grid-cols-2 gap-3 mt-2">
+                    <div v-for="img in photoModalImages" :key="img.id"
+                        class="aspect-square overflow-hidden rounded-lg border border-border">
+                        <img :src="img.url" class="h-full w-full object-cover" />
+                    </div>
+                </div>
+                <div v-else class="py-12 flex flex-col items-center gap-2 text-muted-foreground">
+                    <ImagePlus class="w-10 h-10 opacity-40" />
+                    <p class="text-sm">Tidak ada foto</p>
+                </div>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 
