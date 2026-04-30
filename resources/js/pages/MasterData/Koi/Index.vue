@@ -347,11 +347,11 @@ function confirmDeleteKoi(id: number, name: string) {
 
                                 <div class="space-y-3 pl-3">
                                     <!-- Breeder & Jenis Koi -->
-                                    <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Breeder <span class="text-red-500">*</span></Label>
                                             <Select v-model="form.breeder_id">
-                                                <SelectTrigger><SelectValue placeholder="Pilih breeder" /></SelectTrigger>
+                                                <SelectTrigger class="w-full"><SelectValue placeholder="Pilih breeder" /></SelectTrigger>
                                                 <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
                                                     <div class="sticky top-0 bg-background p-2 border-b">
                                                         <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
@@ -367,7 +367,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Jenis Koi</Label>
                                             <Select v-model="form.jenis_koi_id">
-                                                <SelectTrigger><SelectValue placeholder="Pilih jenis koi" /></SelectTrigger>
+                                                <SelectTrigger class="w-full"><SelectValue placeholder="Pilih jenis koi" /></SelectTrigger>
                                                 <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
                                                     <div class="sticky top-0 bg-background p-2 border-b">
                                                         <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
@@ -383,7 +383,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                     </div>
 
                                     <!-- Kode & Nama -->
-                                    <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Kode Koi <span class="text-red-500">*</span></Label>
                                             <Input v-model="form.code" placeholder="KOI-001" />
@@ -573,7 +573,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Customer</Label>
                                             <Select v-model="form.customer_id">
-                                                <SelectTrigger><SelectValue placeholder="Pilih customer" /></SelectTrigger>
+                                                <SelectTrigger class="w-full"><SelectValue placeholder="Pilih customer" /></SelectTrigger>
                                                 <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
                                                     <div class="sticky top-0 bg-background p-2 border-b flex items-center gap-1.5">
                                                         <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8 flex-1" @keydown.stop />
@@ -593,7 +593,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Status</Label>
                                             <Select v-model="form.sale_status">
-                                                <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                                                <SelectTrigger class="w-full"><SelectValue placeholder="Pilih status" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="pending">Pending</SelectItem>
                                                     <SelectItem value="shipped">Shipped</SelectItem>

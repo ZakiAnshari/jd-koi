@@ -26,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('rekap-transaksi', [RekapTransaksiController::class, 'index'])->name('rekap-transaksi.index');
     Route::get('rekap-transaksi/export-pdf', [RekapTransaksiController::class, 'exportPdf'])->name('rekap-transaksi.export-pdf');
     Route::get('rekap-transaksi/invoice-pdf', [RekapTransaksiController::class, 'exportInvoicePdf'])->name('rekap-transaksi.invoice-pdf');
+    Route::get('rekap-transaksi/invoice-excel', [RekapTransaksiController::class, 'exportInvoiceExcel'])->name('rekap-transaksi.invoice-excel');
     Route::get('rekap-transaksi/{koi}', [RekapTransaksiController::class, 'show'])->name('rekap-transaksi.show');
 
     // Customer Profile

@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\InvoiceExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RekapTransaksiController extends Controller
 {
@@ -181,5 +183,33 @@ class RekapTransaksiController extends Controller
           ->setOption('dpi', 150);
 
         return $pdf->download('invoice-' . $invoiceNumber . '.pdf');
+    }
+
+    public function exportInvoiceExcel(Request $request)
+    {
+        $invoiceNumber = $request->query('invoice');
+
+        if (!$invoiceNumber) abort(400, 'No invoice number provided');
+
+        $user    = $request->user();
+        $isAdmin = $user->role_id === 1;
+
+        $query = Koi::where('sale_invoice', $invoiceNumber)
+            ->with(['breeder:id,name_breeder', 'images', 'customer:id,name']);
+
+        if (!$isAdmin) $query->where('customer_id', $user->id);
+
+        $kois = $query->orderBy('sale_tanggal')->get();
+
+        if ($kois->isEmpty()) abort(404, 'Invoice tidak ditemukan');
+
+        $customerName = $kois->first()->customer?->name ?? 'Pelanggan';
+        $grandTotal   = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
+        $totalFee     = $kois->sum(fn($k) => $k->fee ?? 0);
+
+        return Excel::download(
+            new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee),
+            $customerName . '.xlsx'
+        );
     }
 }

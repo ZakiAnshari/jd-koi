@@ -84,7 +84,12 @@ const stockPriceIdr = computed(() => {
     const k = Number(props.koi.kurs)   || 0
     return b > 0 && k > 0 ? Math.round(b * k) : null
 })
-const profit = computed(() => salesPriceIdr.value - (stockPriceIdr.value ?? 0) - Number(props.koi.fee ?? 0))
+const totalModalIdr = computed(() => {
+    const m = Number(props.koi.stock_price) || 0
+    const q = Number(props.koi.sale_qty)    || 1
+    return m > 0 ? Math.round(m * q) : null
+})
+const profit = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) - Number(props.koi.fee ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -126,8 +131,8 @@ const STATUS_CLASS: Record<string, string> = {
             <!-- Content -->
             <div class="grid gap-6 lg:grid-cols-3">
                 <!-- Left: Carousel -->
-                <div class="rounded-lg border border-sidebar-border/70 bg-background p-4 lg:col-span-1">
-                    <h2 class="mb-3 text-base font-semibold">Foto Koi</h2>
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-1">
+                    <h2 class="mb-5 text-base font-semibold">Foto Koi</h2>
 
                     <div v-if="images.length === 0"
                         class="flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/40 py-16 text-muted-foreground">
@@ -186,8 +191,8 @@ const STATUS_CLASS: Record<string, string> = {
                 <!-- Right: Details -->
                 <div class="space-y-4 lg:col-span-2">
                     <!-- Identitas -->
-                    <div class="rounded-lg border border-sidebar-border/70 bg-background p-4">
-                        <h2 class="mb-3 text-base font-semibold">Informasi Identitas</h2>
+                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
+                        <h2 class="mb-5 text-base font-semibold">Informasi Identitas</h2>
                         <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Code</dt>
@@ -213,8 +218,8 @@ const STATUS_CLASS: Record<string, string> = {
                     </div>
 
                     <!-- Data Fisik -->
-                    <div class="rounded-lg border border-sidebar-border/70 bg-background p-4">
-                        <h2 class="mb-3 text-base font-semibold">Data Fisik</h2>
+                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
+                        <h2 class="mb-5 text-base font-semibold">Data Fisik</h2>
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</dt>
@@ -242,8 +247,8 @@ const STATUS_CLASS: Record<string, string> = {
                     </div>
 
                     <!-- Penjualan -->
-                    <div class="rounded-lg border border-sidebar-border/70 bg-background p-4">
-                        <h2 class="mb-3 text-base font-semibold">Penjualan</h2>
+                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
+                        <h2 class="mb-5 text-base font-semibold">Penjualan</h2>
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</dt>
@@ -264,14 +269,21 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.sale_qty ?? '-' }}</dd>
                             </div>
-                            <!-- Stock JPY -->
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stock JPY (modal)</dt>
+                            <!-- Modal Price IDR/ekor -->
+                            <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ koi.stock_price != null ? fmtIDR(koi.stock_price) : '-' }}
+                                </dd>
+                                <dd v-if="totalModalIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">Total × {{ koi.sale_qty || 1 }} = {{ fmtIDR(totalModalIdr) }}</dd>
+                            </div>
+                            <!-- <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stock JPY (harga beli)</dt>
                                 <dd class="mt-1 font-medium text-foreground">
                                     {{ koi.buy_jpy != null ? '¥' + Number(koi.buy_jpy).toLocaleString('ja-JP') : '-' }}
                                 </dd>
-                                <dd v-if="stockPriceIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">≈ {{ fmtIDR(stockPriceIdr) }}</dd>
-                            </div>
+                                <dd v-if="stockPriceIdr" class="mt-0.5 text-xs text-muted-foreground">≈ {{ fmtIDR(stockPriceIdr) }}</dd>
+                            </div> -->
                             <!-- Unit Price JPY -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</dt>

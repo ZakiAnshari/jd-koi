@@ -211,6 +211,20 @@ function downloadInvoicePdf() {
     window.open('/rekap-transaksi/invoice-pdf?invoice=' + encodeURIComponent(invoiceNumbers[0]!), '_blank')
 }
 
+function downloadInvoiceExcel() {
+    const selectedKois = (kois.value.data ?? []).filter((k: any) => selectedIds.value.has(k.id))
+    const invoiceNumbers = [...new Set(selectedKois.map((k: any) => k.sale_invoice).filter(Boolean))]
+    if (invoiceNumbers.length === 0) {
+        fire({ icon: 'warning', title: 'Tidak ada invoice', text: 'Koi yang dipilih tidak memiliki nomor invoice.' })
+        return
+    }
+    if (invoiceNumbers.length > 1) {
+        fire({ icon: 'warning', title: 'Invoice berbeda', text: 'Pilih koi dengan nomor invoice yang sama untuk export Excel.' })
+        return
+    }
+    window.open('/rekap-transaksi/invoice-excel?invoice=' + encodeURIComponent(invoiceNumbers[0]!), '_blank')
+}
+
 // ─── Display helpers ──────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
     pending: 'Pending', shipped: 'Shipped', azukari: 'Azukari', dead: 'Dead',
@@ -358,8 +372,11 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                     <Button size="sm" variant="outline" @click="downloadPdf">
                         <Download class="w-4 h-4 mr-1" /> Rekap PDF
                     </Button>
-                    <Button size="sm" variant="default" @click="downloadInvoicePdf">
+                    <Button size="sm" variant="outline" @click="downloadInvoicePdf">
                         <Download class="w-4 h-4 mr-1" /> Invoice PDF
+                    </Button>
+                    <Button size="sm" variant="outline" @click="downloadInvoiceExcel">
+                        <Download class="w-4 h-4 mr-1" /> Invoice Excel
                     </Button>
                     <Button size="sm" variant="outline" @click="clearSelection">
                         <X class="w-4 h-4 mr-1" /> Batal

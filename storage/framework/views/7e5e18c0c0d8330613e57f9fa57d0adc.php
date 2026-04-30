@@ -239,7 +239,9 @@
                     <div class="desc-info">
                         <div class="desc-name"><?php echo e($koi->name); ?></div>
                         <div class="desc-code"><?php echo e($koi->code); ?></div>
-                        <?php if($tanggal || $shipped): ?>
+                        <?php if($koi->azukari_period): ?>
+                            <div class="desc-period"><?php echo e($koi->azukari_period); ?></div>
+                        <?php elseif($tanggal || $shipped): ?>
                             <div class="desc-period">
                                 <?php echo e($tanggal ?? ''); ?><?php if($tanggal && $shipped): ?> – <?php echo e($shipped); ?><?php elseif($shipped): ?><?php echo e($shipped); ?><?php endif; ?>
                             </div>

@@ -173,6 +173,17 @@ const salesPriceIdr = computed(() => {
 const profit         = computed(() => (salesPriceIdr.value ?? 0) - (totalModalIdr.value ?? 0) - Number(form.fee || 0))
 const profitPositive = computed(() => profit.value >= 0)
 
+// Fee select (seperti Create)
+const feePct = ref<string | null>(
+    form.fee && form.sell_idr && Number(form.sell_idr) > 0
+        ? String(Math.round(Number(form.fee) / Number(form.sell_idr) * 100))
+        : null
+)
+function onFeeSelect(val: unknown) {
+    feePct.value = val !== null ? String(val) : null
+    form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100)))
+}
+
 function fmtInput(val: string | number): string {
     const n = String(val).replace(/\D/g, '')
     return n ? Number(n).toLocaleString('id-ID') : ''
@@ -257,364 +268,396 @@ const submit = () => {
                 </Link>
             </div>
 
-            <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
-                <form @submit.prevent="submit" class="space-y-6">
+            <form @submit.prevent="submit" class="space-y-6">
 
-                    <!-- Data Identitas -->
+                <!-- ═══════════════════════════════════════════
+                     SECTION 1: DATA KOI
+                ═══════════════════════════════════════════════ -->
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
+                    <h2 class="mb-5 text-base font-semibold">Data Koi</h2>
+
                     <div class="space-y-4">
-                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Data Identitas</h3>
+                        <!-- Breeder & Jenis Koi -->
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <!-- Breeder -->
+                            <div class="grid gap-2">
+                                <Label>Breeder <span class="text-red-500">*</span></Label>
+                                <Select v-model="form.breeder_id">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="Pilih breeder" />
+                                    </SelectTrigger>
+                                    <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                        <div class="sticky top-0 border-b bg-background p-2">
+                                            <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
+                                        </div>
+                                        <div class="max-h-48 overflow-y-auto">
+                                            <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Breeder tidak ditemukan</div>
+                                            <SelectItem v-for="b in filteredBreeders" :key="b.id" :value="String(b.id)">
+                                                {{ b.name_breeder }}
+                                            </SelectItem>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="form.errors.breeder_id" />
+                            </div>
 
-                        <!-- Breeder -->
-                        <div class="grid gap-2">
-                            <Label>Breeder *</Label>
-                            <Select v-model="form.breeder_id">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Pilih breeder" />
-                                </SelectTrigger>
-                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
-                                    <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Breeder tidak ditemukan</div>
-                                        <SelectItem v-for="b in filteredBreeders" :key="b.id" :value="String(b.id)">
-                                            {{ b.name_breeder }}
-                                        </SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.breeder_id" />
-                        </div>
-
-                        <!-- Jenis Koi -->
-                        <div class="grid gap-2">
-                            <Label>Jenis Koi</Label>
-                            <Select v-model="form.jenis_koi_id">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Pilih jenis koi (opsional)" />
-                                </SelectTrigger>
-                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
-                                    <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredJenisKois.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Jenis koi tidak ditemukan</div>
-                                        <SelectItem v-for="j in filteredJenisKois" :key="j.id" :value="String(j.id)">
-                                            {{ j.nama_jenis }}
-                                        </SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.jenis_koi_id" />
+                            <!-- Jenis Koi -->
+                            <div class="grid gap-2">
+                                <Label>Jenis Koi <span class="text-xs font-normal text-muted-foreground">(opsional)</span></Label>
+                                <Select v-model="form.jenis_koi_id">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="Pilih jenis koi (opsional)" />
+                                    </SelectTrigger>
+                                    <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                        <div class="sticky top-0 border-b bg-background p-2">
+                                            <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
+                                        </div>
+                                        <div class="max-h-48 overflow-y-auto">
+                                            <div v-if="filteredJenisKois.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Jenis koi tidak ditemukan</div>
+                                            <SelectItem v-for="j in filteredJenisKois" :key="j.id" :value="String(j.id)">
+                                                {{ j.nama_jenis }}
+                                            </SelectItem>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="form.errors.jenis_koi_id" />
+                            </div>
                         </div>
 
                         <!-- Code & Name -->
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div class="grid gap-2">
-                                <Label for="code">Kode Koi *</Label>
+                                <Label for="code">Kode Koi <span class="text-red-500">*</span></Label>
                                 <Input id="code" v-model="form.code" placeholder="Contoh: KOI-001" />
                                 <InputError :message="form.errors.code" />
                             </div>
                             <div class="grid gap-2">
-                                <Label for="name">Nama Koi *</Label>
+                                <Label for="name">Nama Koi <span class="text-red-500">*</span></Label>
                                 <Input id="name" v-model="form.name" placeholder="Nama koi" />
                                 <InputError :message="form.errors.name" />
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Data Fisik -->
-                    <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
-                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                            <div class="grid gap-2">
-                                <Label for="age">Age (bulan)</Label>
-                                <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" />
-                                <InputError :message="form.errors.age" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label for="size">Size (cm)</Label>
-                                <Input id="size" v-model="form.size" type="number" min="0" step="0.01" placeholder="0.00" />
-                                <InputError :message="form.errors.size" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label for="box_qty">Box QTY</Label>
-                                <Input id="box_qty" v-model="form.box_qty" type="number" min="0" placeholder="0" />
-                                <InputError :message="form.errors.box_qty" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label for="weight">Weight (kg)</Label>
-                                <Input id="weight" v-model="form.weight" type="number" min="0" step="0.001" placeholder="0.000" />
-                                <InputError :message="form.errors.weight" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Foto Koi -->
-                    <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
-                        <h3 class="mb-4 font-semibold">Foto Koi</h3>
-
-                        <div v-if="existingImages.length > 0" class="mb-4">
-                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Tersimpan</p>
-                            <div class="flex flex-wrap gap-3">
-                                <div v-for="img in existingImages" :key="img.id"
-                                    class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
-                                    <img :src="img.url" alt="Foto koi" class="h-full w-full object-cover" />
-                                    <button type="button" @click="markDeleteExisting(img.id)"
-                                        class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Hapus foto">
-                                        <X class="h-5 w-5 text-white" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-if="existingImages.length === 0 && fotoPreviews.length === 0"
-                            class="mb-3 text-xs italic text-muted-foreground">
-                            Belum ada foto tersimpan.
-                        </div>
-
-                        <div v-if="fotoPreviews.length > 0" class="mb-4">
-                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Baru</p>
-                            <div class="flex flex-wrap gap-3">
-                                <div v-for="(preview, i) in fotoPreviews" :key="i"
-                                    class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
-                                    <img :src="preview.url" :alt="`Preview ${i + 1}`" class="h-full w-full object-cover" />
-                                    <button type="button" @click="removeNewImage(i)"
-                                        class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Batalkan">
-                                        <X class="h-5 w-5 text-white" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-                            <ImagePlus class="h-5 w-5 flex-shrink-0" />
-                            <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
-                            <input type="file" accept="image/jpg,image/jpeg,image/png,image/webp"
-                                multiple class="sr-only" @change="handleImagesChange" />
-                        </label>
-                        <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
-                    </div>
-
-                    <!-- Penjualan -->
-                    <div class="rounded-lg border border-border p-4 space-y-4">
-                        <h3 class="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Penjualan</h3>
-
-                        <!-- Invoice (read-only) -->
-                        <div class="grid gap-2" v-if="koi.sale_invoice">
-                            <Label>Invoice</Label>
-                            <div class="flex items-center h-9 rounded-md border border-input bg-muted px-3 text-sm font-mono text-muted-foreground">
-                                {{ koi.sale_invoice }}
-                            </div>
-                        </div>
-
-                        <!-- Customer -->
-                        <div class="grid gap-2">
-                            <Label>Customer</Label>
-                            <Select v-model="form.customer_id">
-                                <SelectTrigger><SelectValue placeholder="Pilih customer (opsional)" /></SelectTrigger>
-                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
-                                    <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredCustomers.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Tidak ditemukan</div>
-                                        <SelectItem v-for="c in filteredCustomers" :key="c.id" :value="String(c.id)">{{ c.name }}</SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.customer_id" />
-                        </div>
-
-                        <!-- Status -->
-                        <div class="grid gap-2">
-                            <Label>Status</Label>
-                            <Select v-model="form.sale_status">
-                                <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="cancel">Cancel</SelectItem>
-                                    <SelectItem value="dead_refund">Dead Refund</SelectItem>
-                                    <SelectItem value="refund">Refund</SelectItem>
-                                    <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="shipped">Shipped</SelectItem>
-                                    <SelectItem value="azukari">Azukari</SelectItem>
-                                    <SelectItem value="dead">Dead</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.sale_status" />
-                        </div>
-
-                        <!-- Tanggal & Qty -->
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <div class="grid gap-2">
-                                <Label>Tanggal Penjualan</Label>
-                                <Input v-model="form.sale_tanggal" type="date" />
-                                <InputError :message="form.errors.sale_tanggal" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label>Tanggal Shipped</Label>
-                                <Input v-model="form.sale_shipped_date" type="date" />
-                                <InputError :message="(form.errors as any).sale_shipped_date" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label>Qty (ekor)</Label>
-                                <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" />
-                                <InputError :message="form.errors.sale_qty" />
-                            </div>
-                        </div>
-
-                        <!-- Kalkulasi harga -->
+                        <!-- Data Fisik -->
                         <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kalkulasi Harga</p>
-
-                            <!-- Kurs -->
-                            <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
-                                <div class="flex items-center justify-between">
-                                    <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
-                                    <div class="flex items-center gap-1.5">
-                                        <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
-                                        <template v-else>
-                                            <span v-if="kursIsManual"
-                                                class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">
-                                                ✎ Manual
-                                            </span>
-                                            <span v-else-if="exchangeRateError"
-                                                class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">
-                                                ⚠ Fallback
-                                            </span>
-                                            <span v-else
-                                                class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
-                                                ✓ Live API
-                                            </span>
-                                            <button v-if="kursIsManual" type="button" @click="resetKurs"
-                                                class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
-                                                Gunakan API
-                                            </button>
-                                        </template>
-                                    </div>
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
+                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                <div class="grid gap-2">
+                                    <Label for="age" class="text-xs">Age (bulan)</Label>
+                                    <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" />
+                                    <InputError :message="form.errors.age" />
                                 </div>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
-                                    <input
-                                        type="text" inputmode="numeric"
-                                        :value="fmtInput(kursInput.value)"
-                                        @input="e => { kursIsManual = true; kursInput.value = parseInput(e) }"
-                                        placeholder="0"
-                                        class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors"
-                                    />
-                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
+                                <div class="grid gap-2">
+                                    <Label for="size" class="text-xs">Size (cm)</Label>
+                                    <Input id="size" v-model="form.size" type="number" min="0" step="0.01" placeholder="0.00" />
+                                    <InputError :message="form.errors.size" />
                                 </div>
-                                <p class="text-[11px] text-red-600/80 dark:text-red-400/80">
-                                    Otomatis dari API · langsung ketik untuk ubah manual
-                                </p>
+                                <div class="grid gap-2">
+                                    <Label for="box_qty" class="text-xs">Box QTY</Label>
+                                    <Input id="box_qty" v-model="form.box_qty" type="number" min="0" placeholder="0" />
+                                    <InputError :message="form.errors.box_qty" />
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="weight" class="text-xs">Weight (kg)</Label>
+                                    <Input id="weight" v-model="form.weight" type="number" min="0" step="0.001" placeholder="0.000" />
+                                    <InputError :message="form.errors.weight" />
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Row 1: Stock JPY & Sales Price JPY -->
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="space-y-1.5">
-                                    <Label class="text-xs font-medium text-muted-foreground">Stock JPY</Label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">¥</span>
-                                        <Input
-                                            type="text" inputmode="numeric"
-                                            :value="fmtInput(form.buy_jpy)"
-                                            @input="e => { form.buy_jpy = parseInput(e) }"
-                                            placeholder="0"
-                                            class="h-9 text-sm pl-7"
-                                        />
+                        <!-- Foto Koi -->
+                        <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
+                            <h3 class="mb-3 font-semibold">Foto Koi</h3>
+
+                            <div v-if="existingImages.length > 0" class="mb-4">
+                                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Tersimpan</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <div v-for="img in existingImages" :key="img.id"
+                                        class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
+                                        <img :src="img.url" alt="Foto koi" class="h-full w-full object-cover" />
+                                        <button type="button" @click="markDeleteExisting(img.id)"
+                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Hapus foto">
+                                            <X class="h-5 w-5 text-white" />
+                                        </button>
                                     </div>
-                                    <InputError :message="(form.errors as any).buy_jpy" />
-                                </div>
-                                <div class="space-y-1.5">
-                                    <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
-                                        <Input
-                                            type="text" inputmode="numeric"
-                                            :value="fmtInput(form.unit_price)"
-                                            @input="e => { form.unit_price = parseInput(e) }"
-                                            placeholder="0"
-                                            class="h-9 text-sm pl-7"
-                                        />
-                                    </div>
-                                    <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                        <span class="text-muted-foreground">≈ IDR/unit</span>
-                                        <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
-                                    </div>
-                                    <InputError :message="form.errors.sell_idr" />
                                 </div>
                             </div>
 
-                            <!-- Row 2: Modal Price IDR & Total Sales IDR -->
-                            <div class="grid grid-cols-2 gap-3">
-                                <!-- Modal Price IDR (input langsung) -->
-                                <div class="space-y-1.5">
-                                    <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</Label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 dark:text-blue-400">Rp</span>
-                                        <Input
-                                            type="text" inputmode="numeric"
-                                            :value="fmtInput(form.stock_price)"
-                                            @input="e => { form.stock_price = parseInput(e) }"
-                                            placeholder="0"
-                                            class="h-9 text-sm pl-9 border-blue-300 dark:border-blue-700 focus:border-blue-500"
-                                        />
+                            <div v-if="existingImages.length === 0 && fotoPreviews.length === 0"
+                                class="mb-3 text-xs italic text-muted-foreground">
+                                Belum ada foto tersimpan.
+                            </div>
+
+                            <div v-if="fotoPreviews.length > 0" class="mb-4">
+                                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto Baru</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <div v-for="(preview, i) in fotoPreviews" :key="i"
+                                        class="relative h-24 w-24 overflow-hidden rounded-lg border border-border group">
+                                        <img :src="preview.url" :alt="`Preview ${i + 1}`" class="h-full w-full object-cover" />
+                                        <button type="button" @click="removeNewImage(i)"
+                                            class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Batalkan">
+                                            <X class="h-5 w-5 text-white" />
+                                        </button>
                                     </div>
-                                    <div v-if="totalModalIdr" class="rounded border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-2.5 py-1.5 text-[11px]">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-blue-700 dark:text-blue-300 font-medium">Total Modal × {{ form.sale_qty || 1 }}</span>
-                                            <span class="font-bold text-blue-800 dark:text-blue-200">{{ fmtIDR(totalModalIdr) }}</span>
+                                </div>
+                            </div>
+
+                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+                                <ImagePlus class="h-5 w-5 flex-shrink-0" />
+                                <span>Pilih foto (jpg, jpeg, png, webp · maks. 2 MB per file · bisa pilih beberapa)</span>
+                                <input type="file" accept="image/jpg,image/jpeg,image/png,image/webp"
+                                    multiple class="sr-only" @change="handleImagesChange" />
+                            </label>
+                            <InputError :message="(form.errors as any)['images.*']" class="mt-1" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════
+                     SECTION 2: PENJUALAN
+                ═══════════════════════════════════════════════ -->
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
+                    <h2 class="mb-5 text-base font-semibold">Penjualan</h2>
+
+                    <div class="space-y-5">
+
+                        <!-- ══ SECTION: Modal ══ -->
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="h-4 w-1 rounded-full bg-blue-500"></div>
+                                <p class="text-sm font-semibold">Modal</p>
+                            </div>
+                            <div class="pl-3">
+                                <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <!-- Modal Price IDR/ekor -->
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 dark:text-blue-400">Rp</span>
+                                                <Input type="text" inputmode="numeric" :value="fmtInput(form.stock_price)" @input="e => { form.stock_price = parseInput(e) }" placeholder="0" class="h-9 text-sm pl-9 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
+                                            </div>
+                                            <div v-if="totalModalIdr" class="rounded border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-2.5 py-1 text-[11px] flex justify-between">
+                                                <span class="text-blue-700 dark:text-blue-300 font-medium">Total Modal × {{ form.sale_qty || 1 }}</span>
+                                                <span class="font-bold text-blue-800 dark:text-blue-200">{{ fmtIDR(totalModalIdr) }}</span>
+                                            </div>
+                                            <InputError :message="(form.errors as any).stock_price" />
+                                        </div>
+                                        <!-- Stock JPY -->
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Stock JPY (harga beli)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
+                                                <Input type="text" inputmode="numeric" :value="fmtInput(form.buy_jpy)" @input="e => { form.buy_jpy = parseInput(e) }" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700" />
+                                            </div>
+                                            <InputError :message="(form.errors as any).buy_jpy" />
                                         </div>
                                     </div>
-                                    <InputError :message="(form.errors as any).stock_price" />
-                                </div>
-                                <!-- Total Sales IDR (auto) -->
-                                <div class="space-y-1.5">
-                                    <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
-                                    <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
-                                        {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
-                                    </div>
-                                    <p class="text-[10px] text-muted-foreground">Sales JPY × {{ form.sale_qty || 1 }} ekor × kurs</p>
-                                </div>
-                            </div>
-
-                            <!-- Fee & Profit -->
-                            <div class="grid grid-cols-2 gap-3 pt-1">
-                                <div class="grid gap-1.5">
-                                    <Label class="text-xs font-medium text-muted-foreground">Fee (IDR)</Label>
-                                    <Input
-                                        type="text" inputmode="numeric"
-                                        :value="fmtInput(form.fee)"
-                                        @input="e => { form.fee = parseInput(e) }"
-                                        placeholder="0"
-                                        class="h-9 text-sm"
-                                    />
-                                    <InputError :message="form.errors.fee" />
-                                </div>
-                                <div class="grid gap-1.5">
-                                    <Label class="text-xs font-medium text-muted-foreground">Profit</Label>
-                                    <div class="flex h-9 items-center rounded-md border px-3 text-sm font-semibold"
-                                        :class="profitPositive ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400' : 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400'">
-                                        {{ fmtIDR(profit) }}
+                                    <!-- Qty -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty (ekor)</Label>
+                                        <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" class="h-9 text-sm border-blue-300 dark:border-blue-700" />
+                                        <InputError :message="form.errors.sale_qty" />
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="flex items-center gap-4">
-                        <Button type="submit" :disabled="form.processing">
-                            {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
-                        </Button>
-                        <Link href="/master-data/koi" class="text-sm text-muted-foreground hover:text-foreground">
-                            Batal
-                        </Link>
+                        <div class="border-t border-border"></div>
+
+                        <!-- ══ SECTION: Transaksi ══ -->
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="h-4 w-1 rounded-full bg-green-500"></div>
+                                <p class="text-sm font-semibold">Transaksi</p>
+                            </div>
+
+                            <div class="space-y-3 pl-3">
+
+                                <!-- Customer & Status -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Customer</Label>
+                                        <Select v-model="form.customer_id">
+                                            <SelectTrigger class="w-full"><SelectValue placeholder="Pilih customer (opsional)" /></SelectTrigger>
+                                            <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                                <div class="sticky top-0 border-b bg-background p-2">
+                                                    <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
+                                                </div>
+                                                <div class="max-h-48 overflow-y-auto">
+                                                    <div v-if="filteredCustomers.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Tidak ditemukan</div>
+                                                    <SelectItem v-for="c in filteredCustomers" :key="c.id" :value="String(c.id)">{{ c.name }}</SelectItem>
+                                                </div>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.customer_id" />
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Status</Label>
+                                        <Select v-model="form.sale_status">
+                                            <SelectTrigger class="w-full"><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="cancel">Cancel</SelectItem>
+                                                <SelectItem value="dead_refund">Dead Refund</SelectItem>
+                                                <SelectItem value="refund">Refund</SelectItem>
+                                                <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="shipped">Shipped</SelectItem>
+                                                <SelectItem value="azukari">Azukari</SelectItem>
+                                                <SelectItem value="dead">Dead</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.sale_status" />
+                                    </div>
+                                </div>
+
+                                <!-- Invoice (read-only) -->
+                                <div v-if="koi.sale_invoice" class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">No. Invoice</Label>
+                                    <div class="flex items-center h-9 rounded-md border border-input bg-muted px-3 text-sm font-mono text-muted-foreground">
+                                        {{ koi.sale_invoice }}
+                                    </div>
+                                </div>
+
+                                <!-- Tanggal Penjualan & Shipped -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Tanggal Penjualan</Label>
+                                        <Input v-model="form.sale_tanggal" type="date" class="h-9 text-sm" />
+                                        <InputError :message="form.errors.sale_tanggal" />
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Tanggal Shipped</Label>
+                                        <Input v-model="form.sale_shipped_date" type="date" class="h-9 text-sm" />
+                                        <InputError :message="(form.errors as any).sale_shipped_date" />
+                                    </div>
+                                </div>
+
+                                <!-- Kurs JPY → IDR -->
+                                <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
+                                        <div class="flex items-center gap-1.5">
+                                            <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
+                                            <template v-else>
+                                                <span v-if="kursIsManual" class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">✎ Manual</span>
+                                                <span v-else-if="exchangeRateError" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">⚠ Fallback</span>
+                                                <span v-else class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">✓ Live API</span>
+                                                <button v-if="kursIsManual" type="button" @click="resetKurs" class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">Gunakan API</button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
+                                        <input type="text" inputmode="numeric"
+                                            :value="fmtInput(kursInput)"
+                                            @input="e => { kursIsManual = true; kursInput = parseInput(e) }"
+                                            placeholder="0"
+                                            class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors" />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
+                                    </div>
+                                    <p class="text-[11px] text-red-600/80 dark:text-red-400/80">Otomatis dari API · langsung ketik untuk ubah manual</p>
+                                </div>
+
+                                <!-- Harga -->
+                                <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                                    <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Harga</p>
+
+                                    <!-- Sales Price JPY & Total Sales IDR -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                                <Input type="text" inputmode="numeric" :value="fmtInput(form.unit_price)" @input="e => { form.unit_price = parseInput(e) }" placeholder="0" class="h-9 text-sm pl-7" />
+                                            </div>
+                                            <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                <span class="text-muted-foreground">≈ IDR/unit</span>
+                                                <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
+                                            </div>
+                                            <InputError :message="form.errors.sell_idr" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                            <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
+                                                {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
+                                            </div>
+                                            <p class="text-[10px] text-muted-foreground">Sales JPY × {{ form.sale_qty || 1 }} ekor × kurs</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fee -->
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Fee</Label>
+                                        <Select v-model="feePct" @update:model-value="onFeeSelect">
+                                            <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">No Fee</SelectItem>
+                                                <SelectItem value="5">5%</SelectItem>
+                                                <SelectItem value="7.5">7.5%</SelectItem>
+                                                <SelectItem value="10">10%</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.fee" />
+                                    </div>
+                                </div>
+
+                                <!-- Ringkasan -->
+                                <div v-if="salesPriceIdr || totalModalIdr" class="rounded-md border border-border overflow-hidden text-xs">
+                                    <div class="bg-muted/60 px-4 py-2 border-b border-border flex items-center justify-between">
+                                        <p class="text-[11px] font-semibold text-foreground uppercase tracking-wider">Ringkasan</p>
+                                        <span class="text-[10px] text-muted-foreground">Kurs ¥1 = Rp {{ Number(kursInput || 0).toLocaleString('id-ID') }}</span>
+                                    </div>
+                                    <div class="divide-y divide-border/60">
+                                        <div class="px-4 py-2.5 flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-foreground">Modal</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">Rp {{ Number(form.stock_price||0).toLocaleString('id-ID') }} × {{ form.sale_qty || 1 }} ekor</p>
+                                            </div>
+                                            <span class="font-semibold text-blue-600 dark:text-blue-400">{{ totalModalIdr ? fmtIDR(totalModalIdr) : '-' }}</span>
+                                        </div>
+                                        <div class="px-4 py-2.5 flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-foreground">Total Sales</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">¥{{ Number(form.unit_price||0).toLocaleString('ja-JP') }} × {{ form.sale_qty||1 }} ekor × kurs</p>
+                                            </div>
+                                            <span class="font-semibold text-green-600 dark:text-green-400">{{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}</span>
+                                        </div>
+                                        <div v-if="Number(form.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
+                                            <p class="font-medium text-foreground">Fee <span v-if="feePct && Number(feePct) > 0" class="font-normal text-muted-foreground">({{ feePct }}%)</span></p>
+                                            <span class="font-semibold text-green-600 dark:text-green-400">+ {{ fmtIDR(Number(form.fee)) }}</span>
+                                        </div>
+                                        <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
+                                            <div>
+                                                <p class="font-bold text-sm text-foreground">Profit</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">Sales − Modal + Fee</p>
+                                            </div>
+                                            <span class="font-bold text-sm" :class="profitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                                {{ fmtIDR(profit) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
                     </div>
-                </form>
-            </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="flex items-center gap-4">
+                    <Button type="submit" :disabled="form.processing">
+                        {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
+                    </Button>
+                    <Link href="/master-data/koi" class="text-sm text-muted-foreground hover:text-foreground">
+                        Batal
+                    </Link>
+                </div>
+
+            </form>
         </div>
     </AppLayout>
 </template>

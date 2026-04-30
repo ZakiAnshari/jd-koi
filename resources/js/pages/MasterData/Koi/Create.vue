@@ -242,48 +242,51 @@ function submit() {
                     <h2 class="mb-5 text-base font-semibold">Data Koi</h2>
 
                     <div class="space-y-4">
-                        <!-- Breeder -->
-                        <div class="grid gap-2">
-                            <Label>Breeder <span class="text-red-500">*</span></Label>
-                            <Select v-model="form.breeder_id">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Pilih breeder" />
-                                </SelectTrigger>
-                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
-                                    <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Breeder tidak ditemukan</div>
-                                        <SelectItem v-for="b in filteredBreeders" :key="b.id" :value="String(b.id)">
-                                            {{ b.name_breeder }}
-                                        </SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.breeder_id" />
-                        </div>
+                        <!-- Breeder & Jenis Koi -->
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <!-- Breeder -->
+                            <div class="grid gap-2">
+                                <Label>Breeder <span class="text-red-500">*</span></Label>
+                                <Select v-model="form.breeder_id">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="Pilih breeder" />
+                                    </SelectTrigger>
+                                    <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                        <div class="sticky top-0 border-b bg-background p-2">
+                                            <Input v-model="breederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
+                                        </div>
+                                        <div class="max-h-48 overflow-y-auto">
+                                            <div v-if="filteredBreeders.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Breeder tidak ditemukan</div>
+                                            <SelectItem v-for="b in filteredBreeders" :key="b.id" :value="String(b.id)">
+                                                {{ b.name_breeder }}
+                                            </SelectItem>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="form.errors.breeder_id" />
+                            </div>
 
-                        <!-- Jenis Koi -->
-                        <div class="grid gap-2">
-                            <Label>Jenis Koi</Label>
-                            <Select v-model="form.jenis_koi_id">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Pilih jenis koi (opsional)" />
-                                </SelectTrigger>
-                                <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
-                                    <div class="sticky top-0 border-b bg-background p-2">
-                                        <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        <div v-if="filteredJenisKois.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Jenis koi tidak ditemukan</div>
-                                        <SelectItem v-for="j in filteredJenisKois" :key="j.id" :value="String(j.id)">
-                                            {{ j.nama_jenis }}
-                                        </SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                            <InputError :message="form.errors.jenis_koi_id" />
+                            <!-- Jenis Koi -->
+                            <div class="grid gap-2">
+                                <Label>Jenis Koi</Label>
+                                <Select v-model="form.jenis_koi_id">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue placeholder="Pilih jenis koi (opsional)" />
+                                    </SelectTrigger>
+                                    <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                        <div class="sticky top-0 border-b bg-background p-2">
+                                            <Input v-model="jenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
+                                        </div>
+                                        <div class="max-h-48 overflow-y-auto">
+                                            <div v-if="filteredJenisKois.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Jenis koi tidak ditemukan</div>
+                                            <SelectItem v-for="j in filteredJenisKois" :key="j.id" :value="String(j.id)">
+                                                {{ j.nama_jenis }}
+                                            </SelectItem>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="form.errors.jenis_koi_id" />
+                            </div>
                         </div>
 
                         <!-- Code & Name -->

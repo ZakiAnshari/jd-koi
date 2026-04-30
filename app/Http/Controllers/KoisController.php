@@ -143,7 +143,7 @@ class KoisController extends Controller
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
 
         return Inertia::render('MasterData/Koi/Show', [
-            'koi' => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'created_at', 'updated_at', 'breeder', 'jenis_koi', 'customer', 'customer_id', 'sale_tanggal', 'sale_qty', 'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note']),
+            'koi' => $koi,
         ]);
     }
 
