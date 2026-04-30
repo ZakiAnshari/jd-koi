@@ -31,7 +31,17 @@ class DashboardController extends Controller
         $totalKoiSold   = (clone $baseQuery)->count();
         $totalFee       = (clone $baseQuery)->sum('fee');
 
-        // Margin = sell_idr - (buy_jpy × kurs × sale_qty)
+        // Modal = stock_price (JPY) × kurs × sale_qty
+        $totalModal = (clone $baseQuery)
+            ->selectRaw('SUM(COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1)) as modal')
+            ->value('modal') ?? 0;
+
+        // Profit = (sell_idr - modal_terjual) + fee
+        $totalProfit = (clone $baseQuery)
+            ->selectRaw('SUM((COALESCE(sell_idr,0) - (COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) + COALESCE(fee,0)) as profit')
+            ->value('profit') ?? 0;
+
+        // Margin lama (legacy)
         $totalMargin = (clone $baseQuery)
             ->selectRaw('SUM(sell_idr - (COALESCE(buy_jpy,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) as margin')
             ->value('margin') ?? 0;
@@ -81,6 +91,8 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'stats' => [
                 'total_sales_idr'   => $totalSalesIdr,
+                'total_modal'       => $totalModal,
+                'total_profit'      => $totalProfit,
                 'total_margin'      => $totalMargin,
                 'total_koi_sold'    => $totalKoiSold,
                 'total_fee'         => $totalFee,

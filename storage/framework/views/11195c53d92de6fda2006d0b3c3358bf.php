@@ -315,19 +315,32 @@
                         <!-- Right: Harga -->
                         <?php
                             $unitPriceJpy  = $koi->unit_price ? (float) $koi->unit_price : null;
+                            $stockJpy      = $koi->buy_jpy    ? (float) $koi->buy_jpy    : null;
                             $qty           = $koi->sale_qty   ? (int)   $koi->sale_qty   : 1;
                             $salesPriceJpy = $unitPriceJpy ? $unitPriceJpy * $qty : null;
-                            $unitPriceIdr  = ($unitPriceJpy && $koi->kurs) ? round($unitPriceJpy * (float) $koi->kurs) : null;
+                            $kursVal       = $koi->kurs ? (float) $koi->kurs : null;
+                            $unitPriceIdr  = ($unitPriceJpy && $kursVal) ? round($unitPriceJpy * $kursVal) : null;
+                            $stockPriceIdr = ($stockJpy && $kursVal)     ? round($stockJpy     * $kursVal) : null;
                             $salesPriceIdr = $koi->sell_idr ? (float) $koi->sell_idr : null;
                             $fee           = $koi->fee ? (float) $koi->fee : 0;
-                            $margin        = $salesPriceIdr !== null && $unitPriceIdr !== null
-                                             ? $salesPriceIdr - $unitPriceIdr - $fee
+                            $profit        = $salesPriceIdr !== null && $stockPriceIdr !== null
+                                             ? $salesPriceIdr - $stockPriceIdr - $fee
                                              : null;
                         ?>
                         <div class="g2-right">
                             <div class="section-title">Informasi Harga</div>
                             <div class="price-box">
                                 <table class="dt">
+                                    <tr>
+                                        <td class="lbl">Stock JPY (modal)</td>
+                                        <td class="val">
+                                            <?php echo e($stockJpy ? '¥ ' . number_format($stockJpy, 0, ',', '.') : '-'); ?>
+
+                                            <?php if($stockPriceIdr): ?>
+                                                <br><span style="font-size:9px; color:#888;">≈ Rp <?php echo e(number_format($stockPriceIdr, 0, ',', '.')); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
                                     <tr>
                                         <td class="lbl">Unit Price (JPY)</td>
                                         <td class="val">
@@ -360,11 +373,11 @@
                                             <td class="val">Rp <?php echo e(number_format($fee, 0, ',', '.')); ?></td>
                                         </tr>
                                     <?php endif; ?>
-                                    <?php if($isAdmin && $margin !== null): ?>
+                                    <?php if($isAdmin && $profit !== null): ?>
                                         <tr style="border-top: 1px solid #2255bb;">
-                                            <td class="lbl" style="color:<?php echo e($margin >= 0 ? '#1e7e34' : '#c0392b'); ?>; font-weight:bold;">Margin / Profit</td>
-                                            <td class="val" style="color:<?php echo e($margin >= 0 ? '#1e7e34' : '#c0392b'); ?>; font-weight:bold;">
-                                                Rp <?php echo e(number_format($margin, 0, ',', '.')); ?>
+                                            <td class="lbl" style="color:<?php echo e($profit >= 0 ? '#1e7e34' : '#c0392b'); ?>; font-weight:bold;">Profit</td>
+                                            <td class="val" style="color:<?php echo e($profit >= 0 ? '#1e7e34' : '#c0392b'); ?>; font-weight:bold;">
+                                                Rp <?php echo e(number_format($profit, 0, ',', '.')); ?>
 
                                             </td>
                                         </tr>

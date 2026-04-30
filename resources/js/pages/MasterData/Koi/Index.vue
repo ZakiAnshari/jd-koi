@@ -31,6 +31,7 @@ import {
 type Breeder  = { id: number; name_breeder: string }
 type JenisKoi = { id: number; nama_jenis: string }
 type Customer = { id: number; name: string }
+type Invoice  = { sale_invoice: string; koi_count: number }
 type KoiImage = { id: number; koi_id: number; image_path: string; sort_order: number; url: string }
 type Koi = {
     id: number; breeder_id: number; jenis_koi_id: number | null
@@ -47,6 +48,7 @@ const kois      = computed(() => (page.props.kois      as Koi[]      | null) ?? 
 const breeders  = computed(() => (page.props.breeders  as Breeder[]  | null) ?? [])
 const jenisKois = computed(() => (page.props.jenisKois as JenisKoi[] | null) ?? [])
 const customers = computed(() => (page.props.customers as Customer[] | null) ?? [])
+const invoices  = computed(() => (page.props.invoices  as Invoice[]  | null) ?? [])
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -140,7 +142,6 @@ const kursInput           = ref('')
 const kursIsManual        = ref(false)
 
 async function fetchExchangeRate() {
-    if (exchangeRate.value > 0) return
     exchangeRateLoading.value = true; exchangeRateError.value = false
     try {
         const res  = await fetch('https://api.exchangerate-api.com/v4/latest/JPY')
@@ -151,8 +152,17 @@ async function fetchExchangeRate() {
     } catch { exchangeRateError.value = true; exchangeRate.value = 110 }
     finally  { exchangeRateLoading.value = false }
 }
+fetchExchangeRate()
 
-watch(showModal, open => { if (open) fetchExchangeRate() })
+watch(showModal, open => {
+    if (!open) return
+    kursIsManual.value = false
+    if (exchangeRate.value > 0) {
+        kursInput.value = String(exchangeRate.value)
+    } else {
+        fetchExchangeRate()
+    }
+})
 watch(exchangeRate, rate => { if (rate > 0 && !kursIsManual.value) kursInput.value = String(rate) })
 watch(kursInput, v => { form.kurs = v })
 function resetKurs() { kursIsManual.value = false; kursInput.value = String(exchangeRate.value) }
@@ -162,12 +172,15 @@ const form = useForm({
     breeder_id: '', jenis_koi_id: '', code: '', name: '',
     age: '', size: '', box_qty: '', weight: '', total_weight: '',
     images: [] as File[],
-    customer_id: '', sale_tanggal: '', sale_qty: '1',
-    unit_price: '', kurs: '', sell_idr: '', fee: '0',
+    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
+    buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: 'shipped',
+    shipping_cost: '', shipping_qty: '', shipping_note: '',
 })
 
-// unit_price (JPY) × qty × kurs → sell_idr (IDR)
+const modalQty = ref('')
+
+// unit_price × qty × kurs → sell_idr
 watch([() => form.unit_price, () => form.sale_qty, kursInput], ([price, qty, kurs]) => {
     const p = Number(price) || 0
     const q = Number(qty)   || 1
@@ -175,22 +188,54 @@ watch([() => form.unit_price, () => form.sale_qty, kursInput], ([price, qty, kur
     form.sell_idr = p > 0 && k > 0 ? String(Math.round(p * q * k)) : ''
 })
 
-// Previews
+// ─── Computed previews ────────────────────────────────────
+// Modal Price IDR per ekor = stock_price (JPY) × kurs
+const modalPriceIdr = computed(() => {
+    const m = Number(form.stock_price) || 0
+    const k = Number(kursInput.value)  || 0
+    return m > 0 && k > 0 ? Math.round(m * k) : null
+})
+// Total Modal IDR = modal price IDR × modal_qty (stok disiapkan)
+const totalModalIdr = computed(() => {
+    const m = modalPriceIdr.value      || 0
+    const q = Number(modalQty.value)   || 0
+    return m > 0 && q > 0 ? Math.round(m * q) : null
+})
+// Modal IDR untuk qty yang terjual (dipakai di profit)
+const modalTerjualIdr = computed(() => {
+    const m = modalPriceIdr.value   || 0
+    const q = Number(form.sale_qty) || 1
+    return m > 0 ? Math.round(m * q) : null
+})
+// Unit price IDR preview
 const unitPriceIdr = computed(() => {
     const p = Number(form.unit_price) || 0
     const k = Number(kursInput.value) || 0
     return p > 0 && k > 0 ? Math.round(p * k) : null
 })
+// Sales Price JPY (unit × qty)
 const salesPriceJpy = computed(() => {
     const p = Number(form.unit_price) || 0
     const q = Number(form.sale_qty)   || 1
     return p > 0 ? p * q : null
 })
+// Sales Price IDR
 const salesPriceIdr = computed(() => {
     const jpy = salesPriceJpy.value
     const k   = Number(kursInput.value) || 0
     return jpy && k > 0 ? Math.round(jpy * k) : null
 })
+// Shipping per ekor = total shipping ÷ jumlah ikan sepaket
+const shippingPerEkor = computed(() => {
+    const cost = Number(form.shipping_cost) || 0
+    const qty  = Number(form.shipping_qty)  || 0
+    return cost > 0 && qty > 0 ? Math.round(cost / qty) : null
+})
+
+// Profit = (Sell IDR − Modal IDR − Shipping/ekor) + Fee
+const profit = computed(() =>
+    (salesPriceIdr.value ?? 0) - (modalTerjualIdr.value ?? 0) - (shippingPerEkor.value ?? 0) + Number(form.fee || 0)
+)
 
 const filteredBreeders  = computed(() => !breederSearch.value  ? breeders.value  : breeders.value.filter(b => b.name_breeder.toLowerCase().includes(breederSearch.value.toLowerCase())))
 const filteredJenisKois = computed(() => !jenisSearch.value   ? jenisKois.value  : jenisKois.value.filter(j => j.nama_jenis.toLowerCase().includes(jenisSearch.value.toLowerCase())))
@@ -226,6 +271,13 @@ function fmtInput(val: string | number): string {
 }
 function parseInput(e: Event): string {
     return (e.target as HTMLInputElement).value.replace(/\D/g, '')
+}
+function onKursInput(e: Event) { kursIsManual.value = true; kursInput.value = parseInput(e) }
+function onBuyJpyInput(e: Event) { form.buy_jpy = parseInput(e) }
+function onUnitPriceInput(e: Event) { form.unit_price = parseInput(e) }
+function onFeeSelect(val: unknown) {
+    feePct.value = val !== null ? String(val) : null
+    form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100)))
 }
 
 // ─── Image handlers ───────────────────────────────────────
@@ -394,12 +446,124 @@ function confirmDeleteKoi(id: number, name: string) {
 
                             <div class="border-t border-border"></div>
 
-                            <!-- ══ SECTION: Penjualan ══ -->
+                            <!-- ══ SECTION: Modal ══ -->
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="h-4 w-1 rounded-full bg-blue-500"></div>
+                                    <p class="text-sm font-semibold">Modal</p>
+                                </div>
+
+                                <div class="space-y-3 pl-3">
+                                    <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-3">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <!-- Modal Price JPY -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</Label>
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
+                                                    <Input
+                                                        type="text" inputmode="numeric"
+                                                        :value="fmtInput(form.stock_price)"
+                                                        @input="(e: Event) => { form.stock_price = parseInput(e) }"
+                                                        placeholder="0"
+                                                        class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500"
+                                                    />
+                                                </div>
+                                                <div v-if="modalPriceIdr" class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                    <span class="text-muted-foreground">≈ IDR/ekor</span>
+                                                    <span class="font-semibold text-blue-700 dark:text-blue-400">{{ fmtIDR(modalPriceIdr) }}</span>
+                                                </div>
+                                                <InputError :message="(form.errors as any).stock_price" />
+                                            </div>
+                                            <!-- Qty Modal (stok disiapkan) -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty Modal (ekor)</Label>
+                                                <Input
+                                                    type="number" min="1" placeholder="1"
+                                                    v-model="modalQty"
+                                                    class="h-9 text-sm border-blue-300 dark:border-blue-700"
+                                                />
+                                                <p class="text-[10px] text-muted-foreground">Stok yang disiapkan</p>
+                                            </div>
+                                        </div>
+                                        <!-- Total Modal -->
+                                        <div v-if="totalModalIdr" class="rounded border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                            <span class="text-blue-700 dark:text-blue-300 font-medium">Total Modal ({{ modalQty || 1 }} ekor)</span>
+                                            <span class="font-bold text-blue-800 dark:text-blue-200">{{ fmtIDR(totalModalIdr) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-border"></div>
+
+                            <!-- ══ SECTION: Shipping ══ -->
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="h-4 w-1 rounded-full bg-orange-500"></div>
+                                    <p class="text-sm font-semibold">Shipping</p>
+                                    <span class="text-xs text-muted-foreground">(opsional)</span>
+                                </div>
+
+                                <div class="space-y-3 pl-3">
+                                    <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <!-- Total Biaya Shipping -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-orange-600 dark:text-orange-400">Rp</span>
+                                                    <Input
+                                                        type="text" inputmode="numeric"
+                                                        :value="fmtInput(form.shipping_cost)"
+                                                        @input="(e: Event) => { form.shipping_cost = parseInput(e) }"
+                                                        placeholder="0"
+                                                        class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
+                                                    />
+                                                </div>
+                                                <InputError :message="(form.errors as any).shipping_cost" />
+                                            </div>
+                                            <!-- Jumlah Ikan Sepaket -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
+                                                <Input
+                                                    v-model="form.shipping_qty"
+                                                    type="number" min="1" placeholder="1"
+                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                                />
+                                                <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
+                                                <InputError :message="(form.errors as any).shipping_qty" />
+                                            </div>
+                                        </div>
+
+                                        <!-- Shipping per ekor (auto) -->
+                                        <div v-if="shippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                            <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
+                                        </div>
+
+                                        <!-- Keterangan Shipping -->
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
+                                            <Input
+                                                v-model="form.shipping_note"
+                                                type="text"
+                                                placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
+                                                class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                            />
+                                            <InputError :message="(form.errors as any).shipping_note" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-border"></div>
+
+                            <!-- ══ SECTION: Transaksi ══ -->
                             <div class="space-y-1">
                                 <div class="flex items-center gap-2 mb-3">
                                     <div class="h-4 w-1 rounded-full bg-green-500"></div>
-                                    <p class="text-sm font-semibold">Penjualan</p>
-                                    <span class="text-xs text-muted-foreground">(opsional)</span>
+                                    <p class="text-sm font-semibold">Transaksi</p>
                                 </div>
 
                                 <div class="space-y-3 pl-3">
@@ -413,7 +577,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
                                                     <div class="sticky top-0 bg-background p-2 border-b flex items-center gap-1.5">
                                                         <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8 flex-1" @keydown.stop />
-                                                        <a href="/master-data/customer" target="_blank" title="Buka halaman Customer"
+                                                        <a href="/admin/hak-akses/customer" target="_blank" title="Buka halaman Customer"
                                                             class="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                                                             <ExternalLink class="w-3.5 h-3.5" />
                                                         </a>
@@ -445,97 +609,167 @@ function confirmDeleteKoi(id: number, name: string) {
                                         </div>
                                     </div>
 
-                                    <!-- Tanggal -->
+                                    <!-- Invoice -->
                                     <div class="grid gap-1.5">
-                                        <Label class="text-xs font-medium text-muted-foreground">Tanggal</Label>
-                                        <Input v-model="form.sale_tanggal" type="date" class="h-9 text-sm" />
-                                        <InputError :message="form.errors.sale_tanggal" />
-                                    </div>
-
-                                    <!-- Kurs JPY → IDR -->
-                                    <div class="space-y-1.5 rounded-lg border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-3">
-                                        <div class="flex items-center justify-between">
-                                            <Label class="text-xs font-medium text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
-                                            <div class="flex items-center gap-1.5">
-                                                <span v-if="exchangeRateLoading" class="text-[10px] text-red-500 animate-pulse">Memuat...</span>
-                                                <template v-else>
-                                                    <span v-if="kursIsManual" class="text-[10px] text-orange-600 dark:text-orange-400 font-medium">manual</span>
-                                                    <span v-else-if="exchangeRateError" class="text-[10px] text-orange-600 dark:text-orange-400">fallback</span>
-                                                    <span v-else class="text-[10px] text-red-600 dark:text-red-400 font-medium">dari API</span>
-                                                    <button v-if="kursIsManual" type="button" @click="resetKurs"
-                                                        class="text-[10px] underline text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">reset</button>
-                                                </template>
-                                            </div>
-                                        </div>
+                                        <Label class="text-xs font-medium text-muted-foreground">
+                                            No. Invoice
+                                            <span class="font-normal opacity-60">(opsional · auto jika kosong)</span>
+                                        </Label>
                                         <div class="relative">
-                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-red-600 dark:text-red-400 font-bold">Rp</span>
-                                            <Input
-                                                type="text" inputmode="numeric"
-                                                :value="fmtInput(kursInput)"
-                                                @input="e => { kursIsManual = true; kursInput.value = parseInput(e) }"
-                                                placeholder="0"
-                                                class="h-9 text-sm pl-9 border-red-300 dark:border-red-700 bg-white dark:bg-red-900/20 text-red-900 dark:text-red-100 placeholder-red-300 dark:placeholder-red-600 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-800/50"
+                                            <input
+                                                v-model="form.sale_invoice"
+                                                list="invoice-list"
+                                                type="text"
+                                                placeholder="Ketik atau pilih invoice existing..."
+                                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                             />
-                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-red-600 dark:text-red-400 font-medium">/ ¥1</span>
+                                            <datalist id="invoice-list">
+                                                <option v-for="inv in invoices" :key="inv.sale_invoice" :value="inv.sale_invoice">
+                                                    {{ inv.sale_invoice }} ({{ inv.koi_count }} koi)
+                                                </option>
+                                            </datalist>
                                         </div>
-                                        <p class="text-[11px] text-red-700 dark:text-red-300">
-                                            Kurs digunakan untuk mengkonversi harga JPY ke IDR secara otomatis. Nilai diambil dari API dan dapat diubah manual sesuai kurs aktual transaksi.
-                                        </p>
+                                        <!-- Preview: jika invoice dipilih dari existing -->
+                                        <div v-if="form.sale_invoice && invoices.find(i => i.sale_invoice === form.sale_invoice)" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 text-[11px] flex items-center gap-1.5">
+                                            <span class="text-amber-600 dark:text-amber-400 font-medium">Invoice sudah ada:</span>
+                                            <span class="text-amber-700 dark:text-amber-300">
+                                                {{ invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count }} koi terdaftar
+                                                → akan menjadi {{ (invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count ?? 0) + 1 }} koi
+                                            </span>
+                                        </div>
+                                        <InputError :message="(form.errors as any).sale_invoice" />
                                     </div>
 
-                                    <!-- Unit Price (JPY) & Qty -->
+                                    <!-- Periode Azukari (hanya tampil jika status = azukari) -->
+                                    <div v-if="form.sale_status === 'azukari'" class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
+                                        <Input v-model="form.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
+                                        <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
+                                        <InputError :message="(form.errors as any).azukari_period" />
+                                    </div>
+
+                                    <!-- Tanggal & Qty -->
                                     <div class="grid grid-cols-2 gap-3">
-                                        <div class="space-y-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">Unit Price (JPY)</Label>
-                                            <div class="relative">
-                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
-                                                <Input
-                                                    type="text" inputmode="numeric"
-                                                    :value="fmtInput(form.unit_price)"
-                                                    @input="e => { form.unit_price = parseInput(e) }"
-                                                    placeholder="0"
-                                                    class="h-9 text-sm pl-7"
-                                                />
-                                            </div>
-                                            <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                                <span class="text-muted-foreground">≈ IDR</span>
-                                                <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
-                                            </div>
-                                            <InputError :message="(form.errors as any).unit_price" />
+                                        <div class="grid gap-1.5">
+                                            <Label class="text-xs font-medium text-muted-foreground">Tanggal</Label>
+                                            <Input v-model="form.sale_tanggal" type="date" class="h-9 text-sm" />
+                                            <InputError :message="form.errors.sale_tanggal" />
                                         </div>
                                         <div class="grid gap-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">Qty</Label>
-                                            <Input v-model="form.sale_qty" type="number" min="1" placeholder="1" class="h-9 text-sm" />
+                                            <Label class="text-xs font-medium text-muted-foreground">
+                                                Qty Jual (ekor)
+                                                <span v-if="modalQty" class="font-normal text-muted-foreground">maks. {{ modalQty }}</span>
+                                            </Label>
+                                            <Input
+                                                v-model="form.sale_qty"
+                                                type="number" min="1"
+                                                :max="modalQty || undefined"
+                                                placeholder="1"
+                                                class="h-9 text-sm"
+                                            />
+                                            <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
+                                            <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
                                             <InputError :message="form.errors.sale_qty" />
                                         </div>
                                     </div>
 
-                                    <!-- Sales Price & Fee -->
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="space-y-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">
-                                                Sales Price (JPY)
-                                                <span class="font-normal opacity-60">auto</span>
-                                            </Label>
+                                    <!-- Kurs JPY → IDR -->
+                                    <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
+                                        <div class="flex items-center justify-between">
+                                            <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
+                                            <div class="flex items-center gap-1.5">
+                                                <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
+                                                <template v-else>
+                                                    <span v-if="kursIsManual"
+                                                        class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">
+                                                        ✎ Manual
+                                                    </span>
+                                                    <span v-else-if="exchangeRateError"
+                                                        class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">
+                                                        ⚠ Fallback
+                                                    </span>
+                                                    <span v-else
+                                                        class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                                                        ✓ Live API
+                                                    </span>
+                                                    <button v-if="kursIsManual" type="button" @click="resetKurs"
+                                                        class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
+                                                        Gunakan API
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
+                                            <input
+                                                type="text" inputmode="numeric"
+                                                :value="fmtInput(kursInput)"
+                                                @input="onKursInput"
+                                                placeholder="0"
+                                                class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors"
+                                            />
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
+                                        </div>
+                                        <p class="text-[11px] text-red-600/80 dark:text-red-400/80">
+                                            Otomatis dari API · langsung ketik untuk ubah manual
+                                        </p>
+                                    </div>
+
+                                    <!-- Harga -->
+                                    <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                                        <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Harga</p>
+
+                                        <!-- Stock JPY (dinonaktifkan sementara) -->
+                                        <!-- <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-muted-foreground">Stock JPY</Label>
                                             <div class="relative">
-                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-green-500">¥</span>
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">¥</span>
                                                 <Input
                                                     type="text" inputmode="numeric"
-                                                    :value="salesPriceJpy ? fmtInput(String(salesPriceJpy)) : ''"
-                                                    readonly
+                                                    :value="fmtInput(form.buy_jpy)"
+                                                    @input="onBuyJpyInput"
                                                     placeholder="0"
-                                                    class="h-9 text-sm pl-7 bg-muted/50 cursor-not-allowed"
+                                                    class="h-9 text-sm pl-7"
                                                 />
                                             </div>
-                                            <div v-if="salesPriceIdr" class="rounded border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                                <span class="text-muted-foreground">≈ IDR</span>
-                                                <span class="font-semibold text-green-700 dark:text-green-400">{{ fmtIDR(salesPriceIdr) }}</span>
+                                            <InputError :message="(form.errors as any).buy_jpy" />
+                                        </div> -->
+
+                                        <!-- Sales Price JPY & Total Sales IDR -->
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <!-- Sales Price JPY -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                                    <Input
+                                                        type="text" inputmode="numeric"
+                                                        :value="fmtInput(form.unit_price)"
+                                                        @input="onUnitPriceInput"
+                                                        placeholder="0"
+                                                        class="h-9 text-sm pl-7"
+                                                    />
+                                                </div>
+                                                <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                    <span class="text-muted-foreground">≈ IDR/unit</span>
+                                                    <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
+                                                </div>
+                                                <InputError :message="form.errors.sell_idr" />
                                             </div>
-                                            <InputError :message="form.errors.sell_idr" />
+                                            <!-- Total Sales IDR (auto dari unit_price × qty × kurs) -->
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                                <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
+                                                    {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
+                                                </div>
+                                                <p class="text-[10px] text-muted-foreground">Sales JPY × {{ form.sale_qty || 1 }} ekor × kurs</p>
+                                            </div>
                                         </div>
+
+                                        <!-- Fee -->
                                         <div class="grid gap-1.5">
                                             <Label class="text-xs font-medium text-muted-foreground">Fee</Label>
-                                            <Select v-model="feePct" @update:model-value="(val) => { feePct = val; form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100))) }">
+                                            <Select v-model="feePct" @update:model-value="onFeeSelect">
                                                 <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="0">No Fee</SelectItem>
@@ -549,33 +783,65 @@ function confirmDeleteKoi(id: number, name: string) {
                                     </div>
 
                                     <!-- Ringkasan -->
-                                    <div v-if="salesPriceIdr" class="rounded-md border border-border bg-muted/20 px-4 py-3 text-xs space-y-2">
-                                        <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Ringkasan</p>
-                                        <div class="flex justify-between">
-                                            <span class="text-muted-foreground">Unit Price</span>
-                                            <span>¥{{ Number(form.unit_price).toLocaleString('ja-JP') }} ≈ {{ unitPriceIdr ? fmtIDR(unitPriceIdr) : '-' }}</span>
+                                    <div v-if="salesPriceIdr || totalModalIdr" class="rounded-md border border-border overflow-hidden text-xs">
+                                        <div class="bg-muted/60 px-4 py-2 border-b border-border flex items-center justify-between">
+                                            <p class="text-[11px] font-semibold text-foreground uppercase tracking-wider">Ringkasan</p>
+                                            <span class="text-[10px] text-muted-foreground">Kurs ¥1 = Rp {{ Number(kursInput || 0).toLocaleString('id-ID') }}</span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-muted-foreground">Qty</span>
-                                            <span>{{ form.sale_qty }}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-muted-foreground">Sales Price</span>
-                                            <span>¥{{ salesPriceJpy?.toLocaleString('ja-JP') }} ≈ {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}</span>
-                                        </div>
-                                        <div v-if="Number(form.fee) > 0" class="flex justify-between">
-                                            <span class="text-muted-foreground">Fee ({{ feePct }}%)</span>
-                                            <span>{{ fmtIDR(Number(form.fee)) }}</span>
-                                        </div>
-                                        <div class="flex justify-between pt-2 border-t border-border">
-                                            <span class="text-muted-foreground">Total Diterima</span>
-                                            <span class="font-semibold">{{ fmtIDR((salesPriceIdr ?? 0) - Number(form.fee)) }}</span>
-                                        </div>
-                                        <div class="flex justify-between pt-1 border-t border-border font-semibold text-sm">
-                                            <span>Margin / Profit</span>
-                                            <span :class="(salesPriceIdr ?? 0) - (unitPriceIdr ?? 0) - Number(form.fee) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
-                                                {{ fmtIDR((salesPriceIdr ?? 0) - (unitPriceIdr ?? 0) - Number(form.fee)) }}
-                                            </span>
+                                        <div class="divide-y divide-border/60">
+                                            <!-- Total Modal (per qty terjual) -->
+                                            <div class="px-4 py-2.5 flex justify-between items-start">
+                                                <div>
+                                                    <p class="font-medium text-foreground">Modal Terjual</p>
+                                                    <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                        ¥{{ Number(form.stock_price||0).toLocaleString('ja-JP') }} × kurs × {{ form.sale_qty || 1 }} ekor terjual
+                                                    </p>
+                                                </div>
+                                                <span class="font-semibold text-blue-600 dark:text-blue-400">
+                                                    {{ modalTerjualIdr ? fmtIDR(modalTerjualIdr) : '-' }}
+                                                </span>
+                                            </div>
+                                            <!-- Total Sales -->
+                                            <div class="px-4 py-2.5 flex justify-between items-start">
+                                                <div>
+                                                    <p class="font-medium text-foreground">Total Sales</p>
+                                                    <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                        ¥{{ Number(form.unit_price||0).toLocaleString('ja-JP') }} × {{ form.sale_qty||1 }} ekor × kurs
+                                                    </p>
+                                                </div>
+                                                <span class="font-semibold text-green-600 dark:text-green-400">
+                                                    {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
+                                                </span>
+                                            </div>
+                                            <!-- Shipping -->
+                                            <div v-if="shippingPerEkor" class="px-4 py-2.5 flex justify-between items-start">
+                                                <div>
+                                                    <p class="font-medium text-foreground">Shipping/ekor</p>
+                                                    <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                        {{ fmtIDR(Number(form.shipping_cost)) }} ÷ {{ form.shipping_qty }} ikan
+                                                        <span v-if="form.shipping_note" class="ml-1 italic">· {{ form.shipping_note }}</span>
+                                                    </p>
+                                                </div>
+                                                <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(shippingPerEkor) }}</span>
+                                            </div>
+                                            <!-- Fee -->
+                                            <div v-if="Number(form.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
+                                                <p class="font-medium text-foreground">
+                                                    Fee <span v-if="feePct && Number(feePct) > 0" class="font-normal text-muted-foreground">({{ feePct }}%)</span>
+                                                </p>
+                                                <span class="font-semibold text-green-600 dark:text-green-400">+ {{ fmtIDR(Number(form.fee)) }}</span>
+                                            </div>
+                                            <!-- Profit -->
+                                            <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
+                                                <div>
+                                                    <p class="font-bold text-sm text-foreground">Profit</p>
+                                                    <p class="text-[10px] text-muted-foreground mt-0.5">(Sell IDR − Modal − Shipping) + Fee</p>
+                                                </div>
+                                                <span class="text-base font-bold"
+                                                    :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                                    {{ fmtIDR(profit) }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -583,7 +849,8 @@ function confirmDeleteKoi(id: number, name: string) {
                             </div>
 
                             <div class="border-t border-border pt-3 flex justify-end gap-2">
-                                <Button type="button" variant="outline" @click="() => { form.reset(); form.clearErrors(); breederSearch = ''; jenisSearch = ''; customerSearch = ''; fotoPreviews = []; feePct = null; kursIsManual = false; showModal = false }">Batal</Button>
+                                <Button type="button" variant="outline" @click="() => { form.reset(); form.clearErrors(); breederSearch = ''; jenisSearch = ''; customerSearch = ''; fotoPreviews = []; feePct = null; kursIsManual = false; modalQty = ''; showModal = false }"
+>Batal</Button>
                                 <Button type="submit" :disabled="form.processing">{{ form.processing ? 'Menyimpan...' : 'Simpan' }}</Button>
                             </div>
                         </form>
@@ -640,7 +907,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <Select :model-value="koi.sale_status || ''" @update:model-value="(val) => quickUpdateStatus(koi.id, val)">
+                                        <Select :model-value="koi.sale_status || ''" @update:model-value="(val) => quickUpdateStatus(koi.id, String(val))">
                                             <SelectTrigger class="h-9 w-32 border border-input bg-background rounded-md px-3 py-1.5 text-sm hover:bg-muted/50">
                                                 <SelectValue :placeholder="'Pilih Status'" />
                                             </SelectTrigger>

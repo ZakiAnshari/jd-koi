@@ -31,11 +31,19 @@ class KoisController extends Controller
         $jenisKois = JenisKoi::select(['id', 'nama_jenis'])->orderBy('nama_jenis')->get();
         $customers = User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get();
 
+        $invoices = Koi::select('sale_invoice')
+            ->whereNotNull('sale_invoice')
+            ->groupBy('sale_invoice')
+            ->selectRaw('sale_invoice, COUNT(*) as koi_count')
+            ->orderByDesc('sale_invoice')
+            ->get();
+
         return Inertia::render('MasterData/Koi/Index', [
             'kois'      => $kois,
             'breeders'  => $breeders,
             'jenisKois' => $jenisKois,
             'customers' => $customers,
+            'invoices'  => $invoices,
         ]);
     }
 
@@ -62,7 +70,12 @@ class KoisController extends Controller
             'unit_price'  => 'nullable|numeric|min:0',
             'stock_price' => 'nullable|numeric|min:0',
             'fee'          => 'nullable|numeric|min:0',
-            'sale_status'  => 'nullable|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
+            'sale_status'     => 'nullable|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
+            'sale_invoice'    => 'nullable|string|max:100',
+            'azukari_period'  => 'nullable|string|max:255',
+            'shipping_cost'   => 'nullable|numeric|min:0',
+            'shipping_qty'    => 'nullable|integer|min:1',
+            'shipping_note'   => 'nullable|string|max:255',
         ]);
 
         $koi = Koi::create([
@@ -86,7 +99,11 @@ class KoisController extends Controller
             'stock_price' => $validated['stock_price'] ?? null,
             'fee'          => $validated['fee'] ?? 0,
             'sale_status'  => $validated['sale_status'] ?? null,
-            'sale_invoice' => $this->generateInvoice(),
+            'sale_invoice'   => $validated['sale_invoice'] ?? $this->generateInvoice(),
+            'azukari_period' => $validated['azukari_period'] ?? null,
+            'shipping_cost'  => $validated['shipping_cost'] ?? null,
+            'shipping_qty'   => $validated['shipping_qty'] ?? null,
+            'shipping_note'  => $validated['shipping_note'] ?? null,
         ]);
 
         if ($request->hasFile('images')) {
@@ -114,7 +131,7 @@ class KoisController extends Controller
         $koi->load('images');
 
         return Inertia::render('MasterData/Koi/Edit', [
-            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
+            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note']),
             'breeders'  => $breeders,
             'jenisKois' => $jenisKois,
             'customers' => $customers,
@@ -126,7 +143,7 @@ class KoisController extends Controller
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
 
         return Inertia::render('MasterData/Koi/Show', [
-            'koi' => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'created_at', 'updated_at', 'breeder', 'jenis_koi', 'customer', 'customer_id', 'sale_tanggal', 'sale_qty', 'unit_price', 'kurs', 'sell_idr', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date']),
+            'koi' => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'created_at', 'updated_at', 'breeder', 'jenis_koi', 'customer', 'customer_id', 'sale_tanggal', 'sale_qty', 'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note']),
         ]);
     }
 
@@ -157,6 +174,10 @@ class KoisController extends Controller
             'fee'             => 'nullable|numeric|min:0',
             'sale_status'       => 'nullable|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
             'sale_shipped_date' => 'nullable|date',
+            'azukari_period'    => 'nullable|string|max:255',
+            'shipping_cost'     => 'nullable|numeric|min:0',
+            'shipping_qty'      => 'nullable|integer|min:1',
+            'shipping_note'     => 'nullable|string|max:255',
         ]);
 
         $koi->fill($validated)->save();

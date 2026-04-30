@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboard } from '@/routes'
 import type { BreadcrumbItem } from '@/types'
-import { Users, Fish, TrendingUp, Percent, Store } from 'lucide-vue-next'
+import { Users, Fish, TrendingUp, Percent, Store, ShoppingBag, Wallet, BarChart3 } from 'lucide-vue-next'
 
 type ActivityLogItem = {
     id: number
@@ -85,29 +85,61 @@ const STATUS_COLOR: Record<string, string> = {
             <!-- ── Stat Cards Bulan Ini ── -->
             <div>
                 <p class="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Bulan ini — {{ stats.current_month }}</p>
-                <div class="grid gap-4 grid-cols-2 md:grid-cols-3">
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+
+                    <!-- Modal -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-                            <TrendingUp class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <Wallet class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div class="min-w-0">
-                            <p class="text-xs text-muted-foreground">Net Profit</p>
-                            <p class="text-sm font-bold leading-tight" :class="(stats.total_margin ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'">
-                                {{ fmtIDR(stats.total_margin ?? 0) }}
+                            <p class="text-xs text-muted-foreground">Total Modal</p>
+                            <p class="text-sm font-bold text-blue-600 dark:text-blue-400 leading-tight">{{ fmtIDR(stats.total_modal ?? 0) }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Penjualan -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground">Total Penjualan</p>
+                            <p class="text-sm font-bold text-amber-600 dark:text-amber-400 leading-tight">{{ fmtIDR(stats.total_sales_idr ?? 0) }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Profit -->
+                    <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950/40 flex items-center justify-center flex-shrink-0">
+                            <BarChart3 class="w-5 h-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-muted-foreground">Total Profit</p>
+                            <p class="text-sm font-bold leading-tight" :class="(stats.total_profit ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'">
+                                {{ fmtIDR(stats.total_profit ?? 0) }}
                             </p>
                         </div>
                     </div>
 
+                    <!-- Fee -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950/40 flex items-center justify-center flex-shrink-0">
-                            <Percent class="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center flex-shrink-0">
+                            <Percent class="w-5 h-5 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-muted-foreground">Total Fee</p>
-                            <p class="text-sm font-bold text-foreground leading-tight">{{ fmtIDR(stats.total_fee) }}</p>
+                            <p class="text-sm font-bold text-purple-600 dark:text-purple-400 leading-tight">{{ fmtIDR(stats.total_fee ?? 0) }}</p>
                         </div>
                     </div>
 
+                </div>
+            </div>
+
+            <!-- ── Stat Cards Keseluruhan ── -->
+            <div>
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    <!-- Koi Terjual -->
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center flex-shrink-0">
                             <Fish class="w-5 h-5 text-orange-600 dark:text-orange-400" />
@@ -117,13 +149,7 @@ const STATUS_COLOR: Record<string, string> = {
                             <p class="text-2xl font-bold text-foreground leading-tight">{{ stats.total_koi_sold ?? 0 }}</p>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- ── Stat Cards Keseluruhan ── -->
-            <div>
-                <p class="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Keseluruhan</p>
-                <div class="grid gap-4 grid-cols-2 md:grid-cols-3">
                     <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                             <Fish class="w-5 h-5 text-muted-foreground" />

@@ -29,8 +29,10 @@ type Koi = {
     sale_tanggal: string | null
     sale_qty: number | null
     unit_price: string | null
+    buy_jpy: string | null
     kurs: string | null
     sell_idr: string | null
+    stock_price: string | null
     fee: string | null
     sale_status: string | null
     created_at: string
@@ -77,7 +79,12 @@ const unitPriceIdr  = computed(() => {
     const k = Number(props.koi.kurs)       || 0
     return p > 0 && k > 0 ? Math.round(p * k) : null
 })
-const margin = computed(() => salesPriceIdr.value - (unitPriceIdr.value ?? 0) - Number(props.koi.fee ?? 0))
+const stockPriceIdr = computed(() => {
+    const b = Number(props.koi.buy_jpy) || 0
+    const k = Number(props.koi.kurs)   || 0
+    return b > 0 && k > 0 ? Math.round(b * k) : null
+})
+const profit = computed(() => salesPriceIdr.value - (stockPriceIdr.value ?? 0) - Number(props.koi.fee ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -257,6 +264,14 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.sale_qty ?? '-' }}</dd>
                             </div>
+                            <!-- Stock JPY -->
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stock JPY (modal)</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ koi.buy_jpy != null ? '¥' + Number(koi.buy_jpy).toLocaleString('ja-JP') : '-' }}
+                                </dd>
+                                <dd v-if="stockPriceIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">≈ {{ fmtIDR(stockPriceIdr) }}</dd>
+                            </div>
                             <!-- Unit Price JPY -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</dt>
@@ -290,11 +305,11 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Diterima</dt>
                                 <dd class="mt-1 font-semibold text-foreground">{{ fmtIDR(salesPriceIdr - Number(koi.fee ?? 0)) }}</dd>
                             </div>
-                            <!-- Margin -->
+                            <!-- Profit -->
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Margin / Profit</dt>
-                                <dd class="mt-1 font-semibold" :class="margin >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
-                                    {{ fmtIDR(margin) }}
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</dt>
+                                <dd class="mt-1 font-semibold" :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                    {{ fmtIDR(profit) }}
                                 </dd>
                             </div>
                         </dl>

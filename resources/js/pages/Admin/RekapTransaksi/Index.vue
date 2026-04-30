@@ -3,6 +3,7 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
+import { useSwal } from '@/composables/useSwal'
 import { Search, RotateCcw, Eye, X, Download, ImagePlus } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,7 @@ type Paginator = {
     links: { url: string | null; label: string; active: boolean }[]
 }
 
+const { fire } = useSwal()
 const page      = usePage()
 const kois      = computed(() => page.props.kois as Paginator)
 const breeders  = computed(() => (page.props.breeders  as Breeder[])  || [])
@@ -189,29 +191,24 @@ function clearSelection() {
 }
 
 function downloadPdf() {
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = '/rekap-transaksi/export-pdf'
-    form.target = '_blank'
+    const params = new URLSearchParams()
+    Array.from(selectedIds.value).forEach(id => params.append('ids[]', String(id)))
+    window.open('/rekap-transaksi/export-pdf?' + params.toString(), '_blank')
+}
 
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
-    const csrf = document.createElement('input')
-    csrf.type = 'hidden'
-    csrf.name = '_token'
-    csrf.value = token
-    form.appendChild(csrf)
-
-    Array.from(selectedIds.value).forEach(id => {
-        const input = document.createElement('input')
-        input.type = 'hidden'
-        input.name = 'ids[]'
-        input.value = String(id)
-        form.appendChild(input)
-    })
-
-    document.body.appendChild(form)
-    form.submit()
-    document.body.removeChild(form)
+function downloadInvoicePdf() {
+    // Ambil invoice number dari koi yang dipilih (harus 1 invoice)
+    const selectedKois = (kois.value.data ?? []).filter((k: any) => selectedIds.value.has(k.id))
+    const invoiceNumbers = [...new Set(selectedKois.map((k: any) => k.sale_invoice).filter(Boolean))]
+    if (invoiceNumbers.length === 0) {
+        fire({ icon: 'warning', title: 'Tidak ada invoice', text: 'Koi yang dipilih tidak memiliki nomor invoice.' })
+        return
+    }
+    if (invoiceNumbers.length > 1) {
+        fire({ icon: 'warning', title: 'Invoice berbeda', text: 'Pilih koi dengan nomor invoice yang sama untuk download invoice PDF.' })
+        return
+    }
+    window.open('/rekap-transaksi/invoice-pdf?invoice=' + encodeURIComponent(invoiceNumbers[0]!), '_blank')
 }
 
 // ─── Display helpers ──────────────────────────────────────
@@ -359,7 +356,10 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                 <span class="text-sm font-medium">{{ selectedCount }} item{{ selectedCount > 1 ? 's' : '' }} dipilih</span>
                 <div class="flex gap-2">
                     <Button size="sm" variant="outline" @click="downloadPdf">
-                        <Download class="w-4 h-4 mr-1" /> Download PDF
+                        <Download class="w-4 h-4 mr-1" /> Rekap PDF
+                    </Button>
+                    <Button size="sm" variant="default" @click="downloadInvoicePdf">
+                        <Download class="w-4 h-4 mr-1" /> Invoice PDF
                     </Button>
                     <Button size="sm" variant="outline" @click="clearSelection">
                         <X class="w-4 h-4 mr-1" /> Batal

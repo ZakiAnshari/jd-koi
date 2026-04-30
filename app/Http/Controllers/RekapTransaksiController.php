@@ -138,4 +138,48 @@ class RekapTransaksiController extends Controller
 
         return $pdf->download('rekap-transaksi-' . now()->format('Ymd-His') . '.pdf');
     }
+
+    public function exportInvoicePdf(Request $request)
+    {
+        $invoiceNumber = $request->query('invoice');
+
+        if (!$invoiceNumber) {
+            abort(400, 'No invoice number provided');
+        }
+
+        $user    = $request->user();
+        $isAdmin = $user->role_id === 1;
+
+        $query = Koi::where('sale_invoice', $invoiceNumber)
+            ->with(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
+
+        if (!$isAdmin) {
+            $query->where('customer_id', $user->id);
+        }
+
+        $kois = $query->orderBy('sale_tanggal')->get();
+
+        if ($kois->isEmpty()) {
+            abort(404, 'Invoice tidak ditemukan');
+        }
+
+        $customerName = $kois->first()->customer?->name ?? 'Pelanggan';
+        $grandTotal   = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
+        $totalFee     = $kois->sum(fn($k) => $k->fee ?? 0);
+
+        $pdf = Pdf::loadView('pdf.invoice', [
+            'kois'           => $kois,
+            'invoiceNumber'  => $invoiceNumber,
+            'customerName'   => $customerName,
+            'grandTotal'     => $grandTotal,
+            'totalFee'       => $totalFee,
+            'paymentName'    => 'Kurniadi Prakasa Pieth',
+            'paymentBank'    => 'BCA / Mandiri / GoPay / OVO',
+            'paymentAccount' => 'BCA: 2533 2222 34 | Mandiri: 1690009 44789',
+        ])->setPaper('A4', 'portrait')
+          ->setOption('enable_php', true)
+          ->setOption('dpi', 150);
+
+        return $pdf->download('invoice-' . $invoiceNumber . '.pdf');
+    }
 }
