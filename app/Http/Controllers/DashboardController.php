@@ -19,8 +19,12 @@ class DashboardController extends Controller
             return redirect()->route('customer.dashboard');
         }
 
-        $currentMonth = now()->month;
-        $currentYear  = now()->year;
+        $currentMonth = $request->filled('month') ? (int) $request->month : now()->month;
+        $currentYear  = $request->filled('year')  ? (int) $request->year  : now()->year;
+
+        // Clamp to valid ranges
+        $currentMonth = max(1, min(12, $currentMonth));
+        $currentYear  = max(2020, min((int) now()->year, $currentYear));
 
         // ── Stats bulan ini ──────────────────────────────────
         $baseQuery = Koi::whereNotNull('sale_status')
@@ -53,8 +57,8 @@ class DashboardController extends Controller
 
         // ── Breakdown status bulan ini ───────────────────────
         $statusBreakdown = Koi::whereNotNull('sale_status')
-            ->whereMonth('sale_tanggal', $currentMonth)
-            ->whereYear('sale_tanggal', $currentYear)
+            ->whereMonth('sale_tanggal', (int) $currentMonth)
+            ->whereYear('sale_tanggal', (int) $currentYear)
             ->selectRaw('sale_status, count(*) as total')
             ->groupBy('sale_status')
             ->pluck('total', 'sale_status');
@@ -76,6 +80,38 @@ class DashboardController extends Controller
                 'breeder'      => $k->breeder?->name_breeder,
                 'customer'     => $k->customer?->name,
             ]);
+
+        // ── Trend 6 bulan terakhir ───────────────────────────
+        $trendMonths = collect();
+        for ($i = 5; $i >= 0; $i--) {
+            $date = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->subMonths($i);
+            $trendMonths->push([
+                'month' => $date->month,
+                'year'  => $date->year,
+                'label' => $date->translatedFormat('M Y'),
+            ]);
+        }
+
+        $trendData = $trendMonths->map(function ($m) {
+            $q = Koi::whereNotNull('sale_status')
+                ->whereMonth('sale_tanggal', $m['month'])
+                ->whereYear('sale_tanggal', $m['year']);
+
+            $sales  = (clone $q)->sum('sell_idr');
+            $profit = (clone $q)
+                ->selectRaw('SUM((COALESCE(sell_idr,0) - (COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) + COALESCE(fee,0)) as profit')
+                ->value('profit') ?? 0;
+            $count  = (clone $q)->count();
+            $fee    = (clone $q)->sum('fee');
+
+            return [
+                'label'  => $m['label'],
+                'sales'  => (float) $sales,
+                'profit' => (float) $profit,
+                'count'  => (int) $count,
+                'fee'    => (float) $fee,
+            ];
+        });
 
         // ── Activity log ─────────────────────────────────────
         $latestActivityLogs = ActivityLog::with('user:id,name')
@@ -100,8 +136,11 @@ class DashboardController extends Controller
                 'total_customer'    => $totalCustomer,
                 'total_breeder'     => $totalBreeder,
                 'status_breakdown'  => $statusBreakdown,
-                'current_month'     => now()->translatedFormat('F Y'),
+                'current_month'     => \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->translatedFormat('F Y'),
+                'selected_month'    => $currentMonth,
+                'selected_year'     => $currentYear,
             ],
+            'trendData'          => $trendData,
             'recentTransactions' => $recentTransactions,
             'latestActivityLogs' => $latestActivityLogs,
         ]);

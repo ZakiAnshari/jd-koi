@@ -7,11 +7,13 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #222; background: #fff; }
 
-        @page { margin: 25mm 15mm 20mm 15mm; }
+        @page { margin: 20mm 18mm 20mm 18mm; }
+
+        .page-wrap { padding: 0 4mm; }
 
         /* ── Header ── */
         .doc-header {
-            border-bottom: 3px solid #1e7e34;
+            border-bottom: 3px solid #c0392b;
             padding-bottom: 10px;
             margin-bottom: 18px;
             display: table;
@@ -19,21 +21,27 @@
         }
         .doc-header-left  { display: table-cell; vertical-align: middle; }
         .doc-header-right { display: table-cell; vertical-align: middle; text-align: right; }
-        .doc-title { font-size: 20px; font-weight: bold; color: #1e7e34; }
-        .doc-subtitle { font-size: 10px; color: #666; margin-top: 3px; }
+
+        .h-logo-wrap { display: table; }
+        .logo-img    { display: table-cell; vertical-align: middle; padding-right: 10px; width: 62px; }
+        .logo-img img { width: 56px; height: 56px; }
+        .company-info { display: table-cell; vertical-align: middle; }
+
+        .doc-title    { font-size: 18px; font-weight: bold; color: #c0392b; }
+        .doc-subtitle { font-size: 9px; color: #888; margin-top: 2px; }
 
         /* ── Summary box ── */
         .summary-box {
-            background: #f0f7f0;
-            border: 1px solid #b2d8b2;
-            border-left: 4px solid #1e7e34;
+            background: #fff5f5;
+            border: 1px solid #f5c6c6;
+            border-left: 4px solid #c0392b;
             border-radius: 4px;
             padding: 10px 14px;
             margin-bottom: 20px;
             font-size: 10px;
             color: #444;
         }
-        .summary-box strong { color: #1e7e34; }
+        .summary-box strong { color: #c0392b; }
 
         /* ── Koi card ── */
         .koi-card {
@@ -43,7 +51,7 @@
             overflow: hidden;
         }
         .koi-card-header {
-            background: #1e7e34;
+            background: #c0392b;
             color: #fff;
             padding: 8px 12px;
             display: table;
@@ -107,10 +115,10 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: .5px;
-            color: #1e7e34;
-            background: #e8f5e8;
+            color: #c0392b;
+            background: #fdecea;
             padding: 4px 8px;
-            border-left: 3px solid #1e7e34;
+            border-left: 3px solid #c0392b;
             margin-bottom: 6px;
             margin-top: 4px;
         }
@@ -165,12 +173,21 @@
     </style>
 </head>
 <body>
+<div class="page-wrap">
 
     <!-- ── Document Header ── -->
     <div class="doc-header">
         <div class="doc-header-left">
-            <div class="doc-title">Rekap Transaksi Koi</div>
-            <div class="doc-subtitle">Koi Umeda Data Management System</div>
+            <div class="h-logo-wrap">
+                @php $logoPath = public_path('JD-KOI.PNG'); @endphp
+                @if(file_exists($logoPath))
+                    <div class="logo-img"><img src="{{ $logoPath }}" alt="Logo"></div>
+                @endif
+                <div class="company-info">
+                    <div class="doc-title">Rekap Transaksi Koi</div>
+                    <div class="doc-subtitle">Koi Umeda Data Management System</div>
+                </div>
+            </div>
         </div>
         <div class="doc-header-right">
             <div style="font-size:10px; color:#555;">
@@ -267,11 +284,11 @@
                                 </tr>
                                 <tr>
                                     <td class="lbl">Berat</td>
-                                    <td class="val">{{ $koi->weight ? $koi->weight . ' kg' : '-' }}</td>
+                                    <td class="val">{{ $koi->weight != null ? rtrim(rtrim(number_format((float)$koi->weight, 3, '.', ''), '0'), '.') . ' kg' : '-' }}</td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Total Berat</td>
-                                    <td class="val">{{ $koi->total_weight ? $koi->total_weight . ' kg' : '-' }}</td>
+                                    <td class="val">{{ $koi->total_weight != null ? rtrim(rtrim(number_format((float)$koi->total_weight, 3, '.', ''), '0'), '.') . ' kg' : '-' }}</td>
                                 </tr>
                             </table>
 
@@ -332,15 +349,6 @@
                             <div class="price-box">
                                 <table class="dt">
                                     <tr>
-                                        <td class="lbl">Stock JPY (modal)</td>
-                                        <td class="val">
-                                            {{ $stockJpy ? '¥ ' . number_format($stockJpy, 0, ',', '.') : '-' }}
-                                            @if($stockPriceIdr)
-                                                <br><span style="font-size:9px; color:#888;">≈ Rp {{ number_format($stockPriceIdr, 0, ',', '.') }}</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    <tr>
                                         <td class="lbl">Unit Price (JPY)</td>
                                         <td class="val">
                                             {{ $unitPriceJpy ? '¥ ' . number_format($unitPriceJpy, 0, ',', '.') : '-' }}
@@ -358,22 +366,10 @@
                                             @endif
                                         </td>
                                     </tr>
-                                    @if($koi->kurs && $koi->kurs > 0)
-                                        <tr>
-                                            <td class="lbl">Kurs</td>
-                                            <td class="val">Rp {{ number_format($koi->kurs, 0, ',', '.') }} / ¥1</td>
-                                        </tr>
-                                    @endif
-                                    @if($isAdmin && $fee)
-                                        <tr>
-                                            <td class="lbl">Fee</td>
-                                            <td class="val">Rp {{ number_format($fee, 0, ',', '.') }}</td>
-                                        </tr>
-                                    @endif
                                     @if($isAdmin && $profit !== null)
                                         <tr style="border-top: 1px solid #2255bb;">
-                                            <td class="lbl" style="color:{{ $profit >= 0 ? '#1e7e34' : '#c0392b' }}; font-weight:bold;">Profit</td>
-                                            <td class="val" style="color:{{ $profit >= 0 ? '#1e7e34' : '#c0392b' }}; font-weight:bold;">
+                                            <td class="lbl" style="color:{{ $profit >= 0 ? '#c0392b' : '#c0392b' }}; font-weight:bold;">Profit</td>
+                                            <td class="val" style="color:{{ $profit >= 0 ? '#c0392b' : '#c0392b' }}; font-weight:bold;">
                                                 Rp {{ number_format($profit, 0, ',', '.') }}
                                             </td>
                                         </tr>
@@ -396,5 +392,6 @@
         Koi Umeda Data Management System &nbsp;|&nbsp; Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; © {{ now()->year }}
     </div>
 
+</div>
 </body>
 </html>

@@ -17,7 +17,13 @@ class KoisController extends Controller
 {
     public function index(): Response
     {
-        $kois = Koi::select(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'sale_status', 'customer_id', 'created_at'])
+        $kois = Koi::select([
+                'id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'age', 'size', 'box_qty', 'weight', 'total_weight',
+                'sale_status', 'customer_id', 'created_at',
+                'sale_invoice', 'sale_tanggal', 'sale_shipped_date', 'sale_qty',
+                'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee',
+                'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_date', 'azukari_period',
+            ])
             ->with([
                 'breeder:id,name_breeder',
                 'jenisKoi:id,nama_jenis',
@@ -54,6 +60,7 @@ class KoisController extends Controller
             'jenis_koi_id' => 'nullable|exists:jenis_kois,id',
             'code'         => 'required|string|max:255|unique:kois,code',
             'name'         => 'required|string|max:255',
+            'description'  => 'nullable|string',
             'age'          => 'nullable|integer|min:0',
             'size'         => 'nullable|numeric|min:0',
             'box_qty'      => 'nullable|integer|min:0',
@@ -76,6 +83,7 @@ class KoisController extends Controller
             'shipping_cost'   => 'nullable|numeric|min:0',
             'shipping_qty'    => 'nullable|integer|min:1',
             'shipping_note'   => 'nullable|string|max:255',
+            'shipping_date'   => 'nullable|date',
         ]);
 
         $koi = Koi::create([
@@ -83,6 +91,7 @@ class KoisController extends Controller
             'jenis_koi_id' => $validated['jenis_koi_id'] ?? null,
             'code'         => $validated['code'],
             'name'         => $validated['name'],
+            'description'  => $validated['description'] ?? null,
             'age'          => $validated['age'] ?? null,
             'size'         => $validated['size'] ?? null,
             'box_qty'      => $validated['box_qty'] ?? null,
@@ -104,6 +113,7 @@ class KoisController extends Controller
             'shipping_cost'  => $validated['shipping_cost'] ?? null,
             'shipping_qty'   => $validated['shipping_qty'] ?? null,
             'shipping_note'  => $validated['shipping_note'] ?? null,
+            'shipping_date'  => $validated['shipping_date'] ?? null,
         ]);
 
         if ($request->hasFile('images')) {
@@ -131,7 +141,7 @@ class KoisController extends Controller
         $koi->load('images');
 
         return Inertia::render('MasterData/Koi/Edit', [
-            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note']),
+            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'description', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_date']),
             'breeders'  => $breeders,
             'jenisKois' => $jenisKois,
             'customers' => $customers,
@@ -154,6 +164,7 @@ class KoisController extends Controller
             'jenis_koi_id'    => 'nullable|exists:jenis_kois,id',
             'code'            => ['required', 'string', 'max:255', Rule::unique('kois', 'code')->ignore($koi->id)],
             'name'            => 'required|string|max:255',
+            'description'     => 'nullable|string',
             'age'             => 'nullable|integer|min:0',
             'size'            => 'nullable|numeric|min:0',
             'box_qty'         => 'nullable|integer|min:0',
@@ -178,6 +189,7 @@ class KoisController extends Controller
             'shipping_cost'     => 'nullable|numeric|min:0',
             'shipping_qty'      => 'nullable|integer|min:1',
             'shipping_note'     => 'nullable|string|max:255',
+            'shipping_date'     => 'nullable|date',
         ]);
 
         $koi->fill($validated)->save();

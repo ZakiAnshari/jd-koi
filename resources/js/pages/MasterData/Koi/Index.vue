@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
-import { X, ImagePlus, Eye, Pencil, Trash2, ExternalLink } from 'lucide-vue-next'
+import { X, ImagePlus, Eye, Pencil, Trash2, ExternalLink, ChevronDown, Check, Search, FileText } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
@@ -35,11 +35,16 @@ type Invoice  = { sale_invoice: string; koi_count: number }
 type KoiImage = { id: number; koi_id: number; image_path: string; sort_order: number; url: string }
 type Koi = {
     id: number; breeder_id: number; jenis_koi_id: number | null
-    code: string; name: string; age: number | null; size: number | null
+    code: string; name: string; description?: string | null; age: number | null; size: number | null
     box_qty: number | null; weight: number | null; total_weight: number | null
     breeder?: Breeder; jenis_koi?: JenisKoi; customer?: Customer | null
     customer_id: number | null; sale_status: string | null; created_at: string
     images?: KoiImage[]
+    sale_invoice?: string | null; sale_tanggal?: string | null; sale_shipped_date?: string | null
+    sale_qty?: number | null; unit_price?: string | null; buy_jpy?: string | null
+    kurs?: string | null; sell_idr?: string | null; stock_price?: string | null; fee?: string | null
+    shipping_cost?: string | null; shipping_qty?: number | null; shipping_note?: string | null; shipping_date?: string | null
+    azukari_period?: string | null
 }
 
 // ─── Page props ───────────────────────────────────────────
@@ -130,9 +135,164 @@ const showModal      = ref(false)
 const showImageModal = ref(false)
 const selectedKoiImages = ref<KoiImage[]>([])
 
-const breederSearch  = ref('')
-const jenisSearch    = ref('')
-const customerSearch = ref('')
+const breederSearch   = ref('')
+const jenisSearch     = ref('')
+const customerSearch  = ref('')
+const invoiceDropdownOpen = ref(false)
+const invoiceSearch       = ref('')
+
+const filteredInvoiceOptions = computed(() => {
+    const q = (form.sale_invoice as string ?? '').trim().toLowerCase()
+    if (!q) return invoices.value
+    return invoices.value.filter(i => i.sale_invoice.toLowerCase().includes(q))
+})
+
+function selectInvoice(val: string | null) {
+    form.sale_invoice = val ?? ''
+    invoiceDropdownOpen.value = false
+    invoiceSearch.value = ''
+}
+
+function closeInvoiceDropdown(e: FocusEvent) {
+    if (!(e.relatedTarget as HTMLElement)?.closest?.('.invoice-dropdown-panel')) {
+        invoiceDropdownOpen.value = false
+    }
+}
+
+// ─── Edit Modal ───────────────────────────────────────────
+const showEditModal       = ref(false)
+const editingKoi          = ref<Koi | null>(null)
+const editExistingImages  = ref<KoiImage[]>([])
+const editFotoPreviews    = ref<{ file: File; url: string }[]>([])
+const editBreederSearch   = ref('')
+const editJenisSearch     = ref('')
+const editCustomerSearch  = ref('')
+const editFeePct          = ref<string | null>(null)
+const editKursInput       = ref('')
+const editKursIsManual    = ref(false)
+const editInvoiceDropdownOpen = ref(false)
+
+const editFilteredBreeders  = computed(() => !editBreederSearch.value  ? breeders.value  : breeders.value.filter(b => b.name_breeder.toLowerCase().includes(editBreederSearch.value.toLowerCase())))
+const editFilteredJenisKois = computed(() => !editJenisSearch.value    ? jenisKois.value : jenisKois.value.filter(j => j.nama_jenis.toLowerCase().includes(editJenisSearch.value.toLowerCase())))
+const editFilteredCustomers = computed(() => !editCustomerSearch.value ? customers.value : customers.value.filter(c => c.name.toLowerCase().includes(editCustomerSearch.value.toLowerCase())))
+const editFilteredInvoices  = computed(() => {
+    const q = (editForm.sale_invoice ?? '').trim().toLowerCase()
+    if (!q) return invoices.value
+    return invoices.value.filter(i => i.sale_invoice.toLowerCase().includes(q))
+})
+
+const editModalQty = ref('')
+
+const editForm = useForm({
+    breeder_id: '', jenis_koi_id: '', code: '', name: '', description: '',
+    age: '', size: '', box_qty: '', weight: '', total_weight: '',
+    images: [] as File[], delete_images: [] as number[],
+    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
+    buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
+    sale_status: '', sale_shipped_date: '',
+    shipping_cost: '', shipping_qty: '', shipping_note: '', shipping_date: '',
+})
+
+function openEditModal(koi: Koi) {
+    editingKoi.value          = koi
+    editExistingImages.value  = koi.images ? [...koi.images] : []
+    editFotoPreviews.value    = []
+    editBreederSearch.value   = ''
+    editJenisSearch.value     = ''
+    editCustomerSearch.value  = ''
+    editInvoiceDropdownOpen.value = false
+
+    editForm.breeder_id        = String(koi.breeder_id)
+    editForm.jenis_koi_id      = koi.jenis_koi_id ? String(koi.jenis_koi_id) : ''
+    editForm.code              = koi.code
+    editForm.name              = koi.name
+    editForm.description       = koi.description ?? ''
+    editForm.age               = koi.age != null ? String(koi.age) : ''
+    editForm.size              = koi.size != null ? String(koi.size) : ''
+    editForm.box_qty           = koi.box_qty != null ? String(koi.box_qty) : ''
+    editForm.weight            = koi.weight != null ? String(koi.weight) : ''
+    editForm.total_weight      = koi.total_weight != null ? String(koi.total_weight) : ''
+    editForm.images            = []
+    editForm.delete_images     = []
+    editForm.customer_id       = koi.customer_id ? String(koi.customer_id) : ''
+    editForm.sale_tanggal      = koi.sale_tanggal ? String(koi.sale_tanggal).substring(0, 10) : ''
+    editForm.sale_shipped_date = ''
+    editForm.sale_qty          = koi.sale_qty != null ? String(koi.sale_qty) : '1'
+    editForm.unit_price        = koi.unit_price != null ? String(Math.round(Number(koi.unit_price))) : ''
+    editForm.buy_jpy           = koi.buy_jpy != null ? String(Math.round(Number(koi.buy_jpy))) : ''
+    editForm.sell_idr          = koi.sell_idr != null ? String(Math.round(Number(koi.sell_idr))) : ''
+    editForm.stock_price       = koi.stock_price != null ? String(Math.round(Number(koi.stock_price))) : ''
+    editForm.fee               = koi.fee != null ? String(Math.round(Number(koi.fee))) : '0'
+    editForm.sale_status       = koi.sale_status ?? ''
+    editForm.sale_invoice      = koi.sale_invoice ?? ''
+    editForm.azukari_period    = koi.azukari_period ?? ''
+    editForm.shipping_cost     = koi.shipping_cost != null ? String(Number(koi.shipping_cost)) : ''
+    editForm.shipping_qty      = koi.shipping_qty != null ? String(koi.shipping_qty) : ''
+    editForm.shipping_note     = koi.shipping_note ?? ''
+    editForm.shipping_date     = koi.shipping_date ? String(koi.shipping_date).substring(0, 10) : ''
+    editModalQty.value         = koi.sale_qty != null ? String(koi.sale_qty) : ''
+
+    const existingKurs = koi.kurs ? Number(koi.kurs) : 0
+    editKursIsManual.value = existingKurs > 0
+    editKursInput.value    = existingKurs > 0 ? String(existingKurs) : String(exchangeRate.value)
+    editForm.kurs          = editKursInput.value
+
+    const fee = Number(koi.fee ?? 0); const sellIdr = Number(koi.sell_idr ?? 0)
+    editFeePct.value = fee > 0 && sellIdr > 0 ? String(Math.round(fee / sellIdr * 100)) : null
+
+    showEditModal.value = true
+}
+
+watch(editKursInput, v => { editForm.kurs = v })
+watch([() => editForm.weight, () => editForm.box_qty], ([w, q]) => {
+    const weight = Number(w) || 0; const qty = Number(q) || 0
+    editForm.total_weight = weight > 0 && qty > 0 ? String(parseFloat((weight * qty).toFixed(3))) : ''
+})
+watch([() => editForm.unit_price, () => editForm.sale_qty, editKursInput], ([price, qty, kurs]) => {
+    const p = Number(price) || 0; const q = Number(qty) || 1; const k = Number(kurs) || 0
+    editForm.sell_idr = p > 0 && k > 0 ? String(Math.round(p * q * k)) : editForm.sell_idr
+})
+
+const editModalPriceIdr  = computed(() => { const m = Number(editForm.stock_price) || 0; const k = Number(editKursInput.value) || 0; return m > 0 && k > 0 ? Math.round(m * k) : null })
+const editTotalModalIdr  = computed(() => { const m = editModalPriceIdr.value || 0; const q = Number(editModalQty.value) || 0; return m > 0 && q > 0 ? Math.round(m * q) : null })
+const editModalTerjualIdr= computed(() => { const m = editModalPriceIdr.value || 0; const q = Number(editForm.sale_qty) || 1; return m > 0 ? Math.round(m * q) : null })
+const editUnitPriceIdr   = computed(() => { const p = Number(editForm.unit_price) || 0; const k = Number(editKursInput.value) || 0; return p > 0 && k > 0 ? Math.round(p * k) : null })
+const editSalesPriceJpy  = computed(() => { const p = Number(editForm.unit_price) || 0; const q = Number(editForm.sale_qty) || 1; return p > 0 ? p * q : null })
+const editSalesPriceIdr  = computed(() => { const jpy = editSalesPriceJpy.value; const k = Number(editKursInput.value) || 0; return jpy && k > 0 ? Math.round(jpy * k) : null })
+const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; const k = Number(editKursInput.value) || 0; return c > 0 && k > 0 ? Math.round(c * k) : null })
+const editShippingPerEkor= computed(() => { const cIdr = editShippingCostIdr.value || 0; const q = Number(editForm.shipping_qty) || 0; return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null })
+const editProfit         = computed(() => (editSalesPriceIdr.value ?? 0) - (editModalTerjualIdr.value ?? 0) - (editShippingPerEkor.value ?? 0) + Number(editForm.fee || 0))
+const editProfitPositive = computed(() => editProfit.value >= 0)
+
+function onEditFeeSelect(val: unknown) {
+    editFeePct.value = val !== null ? String(val) : null
+    editForm.fee = String(Math.round(Number(editForm.sell_idr) * (Number(val) / 100)))
+}
+function handleEditImagesChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    if (!input.files?.length) return
+    const newFiles = Array.from(input.files)
+    editForm.images = [...editForm.images, ...newFiles]
+    newFiles.forEach(file => { const r = new FileReader(); r.onload = ev => editFotoPreviews.value.push({ file, url: ev.target?.result as string }); r.readAsDataURL(file) })
+    input.value = ''
+}
+function removeEditNewImage(i: number) { editFotoPreviews.value.splice(i, 1); editForm.images = editForm.images.filter((_, idx) => idx !== i) }
+function markDeleteEditExisting(id: number) { editForm.delete_images = [...editForm.delete_images, id]; editExistingImages.value = editExistingImages.value.filter(img => img.id !== id) }
+function selectEditInvoice(val: string | null) { editForm.sale_invoice = val ?? ''; editInvoiceDropdownOpen.value = false }
+function closeEditInvoiceDropdown(e: FocusEvent) { if (!(e.relatedTarget as HTMLElement)?.closest?.('.edit-invoice-panel')) editInvoiceDropdownOpen.value = false }
+function submitEdit() {
+    if (!editingKoi.value) return
+    editForm.post(`/master-data/koi/${editingKoi.value.id}?_method=PUT`, {
+        forceFormData: true, preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false
+            setTimeout(() => useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Data koi berhasil diperbarui.', timer: 3000, showConfirmButton: false }), 300)
+            editFotoPreviews.value = []; editForm.images = []; editForm.delete_images = []
+        },
+        onError: () => useSwal().fire({ icon: 'error', title: 'Gagal!', text: 'Terjadi kesalahan saat memperbarui data.', timer: 3000, showConfirmButton: false }),
+    })
+}
+
 const fotoPreviews   = ref<{ file: File; url: string }[]>([])
 const feePct              = ref<string | null>(null)
 const exchangeRate        = ref(0)
@@ -169,16 +329,22 @@ function resetKurs() { kursIsManual.value = false; kursInput.value = String(exch
 
 // ─── Form ─────────────────────────────────────────────────
 const form = useForm({
-    breeder_id: '', jenis_koi_id: '', code: '', name: '',
+    breeder_id: '', jenis_koi_id: '', code: '', name: '', description: '',
     age: '', size: '', box_qty: '', weight: '', total_weight: '',
     images: [] as File[],
     customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: 'shipped',
-    shipping_cost: '', shipping_qty: '', shipping_note: '',
+    shipping_cost: '', shipping_qty: '', shipping_note: '', shipping_date: '',
 })
 
 const modalQty = ref('')
+
+// weight × box_qty → total_weight
+watch([() => form.weight, () => form.box_qty], ([w, q]) => {
+    const weight = Number(w) || 0; const qty = Number(q) || 0
+    form.total_weight = weight > 0 && qty > 0 ? String(parseFloat((weight * qty).toFixed(3))) : ''
+})
 
 // unit_price × qty × kurs → sell_idr
 watch([() => form.unit_price, () => form.sale_qty, kursInput], ([price, qty, kurs]) => {
@@ -225,11 +391,16 @@ const salesPriceIdr = computed(() => {
     const k   = Number(kursInput.value) || 0
     return jpy && k > 0 ? Math.round(jpy * k) : null
 })
-// Shipping per ekor = total shipping ÷ jumlah ikan sepaket
-const shippingPerEkor = computed(() => {
+// Shipping: input JPY → konversi ke IDR dulu
+const shippingCostIdr = computed(() => {
     const cost = Number(form.shipping_cost) || 0
-    const qty  = Number(form.shipping_qty)  || 0
-    return cost > 0 && qty > 0 ? Math.round(cost / qty) : null
+    const k    = Number(kursInput.value)    || 0
+    return cost > 0 && k > 0 ? Math.round(cost * k) : null
+})
+const shippingPerEkor = computed(() => {
+    const costIdr = shippingCostIdr.value   || 0
+    const qty     = Number(form.shipping_qty) || 0
+    return costIdr > 0 && qty > 0 ? Math.round(costIdr / qty) : null
 })
 
 // Profit = (Sell IDR − Modal IDR − Shipping/ekor) + Fee
@@ -296,8 +467,8 @@ function submit() {
     form.post('/master-data/koi', {
         forceFormData: true, preserveScroll: true,
         onSuccess: () => {
-            useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Data berhasil disimpan.', timer: 3000, showConfirmButton: false })
             showModal.value = false
+            setTimeout(() => useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Data berhasil disimpan.', timer: 3000, showConfirmButton: false }), 300)
         },
         onError: () => {
             useSwal().fire({ icon: 'error', title: 'Gagal!', text: 'Terjadi kesalahan. Periksa kembali isian.', timer: 4000, showConfirmButton: false })
@@ -399,7 +570,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                     <!-- Data Fisik -->
                                     <div class="rounded-md border border-border bg-muted/20 p-3 space-y-2.5">
                                         <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Data Fisik</p>
-                                        <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                                        <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
                                             <div class="grid gap-1">
                                                 <Label class="text-[11px] text-muted-foreground">Age (bln)</Label>
                                                 <Input v-model="form.age" type="number" min="0" placeholder="0" class="h-8 text-sm" />
@@ -419,6 +590,12 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 <Label class="text-[11px] text-muted-foreground">Weight (kg)</Label>
                                                 <Input v-model="form.weight" type="number" min="0" step="0.001" placeholder="0" class="h-8 text-sm" />
                                                 <InputError :message="form.errors.weight" />
+                                            </div>
+                                            <div class="grid gap-1">
+                                                <Label class="text-[11px] text-muted-foreground">Total Weight (kg) <span class="opacity-60">auto</span></Label>
+                                                <div class="flex h-8 items-center rounded-md border border-border bg-muted/50 px-2 text-sm font-medium text-foreground">
+                                                    {{ form.total_weight || '-' }}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -441,7 +618,44 @@ function confirmDeleteKoi(id: number, name: string) {
                                         </label>
                                         <InputError :message="(form.errors as any)['images.*']" />
                                     </div>
+
+                                    <!-- Description -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Description <span class="font-normal normal-case opacity-60">(opsional)</span></label>
+                                        <textarea
+                                            v-model="form.description"
+                                            rows="3"
+                                            placeholder="Catatan atau keterangan tambahan tentang koi ini..."
+                                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-none"
+                                        />
+                                        <InputError :message="(form.errors as any).description" />
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div class="border-t border-border"></div>
+
+                            <!-- ══ Kurs JPY → IDR ══ -->
+                            <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
+                                    <div class="flex items-center gap-1.5">
+                                        <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
+                                        <template v-else>
+                                            <span v-if="kursIsManual" class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">✎ Manual</span>
+                                            <span v-else-if="exchangeRateError" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">⚠ Fallback</span>
+                                            <span v-else class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">✓ Live API</span>
+                                            <button v-if="kursIsManual" type="button" @click="resetKurs" class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">Gunakan API</button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
+                                    <input type="text" inputmode="numeric" :value="fmtInput(kursInput)" @input="onKursInput" placeholder="0"
+                                        class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors" />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
+                                </div>
+                                <p class="text-[11px] text-red-600/80 dark:text-red-400/80">Otomatis dari API · langsung ketik untuk ubah manual</p>
                             </div>
 
                             <div class="border-t border-border"></div>
@@ -510,16 +724,20 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid grid-cols-2 gap-3">
                                             <!-- Total Biaya Shipping -->
                                             <div class="space-y-1.5">
-                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
+                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
                                                 <div class="relative">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-orange-600 dark:text-orange-400">Rp</span>
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
                                                         :value="fmtInput(form.shipping_cost)"
                                                         @input="(e: Event) => { form.shipping_cost = parseInput(e) }"
                                                         placeholder="0"
-                                                        class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
+                                                        class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700"
                                                     />
+                                                </div>
+                                                <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                    <span class="text-muted-foreground">≈ IDR</span>
+                                                    <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(shippingCostIdr) }}</span>
                                                 </div>
                                                 <InputError :message="(form.errors as any).shipping_cost" />
                                             </div>
@@ -542,16 +760,27 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
                                         </div>
 
-                                        <!-- Keterangan Shipping -->
-                                        <div class="space-y-1.5">
-                                            <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
-                                            <Input
-                                                v-model="form.shipping_note"
-                                                type="text"
-                                                placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
-                                                class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                            />
-                                            <InputError :message="(form.errors as any).shipping_note" />
+                                        <!-- Keterangan & Tanggal Shipping -->
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
+                                                <Input
+                                                    v-model="form.shipping_note"
+                                                    type="text"
+                                                    placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
+                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                                />
+                                                <InputError :message="(form.errors as any).shipping_note" />
+                                            </div>
+                                            <div class="space-y-1.5">
+                                                <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Date <span class="font-normal opacity-60">(opsional)</span></Label>
+                                                <Input
+                                                    v-model="form.shipping_date"
+                                                    type="date"
+                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                                />
+                                                <InputError :message="(form.errors as any).shipping_date" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -613,31 +842,84 @@ function confirmDeleteKoi(id: number, name: string) {
                                     <div class="grid gap-1.5">
                                         <Label class="text-xs font-medium text-muted-foreground">
                                             No. Invoice
-                                            <span class="font-normal opacity-60">(opsional · auto jika kosong)</span>
+                                            <span class="font-normal opacity-60">(opsional)</span>
                                         </Label>
+
+                                        <!-- Combobox: input langsung + dropdown -->
                                         <div class="relative">
-                                            <input
-                                                v-model="form.sale_invoice"
-                                                list="invoice-list"
-                                                type="text"
-                                                placeholder="Ketik atau pilih invoice existing..."
-                                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                            />
-                                            <datalist id="invoice-list">
-                                                <option v-for="inv in invoices" :key="inv.sale_invoice" :value="inv.sale_invoice">
-                                                    {{ inv.sale_invoice }} ({{ inv.koi_count }} koi)
-                                                </option>
-                                            </datalist>
+                                            <div class="flex items-center rounded-md border border-input bg-background shadow-sm focus-within:ring-1 focus-within:ring-ring">
+                                                <FileText class="ml-3 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                <input
+                                                    v-model="form.sale_invoice"
+                                                    type="text"
+                                                    placeholder="Ketik nomor invoice atau pilih existing..."
+                                                    class="flex h-9 w-full bg-transparent px-2 text-sm font-mono outline-none placeholder:font-sans placeholder:text-muted-foreground"
+                                                    @focus="invoiceDropdownOpen = true"
+                                                    @blur="closeInvoiceDropdown"
+                                                    @input="invoiceSearch = (form.sale_invoice as string); invoiceDropdownOpen = true"
+                                                    @keydown.enter.prevent="invoiceDropdownOpen = false"
+                                                    @keydown.escape="invoiceDropdownOpen = false"
+                                                />
+                                                <button v-if="form.sale_invoice" type="button" @mousedown.prevent @click="selectInvoice(null)" class="mr-2 shrink-0 text-muted-foreground hover:text-foreground">
+                                                    <X class="h-3.5 w-3.5" />
+                                                </button>
+                                                <button type="button" @mousedown.prevent @click="invoiceDropdownOpen = !invoiceDropdownOpen" class="mr-2 shrink-0 text-muted-foreground hover:text-foreground">
+                                                    <ChevronDown class="h-3.5 w-3.5 transition-transform" :class="invoiceDropdownOpen ? 'rotate-180' : ''" />
+                                                </button>
+                                            </div>
+
+                                            <!-- Dropdown panel -->
+                                            <div
+                                                v-if="invoiceDropdownOpen && (filteredInvoiceOptions.length > 0 || invoiceSearch.trim())"
+                                                class="invoice-dropdown-panel absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md"
+                                                tabindex="-1"
+                                            >
+                                                <div class="max-h-52 overflow-y-auto py-1">
+                                                    <!-- Existing invoices -->
+                                                    <template v-if="filteredInvoiceOptions.length > 0">
+                                                        <div class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Invoice Existing</div>
+                                                        <button
+                                                            v-for="inv in filteredInvoiceOptions"
+                                                            :key="inv.sale_invoice"
+                                                            type="button"
+                                                            @click="selectInvoice(inv.sale_invoice)"
+                                                            class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                        >
+                                                            <Check class="h-3.5 w-3.5 shrink-0" :class="form.sale_invoice === inv.sale_invoice ? 'text-primary' : 'opacity-0'" />
+                                                            <div class="flex flex-1 items-center justify-between gap-2 min-w-0">
+                                                                <span class="font-mono font-semibold text-sm truncate">{{ inv.sale_invoice }}</span>
+                                                                <div class="flex items-center gap-1 shrink-0">
+                                                                    <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{{ inv.koi_count }} koi</span>
+                                                                    <span class="text-[10px] text-muted-foreground/60">→ {{ inv.koi_count + 1 }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    </template>
+
+                                                    <!-- Empty state -->
+                                                    <div v-if="filteredInvoiceOptions.length === 0" class="px-3 py-4 text-center text-xs text-muted-foreground">
+                                                        Tidak ada invoice yang cocok
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
+
                                         <!-- Preview: jika invoice dipilih dari existing -->
-                                        <div v-if="form.sale_invoice && invoices.find(i => i.sale_invoice === form.sale_invoice)" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 text-[11px] flex items-center gap-1.5">
-                                            <span class="text-amber-600 dark:text-amber-400 font-medium">Invoice sudah ada:</span>
-                                            <span class="text-amber-700 dark:text-amber-300">
-                                                {{ invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count }} koi terdaftar
-                                                → akan menjadi {{ (invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count ?? 0) + 1 }} koi
-                                            </span>
+                                        <div v-if="form.sale_invoice && invoices.find(i => i.sale_invoice === form.sale_invoice)" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 text-[11px] flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-amber-600 dark:text-amber-400 font-medium">Invoice sudah ada:</span>
+                                                <span class="text-amber-700 dark:text-amber-300">
+                                                    {{ invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count }} koi terdaftar
+                                                    → akan menjadi {{ (invoices.find(i => i.sale_invoice === form.sale_invoice)?.koi_count ?? 0) + 1 }} koi
+                                                </span>
+                                            </div>
+                                            <button type="button" @click="selectInvoice(null)" class="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300">
+                                                <X class="h-3 w-3" />
+                                            </button>
                                         </div>
-                                        <InputError :message="(form.errors as any).sale_invoice" />
+
+
+<InputError :message="(form.errors as any).sale_invoice" />
                                     </div>
 
                                     <!-- Periode Azukari (hanya tampil jika status = azukari) -->
@@ -671,48 +953,6 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
                                             <InputError :message="form.errors.sale_qty" />
                                         </div>
-                                    </div>
-
-                                    <!-- Kurs JPY → IDR -->
-                                    <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
-                                        <div class="flex items-center justify-between">
-                                            <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
-                                            <div class="flex items-center gap-1.5">
-                                                <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
-                                                <template v-else>
-                                                    <span v-if="kursIsManual"
-                                                        class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">
-                                                        ✎ Manual
-                                                    </span>
-                                                    <span v-else-if="exchangeRateError"
-                                                        class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">
-                                                        ⚠ Fallback
-                                                    </span>
-                                                    <span v-else
-                                                        class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
-                                                        ✓ Live API
-                                                    </span>
-                                                    <button v-if="kursIsManual" type="button" @click="resetKurs"
-                                                        class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
-                                                        Gunakan API
-                                                    </button>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        <div class="relative">
-                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
-                                            <input
-                                                type="text" inputmode="numeric"
-                                                :value="fmtInput(kursInput)"
-                                                @input="onKursInput"
-                                                placeholder="0"
-                                                class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors"
-                                            />
-                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
-                                        </div>
-                                        <p class="text-[11px] text-red-600/80 dark:text-red-400/80">
-                                            Otomatis dari API · langsung ketik untuk ubah manual
-                                        </p>
                                     </div>
 
                                     <!-- Harga -->
@@ -923,7 +1163,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                             </SelectContent>
                                         </Select>
                                         <Link :href="`/master-data/koi/${koi.id}`" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted" title="Detail"><Eye :size="16" /></Link>
-                                        <Link :href="`/master-data/koi/${koi.id}/edit`" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted" title="Edit"><Pencil :size="16" /></Link>
+                                        <button type="button" @click="openEditModal(koi)" class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted" title="Edit"><Pencil :size="16" /></button>
                                         <button type="button" class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800" title="Hapus" @click="confirmDeleteKoi(koi.id, koi.name)"><Trash2 :size="16" /></button>
                                     </div>
                                 </td>
@@ -945,6 +1185,561 @@ function confirmDeleteKoi(id: number, name: string) {
             </div>
 
         </div>
+
+        <!-- ══ Edit Modal ══ -->
+        <Dialog v-model:open="showEditModal">
+            <DialogContent class="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Koi</DialogTitle>
+                    <DialogDescription class="text-xs">Perbarui data koi dan informasi penjualan.</DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitEdit" class="py-4 space-y-5 px-1">
+
+                    <!-- ══ SECTION: Data Koi ══ -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="h-4 w-1 rounded-full bg-primary"></div>
+                            <p class="text-sm font-semibold">Data Koi</p>
+                        </div>
+                        <div class="space-y-3 pl-3">
+                            <!-- Breeder & Jenis Koi -->
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Breeder <span class="text-red-500">*</span></Label>
+                                    <Select v-model="editForm.breeder_id">
+                                        <SelectTrigger class="w-full"><SelectValue placeholder="Pilih breeder" /></SelectTrigger>
+                                        <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
+                                            <div class="sticky top-0 bg-background p-2 border-b">
+                                                <Input v-model="editBreederSearch" placeholder="Cari breeder..." class="h-8" @keydown.stop />
+                                            </div>
+                                            <div class="max-h-44 overflow-y-auto">
+                                                <div v-if="editFilteredBreeders.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada breeder</div>
+                                                <SelectItem v-for="b in editFilteredBreeders" :key="b.id" :value="String(b.id)">{{ b.name_breeder }}</SelectItem>
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="editForm.errors.breeder_id" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Jenis Koi</Label>
+                                    <Select v-model="editForm.jenis_koi_id">
+                                        <SelectTrigger class="w-full"><SelectValue placeholder="Pilih jenis koi" /></SelectTrigger>
+                                        <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
+                                            <div class="sticky top-0 bg-background p-2 border-b">
+                                                <Input v-model="editJenisSearch" placeholder="Cari jenis koi..." class="h-8" @keydown.stop />
+                                            </div>
+                                            <div class="max-h-44 overflow-y-auto">
+                                                <div v-if="editFilteredJenisKois.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada</div>
+                                                <SelectItem v-for="j in editFilteredJenisKois" :key="j.id" :value="String(j.id)">{{ j.nama_jenis }}</SelectItem>
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="editForm.errors.jenis_koi_id" />
+                                </div>
+                            </div>
+
+                            <!-- Kode & Nama -->
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Kode Koi <span class="text-red-500">*</span></Label>
+                                    <Input v-model="editForm.code" placeholder="KOI-001" />
+                                    <InputError :message="editForm.errors.code" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Nama Koi <span class="text-red-500">*</span></Label>
+                                    <Input v-model="editForm.name" placeholder="Nama koi" />
+                                    <InputError :message="editForm.errors.name" />
+                                </div>
+                            </div>
+
+                            <!-- Data Fisik -->
+                            <div class="rounded-md border border-border bg-muted/20 p-3 space-y-2.5">
+                                <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Data Fisik</p>
+                                <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                                    <div class="grid gap-1">
+                                        <Label class="text-[11px] text-muted-foreground">Age (bln)</Label>
+                                        <Input v-model="editForm.age" type="number" min="0" placeholder="0" class="h-8 text-sm" />
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <Label class="text-[11px] text-muted-foreground">Size (cm)</Label>
+                                        <Input v-model="editForm.size" type="number" min="0" step="0.01" placeholder="0" class="h-8 text-sm" />
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <Label class="text-[11px] text-muted-foreground">Box QTY</Label>
+                                        <Input v-model="editForm.box_qty" type="number" min="0" placeholder="0" class="h-8 text-sm" />
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <Label class="text-[11px] text-muted-foreground">Weight (kg)</Label>
+                                        <Input v-model="editForm.weight" type="number" min="0" step="0.001" placeholder="0" class="h-8 text-sm" />
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <Label class="text-[11px] text-muted-foreground">Total Weight (kg) <span class="opacity-60">auto</span></Label>
+                                        <div class="flex h-8 items-center rounded-md border border-border bg-muted/50 px-2 text-sm font-medium text-foreground">
+                                            {{ editForm.total_weight || '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Foto Koi -->
+                            <div class="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+                                <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Foto Koi</p>
+                                <div v-if="editExistingImages.length > 0" class="flex flex-wrap gap-2">
+                                    <div v-for="img in editExistingImages" :key="img.id" class="relative h-16 w-16 overflow-hidden rounded-lg border group">
+                                        <img :src="img.url" class="h-full w-full object-cover" />
+                                        <button type="button" @click="markDeleteEditExisting(img.id)" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <X class="h-4 w-4 text-white" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-if="editFotoPreviews.length > 0" class="flex flex-wrap gap-2">
+                                    <div v-for="(p, i) in editFotoPreviews" :key="i" class="relative h-16 w-16 overflow-hidden rounded-lg border group">
+                                        <img :src="p.url" class="h-full w-full object-cover" />
+                                        <button type="button" @click="removeEditNewImage(i)" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <X class="h-4 w-4 text-white" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <label class="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+                                    <ImagePlus class="h-4 w-4 flex-shrink-0" />
+                                    <span>Pilih foto (jpg, png, webp · maks. 2 MB · bisa beberapa)</span>
+                                    <input type="file" accept="image/jpg,image/jpeg,image/png,image/webp" multiple class="sr-only" @change="handleEditImagesChange" />
+                                </label>
+
+                                <!-- Description -->
+                                <div class="space-y-1.5">
+                                    <label class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Description <span class="font-normal normal-case opacity-60">(opsional)</span></label>
+                                    <textarea
+                                        v-model="editForm.description"
+                                        rows="3"
+                                        placeholder="Catatan atau keterangan tambahan tentang koi ini..."
+                                        class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-none"
+                                    />
+                                    <InputError :message="(editForm.errors as any).description" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-border"></div>
+
+                    <!-- ══ Kurs JPY → IDR ══ -->
+                    <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
+                            <div class="flex items-center gap-1.5">
+                                <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
+                                <template v-else>
+                                    <span v-if="editKursIsManual" class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">✎ Manual</span>
+                                    <span v-else-if="exchangeRateError" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">⚠ Fallback</span>
+                                    <span v-else class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">✓ Live API</span>
+                                    <button v-if="editKursIsManual" type="button" @click="editKursIsManual = false; editKursInput = String(exchangeRate)" class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">Gunakan API</button>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
+                            <input type="text" inputmode="numeric" :value="fmtInput(editKursInput)"
+                                @input="(e: Event) => { editKursIsManual = true; editKursInput = parseInput(e) }"
+                                placeholder="0"
+                                class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors" />
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
+                        </div>
+                        <p class="text-[11px] text-red-600/80 dark:text-red-400/80">Otomatis dari API · langsung ketik untuk ubah manual</p>
+                    </div>
+
+                    <div class="border-t border-border"></div>
+
+                    <!-- ══ SECTION: Modal ══ -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="h-4 w-1 rounded-full bg-blue-500"></div>
+                            <p class="text-sm font-semibold">Modal</p>
+                        </div>
+                        <div class="space-y-3 pl-3">
+                            <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-3">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- Modal Price JPY -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</Label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
+                                            <Input
+                                                type="text" inputmode="numeric"
+                                                :model-value="fmtInput(editForm.stock_price)"
+                                                @input="(e: Event) => { editForm.stock_price = parseInput(e) }"
+                                                placeholder="0"
+                                                class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div v-if="editModalPriceIdr" class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                            <span class="text-muted-foreground">≈ IDR/ekor</span>
+                                            <span class="font-semibold text-blue-700 dark:text-blue-400">{{ fmtIDR(editModalPriceIdr) }}</span>
+                                        </div>
+                                        <InputError :message="(editForm.errors as any).stock_price" />
+                                    </div>
+                                    <!-- Qty Modal (stok disiapkan) -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty Modal (ekor)</Label>
+                                        <Input
+                                            type="number" min="1" placeholder="1"
+                                            v-model="editModalQty"
+                                            class="h-9 text-sm border-blue-300 dark:border-blue-700"
+                                        />
+                                        <p class="text-[10px] text-muted-foreground">Stok yang disiapkan</p>
+                                    </div>
+                                </div>
+                                <!-- Total Modal -->
+                                <div v-if="editTotalModalIdr" class="rounded border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                    <span class="text-blue-700 dark:text-blue-300 font-medium">Total Modal ({{ editModalQty || 1 }} ekor)</span>
+                                    <span class="font-bold text-blue-800 dark:text-blue-200">{{ fmtIDR(editTotalModalIdr) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-border"></div>
+
+                    <!-- ══ SECTION: Shipping ══ -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="h-4 w-1 rounded-full bg-orange-500"></div>
+                            <p class="text-sm font-semibold">Shipping</p>
+                            <span class="text-xs text-muted-foreground">(opsional)</span>
+                        </div>
+                        <div class="space-y-3 pl-3">
+                            <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- Total Biaya Shipping -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
+                                            <Input
+                                                type="text" inputmode="numeric"
+                                                :value="fmtInput(editForm.shipping_cost)"
+                                                @input="(e: Event) => { editForm.shipping_cost = parseInput(e) }"
+                                                placeholder="0"
+                                                class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700"
+                                            />
+                                        </div>
+                                        <div v-if="editShippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                            <span class="text-muted-foreground">≈ IDR</span>
+                                            <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(editShippingCostIdr) }}</span>
+                                        </div>
+                                        <InputError :message="(editForm.errors as any).shipping_cost" />
+                                    </div>
+                                    <!-- Jumlah Ikan Sepaket -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
+                                        <Input
+                                            v-model="editForm.shipping_qty"
+                                            type="number" min="1" placeholder="1"
+                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                        />
+                                        <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
+                                        <InputError :message="(editForm.errors as any).shipping_qty" />
+                                    </div>
+                                </div>
+                                <!-- Shipping per ekor (auto) -->
+                                <div v-if="editShippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                    <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingPerEkor) }}</span>
+                                </div>
+                                <!-- Keterangan & Tanggal Shipping -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
+                                        <Input
+                                            v-model="editForm.shipping_note"
+                                            type="text"
+                                            placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
+                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                        />
+                                        <InputError :message="(editForm.errors as any).shipping_note" />
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Date <span class="font-normal opacity-60">(opsional)</span></Label>
+                                        <Input
+                                            v-model="editForm.shipping_date"
+                                            type="date"
+                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
+                                        />
+                                        <InputError :message="(editForm.errors as any).shipping_date" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-border"></div>
+
+                    <!-- ══ SECTION: Transaksi ══ -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="h-4 w-1 rounded-full bg-green-500"></div>
+                            <p class="text-sm font-semibold">Transaksi</p>
+                        </div>
+                        <div class="space-y-3 pl-3">
+
+                            <!-- Customer & Status -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Customer</Label>
+                                    <Select v-model="editForm.customer_id">
+                                        <SelectTrigger class="w-full"><SelectValue placeholder="Pilih customer" /></SelectTrigger>
+                                        <SelectContent class="p-0 w-[--radix-select-trigger-width] min-w-[20rem]">
+                                            <div class="sticky top-0 bg-background p-2 border-b flex items-center gap-1.5">
+                                                <Input v-model="editCustomerSearch" placeholder="Cari customer..." class="h-8 flex-1" @keydown.stop />
+                                                <a href="/admin/hak-akses/customer" target="_blank" title="Buka halaman Customer"
+                                                    class="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                                                    <ExternalLink class="w-3.5 h-3.5" />
+                                                </a>
+                                            </div>
+                                            <div class="max-h-44 overflow-y-auto">
+                                                <div v-if="editFilteredCustomers.length === 0" class="px-3 py-2 text-sm text-muted-foreground">Tidak ada customer</div>
+                                                <SelectItem v-for="c in editFilteredCustomers" :key="c.id" :value="String(c.id)">{{ c.name }}</SelectItem>
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="editForm.errors.customer_id" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Status</Label>
+                                    <Select v-model="editForm.sale_status">
+                                        <SelectTrigger class="w-full"><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="pending">Pending</SelectItem>
+                                            <SelectItem value="shipped">Shipped</SelectItem>
+                                            <SelectItem value="azukari">Azukari</SelectItem>
+                                            <SelectItem value="dead">Dead</SelectItem>
+                                            <SelectItem value="cancel">Cancel</SelectItem>
+                                            <SelectItem value="refund">Refund</SelectItem>
+                                            <SelectItem value="dead_refund">Dead Refund</SelectItem>
+                                            <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="editForm.errors.sale_status" />
+                                </div>
+                            </div>
+
+                            <!-- Invoice -->
+                            <div class="grid gap-1.5">
+                                <Label class="text-xs font-medium text-muted-foreground">
+                                    No. Invoice
+                                    <span class="font-normal opacity-60">(opsional)</span>
+                                </Label>
+                                <div class="relative">
+                                    <div class="flex items-center rounded-md border border-input bg-background shadow-sm focus-within:ring-1 focus-within:ring-ring">
+                                        <FileText class="ml-3 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                        <input
+                                            v-model="editForm.sale_invoice"
+                                            type="text"
+                                            placeholder="Ketik nomor invoice atau pilih existing..."
+                                            class="flex h-9 w-full bg-transparent px-2 text-sm font-mono outline-none placeholder:font-sans placeholder:text-muted-foreground"
+                                            @focus="editInvoiceDropdownOpen = true"
+                                            @blur="closeEditInvoiceDropdown"
+                                            @input="editInvoiceDropdownOpen = true"
+                                            @keydown.enter.prevent="editInvoiceDropdownOpen = false"
+                                            @keydown.escape="editInvoiceDropdownOpen = false"
+                                        />
+                                        <button v-if="editForm.sale_invoice" type="button" @mousedown.prevent @click="selectEditInvoice(null)" class="mr-2 shrink-0 text-muted-foreground hover:text-foreground">
+                                            <X class="h-3.5 w-3.5" />
+                                        </button>
+                                        <button type="button" @mousedown.prevent @click="editInvoiceDropdownOpen = !editInvoiceDropdownOpen" class="mr-2 shrink-0 text-muted-foreground hover:text-foreground">
+                                            <ChevronDown class="h-3.5 w-3.5 transition-transform" :class="editInvoiceDropdownOpen ? 'rotate-180' : ''" />
+                                        </button>
+                                    </div>
+                                    <div
+                                        v-if="editInvoiceDropdownOpen && (editFilteredInvoices.length > 0 || editForm.sale_invoice)"
+                                        class="edit-invoice-panel absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md"
+                                        tabindex="-1"
+                                    >
+                                        <div class="max-h-52 overflow-y-auto py-1">
+                                            <template v-if="editFilteredInvoices.length > 0">
+                                                <div class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Invoice Existing</div>
+                                                <button
+                                                    v-for="inv in editFilteredInvoices"
+                                                    :key="inv.sale_invoice"
+                                                    type="button"
+                                                    @click="selectEditInvoice(inv.sale_invoice)"
+                                                    class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                >
+                                                    <Check class="h-3.5 w-3.5 shrink-0" :class="editForm.sale_invoice === inv.sale_invoice ? 'text-primary' : 'opacity-0'" />
+                                                    <div class="flex flex-1 items-center justify-between gap-2 min-w-0">
+                                                        <span class="font-mono font-semibold text-sm truncate">{{ inv.sale_invoice }}</span>
+                                                        <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">{{ inv.koi_count }} koi</span>
+                                                    </div>
+                                                </button>
+                                            </template>
+                                            <div v-if="editFilteredInvoices.length === 0" class="px-3 py-4 text-center text-xs text-muted-foreground">
+                                                Tidak ada invoice yang cocok
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <InputError :message="(editForm.errors as any).sale_invoice" />
+                            </div>
+
+                            <!-- Periode Azukari (hanya tampil jika status = azukari) -->
+                            <div v-if="editForm.sale_status === 'azukari'" class="grid gap-1.5">
+                                <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
+                                <Input v-model="editForm.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
+                                <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
+                                <InputError :message="(editForm.errors as any).azukari_period" />
+                            </div>
+
+                            <!-- Tanggal & Qty -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Tanggal</Label>
+                                    <Input v-model="editForm.sale_tanggal" type="date" class="h-9 text-sm" />
+                                    <InputError :message="editForm.errors.sale_tanggal" />
+                                </div>
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">
+                                        Qty Jual (ekor)
+                                        <span v-if="editModalQty" class="font-normal text-muted-foreground">maks. {{ editModalQty }}</span>
+                                    </Label>
+                                    <Input
+                                        v-model="editForm.sale_qty"
+                                        type="number" min="1"
+                                        :max="editModalQty || undefined"
+                                        placeholder="1"
+                                        class="h-9 text-sm"
+                                    />
+                                    <p v-if="editModalQty && Number(editForm.sale_qty) > Number(editModalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ editModalQty }})</p>
+                                    <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ editModalQty || '?' }} ekor</p>
+                                    <InputError :message="editForm.errors.sale_qty" />
+                                </div>
+                            </div>
+
+
+                            <!-- Harga -->
+                            <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                                <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Harga</p>
+
+                                <!-- Sales Price JPY & Total Sales IDR -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- Sales Price JPY -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                            <Input
+                                                type="text" inputmode="numeric"
+                                                :model-value="fmtInput(editForm.unit_price)"
+                                                @input="(e: Event) => { editForm.unit_price = parseInput(e) }"
+                                                placeholder="0"
+                                                class="h-9 text-sm pl-7"
+                                            />
+                                        </div>
+                                        <div v-if="editUnitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                            <span class="text-muted-foreground">≈ IDR/unit</span>
+                                            <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(editUnitPriceIdr) }}</span>
+                                        </div>
+                                        <InputError :message="editForm.errors.sell_idr" />
+                                    </div>
+                                    <!-- Total Sales IDR (auto) -->
+                                    <div class="space-y-1.5">
+                                        <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                        <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
+                                            {{ editSalesPriceIdr ? fmtIDR(editSalesPriceIdr) : '-' }}
+                                        </div>
+                                        <p class="text-[10px] text-muted-foreground">Sales JPY × {{ editForm.sale_qty || 1 }} ekor × kurs</p>
+                                    </div>
+                                </div>
+
+                                <!-- Fee -->
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Fee</Label>
+                                    <Select v-model="editFeePct" @update:model-value="onEditFeeSelect">
+                                        <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0">No Fee</SelectItem>
+                                            <SelectItem value="5">5%</SelectItem>
+                                            <SelectItem value="7.5">7.5%</SelectItem>
+                                            <SelectItem value="10">10%</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="editForm.errors.fee" />
+                                </div>
+                            </div>
+
+                            <!-- Ringkasan -->
+                            <div v-if="editSalesPriceIdr || editModalTerjualIdr" class="rounded-md border border-border overflow-hidden text-xs">
+                                <div class="bg-muted/60 px-4 py-2 border-b border-border flex items-center justify-between">
+                                    <p class="text-[11px] font-semibold text-foreground uppercase tracking-wider">Ringkasan</p>
+                                    <span class="text-[10px] text-muted-foreground">Kurs ¥1 = Rp {{ Number(editKursInput || 0).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="divide-y divide-border/60">
+                                    <!-- Modal Terjual -->
+                                    <div class="px-4 py-2.5 flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-foreground">Modal Terjual</p>
+                                            <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                ¥{{ Number(editForm.stock_price||0).toLocaleString('ja-JP') }} × kurs × {{ editForm.sale_qty || 1 }} ekor terjual
+                                            </p>
+                                        </div>
+                                        <span class="font-semibold text-blue-600 dark:text-blue-400">
+                                            {{ editModalTerjualIdr ? fmtIDR(editModalTerjualIdr) : '-' }}
+                                        </span>
+                                    </div>
+                                    <!-- Total Sales -->
+                                    <div class="px-4 py-2.5 flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-foreground">Total Sales</p>
+                                            <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                ¥{{ Number(editForm.unit_price||0).toLocaleString('ja-JP') }} × {{ editForm.sale_qty||1 }} ekor × kurs
+                                            </p>
+                                        </div>
+                                        <span class="font-semibold text-green-600 dark:text-green-400">
+                                            {{ editSalesPriceIdr ? fmtIDR(editSalesPriceIdr) : '-' }}
+                                        </span>
+                                    </div>
+                                    <!-- Shipping -->
+                                    <div v-if="editShippingPerEkor" class="px-4 py-2.5 flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-foreground">Shipping/ekor</p>
+                                            <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                {{ fmtIDR(Number(editShippingCostIdr)) }} ÷ {{ editForm.shipping_qty }} ikan
+                                                <span v-if="editForm.shipping_note" class="ml-1 italic">· {{ editForm.shipping_note }}</span>
+                                            </p>
+                                        </div>
+                                        <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(editShippingPerEkor) }}</span>
+                                    </div>
+                                    <!-- Fee -->
+                                    <div v-if="Number(editForm.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
+                                        <p class="font-medium text-foreground">
+                                            Fee <span v-if="editFeePct && Number(editFeePct) > 0" class="font-normal text-muted-foreground">({{ editFeePct }}%)</span>
+                                        </p>
+                                        <span class="font-semibold text-green-600 dark:text-green-400">+ {{ fmtIDR(Number(editForm.fee)) }}</span>
+                                    </div>
+                                    <!-- Profit -->
+                                    <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
+                                        <div>
+                                            <p class="font-bold text-sm text-foreground">Profit</p>
+                                            <p class="text-[10px] text-muted-foreground mt-0.5">(Sell IDR − Modal − Shipping) + Fee</p>
+                                        </div>
+                                        <span class="text-base font-bold"
+                                            :class="editProfitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                            {{ fmtIDR(editProfit) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="border-t border-border pt-3 flex justify-end gap-2">
+                        <Button type="button" variant="outline" @click="showEditModal = false">Batal</Button>
+                        <Button type="submit" :disabled="editForm.processing">{{ editForm.processing ? 'Menyimpan...' : 'Simpan' }}</Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
 
         <!-- Image Modal -->
         <Dialog v-model:open="showImageModal">

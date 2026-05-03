@@ -24,7 +24,10 @@ class RekapTransaksiController extends Controller
         }
 
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
-        return Inertia::render('Admin/RekapTransaksi/Show', ['koi' => $koi]);
+        return Inertia::render('Admin/RekapTransaksi/Show', [
+            'koi'     => $koi,
+            'isAdmin' => $user->role_id === 1,
+        ]);
     }
 
     public function index(Request $request): Response

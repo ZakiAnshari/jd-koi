@@ -21,6 +21,7 @@ class Koi extends Model
         'code',
         'name',
         'photo',
+        'description',
         'age',
         'size',
         'box_qty',
@@ -39,6 +40,7 @@ class Koi extends Model
         'sale_status',
         'sale_invoice',
         'sale_shipped_date',
+        'shipping_date',
     ];
 
     protected $casts = [
@@ -47,8 +49,9 @@ class Koi extends Model
         'box_qty'      => 'integer',
         'weight'       => 'decimal:3',
         'total_weight' => 'decimal:3',
-        'sale_tanggal'      => 'date',
-        'sale_shipped_date' => 'date',
+        'sale_tanggal'      => 'date:Y-m-d',
+        'sale_shipped_date' => 'date:Y-m-d',
+        'shipping_date'     => 'date:Y-m-d',
         'sale_qty'     => 'integer',
         'sell_jpy'     => 'decimal:2',
         'buy_jpy'      => 'decimal:2',

@@ -26,7 +26,9 @@ type Koi = {
     jenis_koi?: JenisKoi
     customer?: { id: number; name: string } | null
     customer_id: number | null
+    sale_invoice: string | null
     sale_tanggal: string | null
+    sale_shipped_date: string | null
     sale_qty: number | null
     unit_price: string | null
     buy_jpy: string | null
@@ -129,8 +131,8 @@ const STATUS_CLASS: Record<string, string> = {
             </div>
 
             <!-- Content -->
-            <div class="grid gap-6 lg:grid-cols-3">
-                <!-- Left: Carousel -->
+            <div class="grid gap-6 lg:grid-cols-3 auto-rows-max items-start">
+                <!-- Foto Koi -->
                 <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-1">
                     <h2 class="mb-5 text-base font-semibold">Foto Koi</h2>
 
@@ -143,24 +145,19 @@ const STATUS_CLASS: Record<string, string> = {
 
                     <div v-else>
                         <div class="relative overflow-hidden rounded-lg bg-muted">
-                            <div class="h-64 w-full">
+                            <div class="h-78 w-full">
                                 <button type="button" @click="openLightbox(current)" class="block h-full w-full">
-                                    <img
-                                        :src="images[current].url"
-                                        :alt="`Foto koi ${koi.name} ${current + 1}`"
-                                        class="h-full w-full object-cover transition-opacity duration-200"
-                                    />
+                                    <img :src="images[current].url" :alt="`Foto koi ${koi.name} ${current + 1}`"
+                                        class="h-full w-full object-cover transition-opacity duration-200" />
                                 </button>
                             </div>
                             <template v-if="images.length > 1">
                                 <button @click="prev"
-                                    class="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
-                                    aria-label="Foto sebelumnya">
+                                    class="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
                                     <ChevronLeft class="h-5 w-5" />
                                 </button>
                                 <button @click="next"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors"
-                                    aria-label="Foto berikutnya">
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
                                     <ChevronRight class="h-5 w-5" />
                                 </button>
                                 <div class="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
@@ -171,14 +168,13 @@ const STATUS_CLASS: Record<string, string> = {
 
                         <div v-if="images.length > 1" class="mt-3 flex items-center justify-center gap-1.5">
                             <button v-for="(_, i) in images" :key="i" @click="current = i"
-                                :class="['h-2 rounded-full transition-all duration-200', i === current ? 'w-5 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60']"
-                                :aria-label="`Foto ${i + 1}`" />
+                                :class="['h-2 rounded-full transition-all duration-200', i === current ? 'w-5 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60']" />
                         </div>
 
                         <div v-if="images.length > 1" class="mt-3 flex gap-2 overflow-x-auto pb-1">
                             <button v-for="(img, i) in images" :key="img.id" @click="current = i"
                                 :class="['flex-shrink-0 h-10 w-10 overflow-hidden rounded-md border-2 transition-all', i === current ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-90']">
-                                <img :src="img.url" :alt="`Thumbnail ${i + 1}`" class="h-full w-full object-cover" />
+                                <img :src="img.url" class="h-full w-full object-cover" />
                             </button>
                         </div>
 
@@ -188,71 +184,15 @@ const STATUS_CLASS: Record<string, string> = {
                     </div>
                 </div>
 
-                <!-- Right: Details -->
+                <!-- Kanan: Informasi + Harga -->
                 <div class="space-y-4 lg:col-span-2">
-                    <!-- Identitas -->
+                    <!-- Informasi Transaksi -->
                     <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
-                        <h2 class="mb-5 text-base font-semibold">Informasi Identitas</h2>
-                        <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                        <h2 class="mb-5 text-base font-semibold">Informasi Transaksi</h2>
+                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Code</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.code }}</dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nama</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.name }}</dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.breeder?.name_breeder ?? '-' }}</dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jenis Koi</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.jenis_koi?.nama_jenis ?? '-' }}</dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3 sm:col-span-2">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tanggal Ditambahkan</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ fmtDate(koi.created_at) }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    <!-- Data Fisik -->
-                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
-                        <h2 class="mb-5 text-base font-semibold">Data Fisik</h2>
-                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</dt>
-                                <dd class="mt-1 font-medium text-foreground">
-                                    {{ koi.age != null ? koi.age + ' bulan' : '-' }}
-                                </dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</dt>
-                                <dd class="mt-1 font-medium text-foreground">
-                                    {{ koi.size != null ? koi.size + ' cm' : '-' }}
-                                </dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Box QTY</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.box_qty ?? '-' }}</dd>
-                            </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight</dt>
-                                <dd class="mt-1 font-medium text-foreground">
-                                    {{ koi.weight != null ? koi.weight + ' kg' : '-' }}
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    <!-- Penjualan -->
-                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
-                        <h2 class="mb-5 text-base font-semibold">Penjualan</h2>
-                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.customer?.name ?? '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</dt>
+                                <dd class="mt-1 font-mono font-medium text-foreground">{{ koi.sale_invoice ?? '-' }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</dt>
@@ -266,25 +206,33 @@ const STATUS_CLASS: Record<string, string> = {
                                 </dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</dt>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.customer?.name ?? '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.sale_tanggal ? fmtDate(koi.sale_tanggal) : '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipped Date</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.sale_shipped_date ? fmtDate(koi.sale_shipped_date) : '-' }}</dd>
+                            </div>
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.sale_qty ?? '-' }}</dd>
                             </div>
-                            <!-- Modal Price IDR/ekor -->
+                        </dl>
+                    </div>
+
+                    <!-- Harga Transaksi -->
+                    <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
+                        <h2 class="mb-5 text-base font-semibold">Harga Transaksi</h2>
+                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                             <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</dt>
-                                <dd class="mt-1 font-medium text-foreground">
-                                    {{ koi.stock_price != null ? fmtIDR(koi.stock_price) : '-' }}
-                                </dd>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.stock_price != null ? fmtIDR(koi.stock_price) : '-' }}</dd>
                                 <dd v-if="totalModalIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">Total × {{ koi.sale_qty || 1 }} = {{ fmtIDR(totalModalIdr) }}</dd>
                             </div>
-                            <!-- <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stock JPY (harga beli)</dt>
-                                <dd class="mt-1 font-medium text-foreground">
-                                    {{ koi.buy_jpy != null ? '¥' + Number(koi.buy_jpy).toLocaleString('ja-JP') : '-' }}
-                                </dd>
-                                <dd v-if="stockPriceIdr" class="mt-0.5 text-xs text-muted-foreground">≈ {{ fmtIDR(stockPriceIdr) }}</dd>
-                            </div> -->
-                            <!-- Unit Price JPY -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</dt>
                                 <dd class="mt-1 font-medium text-foreground">
@@ -292,7 +240,6 @@ const STATUS_CLASS: Record<string, string> = {
                                 </dd>
                                 <dd v-if="unitPriceIdr" class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">≈ {{ fmtIDR(unitPriceIdr) }}</dd>
                             </div>
-                            <!-- Sales Price JPY -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</dt>
                                 <dd class="mt-1 font-medium text-foreground">
@@ -300,24 +247,20 @@ const STATUS_CLASS: Record<string, string> = {
                                 </dd>
                                 <dd v-if="salesPriceIdr" class="mt-0.5 text-xs text-green-600 dark:text-green-400">≈ {{ fmtIDR(salesPriceIdr) }}</dd>
                             </div>
-                            <!-- Kurs -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kurs (JPY→IDR)</dt>
                                 <dd class="mt-1 font-medium text-foreground">
                                     {{ koi.kurs != null ? 'Rp ' + Number(koi.kurs).toLocaleString('id-ID') + ' / ¥1' : '-' }}
                                 </dd>
                             </div>
-                            <!-- Fee -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
                             </div>
-                            <!-- Total Diterima -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Diterima</dt>
                                 <dd class="mt-1 font-semibold text-foreground">{{ fmtIDR(salesPriceIdr - Number(koi.fee ?? 0)) }}</dd>
                             </div>
-                            <!-- Profit -->
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</dt>
                                 <dd class="mt-1 font-semibold" :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
@@ -326,6 +269,57 @@ const STATUS_CLASS: Record<string, string> = {
                             </div>
                         </dl>
                     </div>
+                </div>
+
+                <!-- Identitas Koi — full width -->
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-3">
+                    <h2 class="mb-5 text-base font-semibold">Identitas Koi</h2>
+                    <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">KOI Code</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.code }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nama</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.name }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.breeder?.name_breeder ?? '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jenis Koi</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.jenis_koi?.nama_jenis ?? '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.age != null ? koi.age + ' bulan' : '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.size != null ? koi.size + ' cm' : '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Box QTY</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.box_qty ?? '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.weight != null ? parseFloat(Number(koi.weight).toFixed(3)) + ' kg' : '-' }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Weight</dt>
+                            <dd class="mt-1 font-medium text-foreground">
+                                {{
+                                    koi.total_weight != null
+                                        ? parseFloat(Number(koi.total_weight).toFixed(3)) + ' kg'
+                                        : (koi.weight != null && koi.box_qty != null)
+                                            ? parseFloat((Number(koi.weight) * Number(koi.box_qty)).toFixed(3)) + ' kg'
+                                            : '-'
+                                }}
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
             </div>
         </div>

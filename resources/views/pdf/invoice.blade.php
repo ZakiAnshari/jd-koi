@@ -6,27 +6,24 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 9.5px; color: #1a1a1a; background: #fff; }
-        @page { margin: 12mm 12mm 15mm 12mm; }
+        @page { margin: 12mm 16mm 15mm 16mm; }
+
+        .page-wrap { padding: 0 4mm; }
 
         /* ── Header ── */
         .header { display: table; width: 100%; margin-bottom: 10px; }
         .h-left  { display: table-cell; vertical-align: middle; }
         .h-right { display: table-cell; vertical-align: middle; text-align: right; }
 
-        .logo-circle {
-            display: inline-block;
-            width: 48px; height: 48px;
-            border-radius: 50%;
-            background: #c0392b;
-            text-align: center;
-            line-height: 48px;
-            color: #fff;
-            font-size: 10px;
-            font-weight: bold;
-            margin-right: 8px;
+        .h-logo-wrap { display: table; }
+        .logo-img {
+            display: table-cell;
             vertical-align: middle;
+            padding-right: 10px;
+            width: 66px;
         }
-        .company-name { display: inline-block; vertical-align: middle; }
+        .logo-img img { width: 62px; height: 62px; }
+        .company-name { display: table-cell; vertical-align: middle; text-align: center; }
         .company-name .name { font-size: 14px; font-weight: bold; color: #c0392b; }
         .company-name .addr { font-size: 8px; color: #666; margin-top: 2px; }
 
@@ -163,15 +160,21 @@
     </style>
 </head>
 <body>
+<div class="page-wrap">
 
     <!-- ── Header ── -->
     <div class="header">
         <div class="h-left">
-            <span class="logo-circle">KOI</span>
-            <span class="company-name">
-                <div class="name">JAPAN DIRECT KOI CENTER</div>
-                <div class="addr">Cileuleu, Ciamis &nbsp;·&nbsp; +6287868892200</div>
-            </span>
+            <div class="h-logo-wrap">
+                @php $logoPath = public_path('JD-KOI.PNG'); @endphp
+                @if(file_exists($logoPath))
+                    <div class="logo-img"><img src="{{ $logoPath }}" alt="Logo"></div>
+                @endif
+                <div class="company-name">
+                    <div class="name">JAPAN DIRECT KOI CENTER</div>
+                    <div class="addr">Citeko, Cisarua, Puncak &nbsp;·&nbsp; +6287868882200</div>
+                </div>
+            </div>
         </div>
         <div class="h-right">
             <div class="inv-label">INVOICE</div>
@@ -351,5 +354,6 @@
         Invoice {{ $invoiceNumber }} &nbsp;·&nbsp; Dicetak {{ \Carbon\Carbon::now()->format('d M Y H:i') }}
     </div>
 
+</div>
 </body>
 </html>

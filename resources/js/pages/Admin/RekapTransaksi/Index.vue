@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
 import { useSwal } from '@/composables/useSwal'
-import { Search, RotateCcw, Eye, X, Download, ImagePlus } from 'lucide-vue-next'
+import { Search, RotateCcw, Eye, X, Download, ImagePlus, Columns3 } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +30,7 @@ type KoiRow = {
     sale_tanggal: string | null
     sale_shipped_date: string | null
     sale_status: string | null
+    shipping_date: string | null
     sale_qty: number | null
     unit_price: string | null
     sell_idr: string | null
@@ -41,6 +42,7 @@ type KoiRow = {
     breeder: Breeder | null
     jenis_koi: { id: number; nama_jenis: string } | null
     customer: Customer | null
+    description: string | null
     images: { id: number; url: string }[]
 }
 
@@ -250,6 +252,61 @@ const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
 
 const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.length - 1))
+
+// ─── Column visibility ────────────────────────────────────
+const STORAGE_KEY = 'rekap-transaksi-cols'
+
+type ColKey = 'foto' | 'invoice' | 'kuj_code' | 'sales_date' | 'status' | 'shipping_date' | 'customer' | 'breeder' | 'description' | 'age' | 'size' | 'koi_qty' | 'unit_price' | 'sales_price' | 'box_qty' | 'weight' | 'total_weight'
+
+const allColumns: { key: ColKey; label: string; adminOnly?: boolean }[] = [
+    { key: 'foto',          label: 'Foto' },
+    { key: 'invoice',       label: 'Invoice' },
+    { key: 'kuj_code',      label: 'KUJ Code' },
+    { key: 'sales_date',    label: 'Sales Date' },
+    { key: 'status',        label: 'Status' },
+    { key: 'shipping_date', label: 'Shipping Date' },
+    { key: 'customer',      label: 'Customer', adminOnly: true },
+    { key: 'breeder',       label: 'Breeder' },
+    { key: 'description',   label: 'Description' },
+    { key: 'age',           label: 'Age' },
+    { key: 'size',          label: 'Size' },
+    { key: 'koi_qty',       label: 'Koi QTY' },
+    { key: 'unit_price',    label: 'Unit Price (JPY)' },
+    { key: 'sales_price',   label: 'Sales Price (JPY)' },
+    { key: 'box_qty',       label: 'Box QTY' },
+    { key: 'weight',        label: 'Weight (kg)' },
+    { key: 'total_weight',  label: 'Total Weight (kg)' },
+]
+
+const defaultVisible: ColKey[] = ['foto', 'invoice', 'kuj_code', 'sales_date', 'status', 'shipping_date', 'customer', 'breeder', 'description', 'age', 'size', 'koi_qty', 'unit_price', 'sales_price', 'box_qty', 'weight', 'total_weight']
+
+const visibleCols = ref<Set<ColKey>>(new Set(defaultVisible))
+const showColPicker = ref(false)
+
+onMounted(() => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) visibleCols.value = new Set(JSON.parse(saved) as ColKey[])
+    } catch {}
+})
+
+function toggleCol(key: ColKey) {
+    const s = new Set(visibleCols.value)
+    s.has(key) ? s.delete(key) : s.add(key)
+    visibleCols.value = s
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...s]))
+}
+
+const col = (key: ColKey) => visibleCols.value.has(key)
+
+const visibleColCount = computed(() => {
+    let n = 2 // checkbox + aksi always shown
+    allColumns.forEach(c => {
+        if (c.adminOnly && !isAdmin.value) return
+        if (col(c.key)) n++
+    })
+    return n
+})
 </script>
 
 <template>
@@ -363,7 +420,29 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                     </div>
                     <span class="text-xs text-muted-foreground">entries</span>
                 </div>
+
+                <!-- Column picker -->
+                <div class="relative ml-auto">
+                    <button @click="showColPicker = !showColPicker"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition h-[32px]">
+                        <Columns3 class="w-3.5 h-3.5" /> Kolom
+                    </button>
+                    <div v-if="showColPicker"
+                        class="absolute right-0 top-9 z-50 w-56 rounded-lg border border-border bg-background shadow-lg p-3 space-y-1.5">
+                        <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tampilkan Kolom</p>
+                        <template v-for="c in allColumns" :key="c.key">
+                            <label v-if="!c.adminOnly || isAdmin" class="flex items-center gap-2 cursor-pointer select-none rounded px-1 py-0.5 hover:bg-muted">
+                                <input type="checkbox" :checked="col(c.key)" @change="toggleCol(c.key)"
+                                    class="w-3.5 h-3.5 rounded border-border" />
+                                <span class="text-xs">{{ c.label }}</span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
             </div>
+
+            <!-- backdrop to close col picker -->
+            <div v-if="showColPicker" class="fixed inset-0 z-40" @click="showColPicker = false" />
 
             <!-- ── Selection action bar ── -->
             <div v-if="isSomeSelected" class="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 p-4">
@@ -393,23 +472,29 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <th class="w-12 px-4 py-3 text-center">
                                     <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-border" />
                                 </th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
-                                <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</th>
+                                <th v-if="col('foto')"          class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
+                                <th v-if="col('invoice')"       class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</th>
+                                <th v-if="col('kuj_code')"      class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
+                                <th v-if="col('sales_date')"    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
+                                <th v-if="col('status')"        class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                                <th v-if="col('shipping_date')" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</th>
+                                <th v-if="isAdmin && col('customer')"  class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
+                                <th v-if="col('breeder')"       class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
+                                <th v-if="col('description')"   class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</th>
+                                <th v-if="col('age')"           class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</th>
+                                <th v-if="col('size')"          class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
+                                <th v-if="col('koi_qty')"       class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</th>
+                                <th v-if="col('unit_price')"    class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</th>
+                                <th v-if="col('sales_price')"   class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</th>
+                                <th v-if="col('box_qty')"       class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Box QTY</th>
+                                <th v-if="col('weight')"        class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight (kg)</th>
+                                <th v-if="col('total_weight')"  class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Weight (kg)</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="kois.data.length === 0">
-                                <td :colspan="isAdmin ? 13 : 12" class="px-4 py-8 text-center text-sm text-muted-foreground">
+                                <td :colspan="visibleColCount" class="px-4 py-8 text-center text-sm text-muted-foreground">
                                     Tidak ada data transaksi.
                                 </td>
                             </tr>
@@ -417,29 +502,46 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
                                 <td class="w-12 px-4 py-3 text-center">
                                     <input type="checkbox" :checked="selectedIds.has(koi.id)" @change="toggleSelect(koi.id)" class="w-4 h-4 rounded border-border" />
                                 </td>
-                                <td class="px-4 py-3 text-center">
+                                <td v-if="col('foto')" class="px-4 py-3 text-center">
                                     <button type="button" @click="openPhotoModal(koi)"
                                         class="relative h-9 w-9 overflow-hidden rounded-lg border border-border bg-muted mx-auto flex items-center justify-center hover:ring-2 hover:ring-primary/40 transition-all">
                                         <img v-if="koi.images?.length" :src="koi.images[0].url" class="h-full w-full object-cover" />
                                         <ImagePlus v-else class="w-4 h-4 text-muted-foreground" />
                                     </button>
                                 </td>
-                                <td class="px-4 py-3 text-sm font-mono text-muted-foreground whitespace-nowrap">{{ koi.sale_invoice ?? '-' }}</td>
-                                <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">{{ koi.code }}</td>
-                                <td class="px-4 py-3 text-sm whitespace-nowrap">{{ fmtDate(koi.sale_tanggal) }}</td>
-                                <td class="px-4 py-3 text-center">
+                                <td v-if="col('invoice')"       class="px-4 py-3 text-sm font-mono text-muted-foreground whitespace-nowrap">{{ koi.sale_invoice ?? '-' }}</td>
+                                <td v-if="col('kuj_code')"      class="px-4 py-3 text-sm font-medium whitespace-nowrap">{{ koi.code }}</td>
+                                <td v-if="col('sales_date')"    class="px-4 py-3 text-sm whitespace-nowrap">{{ fmtDate(koi.sale_tanggal) }}</td>
+                                <td v-if="col('status')"        class="px-4 py-3 text-center">
                                     <span v-if="koi.sale_status"
                                         :class="`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${STATUS_COLORS[koi.sale_status] ?? 'bg-gray-100 text-gray-700'}`">
                                         {{ STATUS_LABELS[koi.sale_status] ?? koi.sale_status }}
                                     </span>
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
-                                <td v-if="isAdmin" class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.customer?.name ?? '-' }}</td>
-                                <td class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.breeder?.name_breeder ?? '-' }}</td>
-                                <td class="px-4 py-3 text-center text-sm">{{ koi.size != null ? Number(koi.size).toFixed(0) + ' cm' : '-' }}</td>
-                                <td class="px-4 py-3 text-center text-sm">{{ koi.sale_qty ?? '-' }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price) }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price != null && koi.sale_qty != null ? Number(koi.unit_price) * Number(koi.sale_qty) : null) }}</td>
+                                <td v-if="col('shipping_date')" class="px-4 py-3 text-sm whitespace-nowrap">{{ fmtDate(koi.shipping_date) }}</td>
+                                <td v-if="isAdmin && col('customer')"  class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.customer?.name ?? '-' }}</td>
+                                <td v-if="col('breeder')"       class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.breeder?.name_breeder ?? '-' }}</td>
+                                <td v-if="col('description')"   class="px-4 py-3 text-sm max-w-[180px]">
+                                    <span v-if="koi.description" class="line-clamp-2 text-xs text-muted-foreground">{{ koi.description }}</span>
+                                    <span v-else class="text-xs text-muted-foreground">-</span>
+                                </td>
+                                <td v-if="col('age')"           class="px-4 py-3 text-center text-sm">{{ koi.age != null ? koi.age + ' bln' : '-' }}</td>
+                                <td v-if="col('size')"          class="px-4 py-3 text-center text-sm">{{ koi.size != null ? Number(koi.size).toFixed(0) + ' cm' : '-' }}</td>
+                                <td v-if="col('koi_qty')"       class="px-4 py-3 text-center text-sm">{{ koi.sale_qty ?? '-' }}</td>
+                                <td v-if="col('unit_price')"    class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price) }}</td>
+                                <td v-if="col('sales_price')"   class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price != null && koi.sale_qty != null ? Number(koi.unit_price) * Number(koi.sale_qty) : null) }}</td>
+                                <td v-if="col('box_qty')"       class="px-4 py-3 text-center text-sm">{{ koi.box_qty ?? '-' }}</td>
+                                <td v-if="col('weight')"        class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ koi.weight != null ? parseFloat(Number(koi.weight).toFixed(3)) + ' kg' : '-' }}</td>
+                                <td v-if="col('total_weight')"  class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                                    {{
+                                        koi.total_weight != null
+                                            ? parseFloat(Number(koi.total_weight).toFixed(3)) + ' kg'
+                                            : (koi.weight != null && koi.box_qty != null)
+                                                ? parseFloat((Number(koi.weight) * Number(koi.box_qty)).toFixed(3)) + ' kg'
+                                                : '-'
+                                    }}
+                                </td>
                                 <td class="px-4 py-3 text-right">
                                     <a :href="`/rekap-transaksi/${koi.id}`"
                                         class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
