@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { ChevronLeft, ChevronRight, ImageOff, Pencil, X } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import InputError from '@/components/InputError.vue'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import { useSwal } from '@/composables/useSwal'
 
 type Breeder  = { id: number; name_breeder: string }
 type JenisKoi = { id: number; nama_jenis: string }
@@ -82,16 +94,17 @@ const unitPriceIdr  = computed(() => {
     return p > 0 && k > 0 ? Math.round(p * k) : null
 })
 const stockPriceIdr = computed(() => {
-    const b = Number(props.koi.buy_jpy) || 0
-    const k = Number(props.koi.kurs)   || 0
-    return b > 0 && k > 0 ? Math.round(b * k) : null
+    const m = Number(props.koi.stock_price) || 0
+    const k = Number(props.koi.kurs)        || 0
+    return m > 0 && k > 0 ? Math.round(m * k) : null
 })
 const totalModalIdr = computed(() => {
     const m = Number(props.koi.stock_price) || 0
+    const k = Number(props.koi.kurs)        || 0
     const q = Number(props.koi.sale_qty)    || 1
-    return m > 0 ? Math.round(m * q) : null
+    return m > 0 && k > 0 ? Math.round(m * k * q) : null
 })
-const profit = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) - Number(props.koi.fee ?? 0))
+const profit = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) + Number(props.koi.fee ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -108,6 +121,36 @@ const STATUS_CLASS: Record<string, string> = {
     dead_refund:  'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
     dead:         'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 }
+
+// ─── Edit Modal ───────────────────────────────────────────
+const showEditModal = ref(false)
+
+const editForm = useForm({
+    breeder_id: String(props.koi.breeder_id) || '',
+    jenis_koi_id: props.koi.jenis_koi_id ? String(props.koi.jenis_koi_id) : '',
+    code: props.koi.code || '',
+    name: props.koi.name || '',
+    age: props.koi.age != null ? String(props.koi.age) : '',
+    size: props.koi.size != null ? String(props.koi.size) : '',
+    box_qty: props.koi.box_qty != null ? String(props.koi.box_qty) : '',
+    weight: props.koi.weight != null ? String(props.koi.weight) : '',
+    total_weight: props.koi.total_weight != null ? String(props.koi.total_weight) : '',
+    unit_price: props.koi.unit_price != null ? String(Math.round(Number(props.koi.unit_price))) : '',
+    stock_price: props.koi.stock_price != null ? String(Math.round(Number(props.koi.stock_price))) : '',
+    kurs: props.koi.kurs != null ? String(Math.round(Number(props.koi.kurs))) : '',
+    fee: props.koi.fee != null ? String(Math.round(Number(props.koi.fee))) : '0',
+})
+
+function submitEdit() {
+    editForm.put(`/master-data/koi/${props.koi.id}?_method=PUT`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false
+            setTimeout(() => useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Data koi berhasil diperbarui.', timer: 2000, showConfirmButton: false }), 300)
+        },
+        onError: () => useSwal().fire({ icon: 'error', title: 'Gagal!', text: 'Terjadi kesalahan saat memperbarui data.', timer: 2000, showConfirmButton: false }),
+    })
+}
 </script>
 
 <template>
@@ -121,13 +164,22 @@ const STATUS_CLASS: Record<string, string> = {
                     <h1 class="text-2xl font-semibold">{{ koi.name }}</h1>
                     <p class="text-sm text-muted-foreground">Koi Code: {{ koi.code }}</p>
                 </div>
-                <Link
-                    href="/master-data/koi"
-                    class="inline-flex items-center gap-1 self-start rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                    <ChevronLeft class="h-4 w-4" />
-                    Back
-                </Link>
+                <div class="flex items-center gap-2 self-start">
+                    <Link
+                        href="/master-data/koi"
+                        class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+                    >
+                        <ChevronLeft class="h-4 w-4" />
+                        Back
+                    </Link>
+                    <Link
+                        :href="`/master-data/koi/${koi.id}/edit`"
+                        class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+                    >
+                        <Pencil class="h-4 w-4" />
+                        Edit
+                    </Link>
+                </div>
             </div>
 
             <!-- Content -->
@@ -229,8 +281,13 @@ const STATUS_CLASS: Record<string, string> = {
                         <h2 class="mb-5 text-base font-semibold">Harga Transaksi</h2>
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                             <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.stock_price != null ? fmtIDR(koi.stock_price) : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price</dt>
+                                <dd class="mt-1 font-medium text-foreground">
+                                    {{ koi.stock_price != null ? '¥' + Number(koi.stock_price).toLocaleString('ja-JP') : '-' }}
+                                </dd>
+                                <dd v-if="stockPriceIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                                    ≈ {{ fmtIDR(stockPriceIdr) }}
+                                </dd>
                                 <dd v-if="totalModalIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">Total × {{ koi.sale_qty || 1 }} = {{ fmtIDR(totalModalIdr) }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
@@ -354,6 +411,94 @@ const STATUS_CLASS: Record<string, string> = {
                 </button>
             </div>
         </Transition>
+
+        <!-- ══ Edit Modal ══ -->
+        <Dialog v-model:open="showEditModal">
+            <DialogContent class="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Koi: {{ koi.name }}</DialogTitle>
+                    <DialogDescription class="text-xs">Perbarui informasi koi.</DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitEdit" class="space-y-4">
+                    <!-- Code -->
+                    <div class="grid gap-1.5">
+                        <Label class="text-xs font-medium">Code</Label>
+                        <Input v-model="editForm.code" type="text" class="h-9 text-sm" />
+                        <InputError :message="editForm.errors.code" />
+                    </div>
+
+                    <!-- Name -->
+                    <div class="grid gap-1.5">
+                        <Label class="text-xs font-medium">Name</Label>
+                        <Input v-model="editForm.name" type="text" class="h-9 text-sm" />
+                        <InputError :message="editForm.errors.name" />
+                    </div>
+
+                    <!-- Age & Size -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Age (bulan)</Label>
+                            <Input v-model="editForm.age" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.age" />
+                        </div>
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Size (cm)</Label>
+                            <Input v-model="editForm.size" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.size" />
+                        </div>
+                    </div>
+
+                    <!-- Weight & Box Qty -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Weight (kg)</Label>
+                            <Input v-model="editForm.weight" type="number" step="0.001" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.weight" />
+                        </div>
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Box Qty</Label>
+                            <Input v-model="editForm.box_qty" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.box_qty" />
+                        </div>
+                    </div>
+
+                    <!-- Pricing -->
+                    <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-3">
+                        <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pricing</p>
+                        
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Stock Price (JPY)</Label>
+                            <Input v-model="editForm.stock_price" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.stock_price" />
+                        </div>
+
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Unit Price (JPY)</Label>
+                            <Input v-model="editForm.unit_price" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.unit_price" />
+                        </div>
+
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Kurs (JPY→IDR)</Label>
+                            <Input v-model="editForm.kurs" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.kurs" />
+                        </div>
+
+                        <div class="grid gap-1.5">
+                            <Label class="text-xs font-medium">Fee (IDR)</Label>
+                            <Input v-model="editForm.fee" type="number" class="h-9 text-sm" />
+                            <InputError :message="editForm.errors.fee" />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-3 border-t border-border">
+                        <Button type="button" variant="outline" @click="showEditModal = false">Batal</Button>
+                        <Button type="submit" :disabled="editForm.processing">{{ editForm.processing ? 'Menyimpan...' : 'Simpan' }}</Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 

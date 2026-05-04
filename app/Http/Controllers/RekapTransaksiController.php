@@ -168,9 +168,14 @@ class RekapTransaksiController extends Controller
             abort(404, 'Invoice tidak ditemukan');
         }
 
-        $customerName = $kois->first()->customer?->name ?? 'Pelanggan';
-        $grandTotal   = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
-        $totalFee     = $kois->sum(fn($k) => $k->fee ?? 0);
+        $customerName  = $kois->first()->customer?->name ?? 'Pelanggan';
+        $grandTotal    = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
+        $totalFee      = $kois->sum(fn($k) => $k->fee ?? 0);
+        $totalShipping = $kois->sum(function ($k) {
+            if (!$k->shipping_cost || !$k->shipping_qty || !$k->kurs) return 0;
+            return round(floatval($k->shipping_cost) * floatval($k->kurs) / intval($k->shipping_qty));
+        });
+        $grandTotal   += $totalShipping;
 
         $pdf = Pdf::loadView('pdf.invoice', [
             'kois'           => $kois,
@@ -178,6 +183,7 @@ class RekapTransaksiController extends Controller
             'customerName'   => $customerName,
             'grandTotal'     => $grandTotal,
             'totalFee'       => $totalFee,
+            'totalShipping'  => $totalShipping,
             'paymentName'    => 'Kurniadi Prakasa Pieth',
             'paymentBank'    => 'BCA / Mandiri / GoPay / OVO',
             'paymentAccount' => 'BCA: 2533 2222 34 | Mandiri: 1690009 44789',
@@ -206,12 +212,17 @@ class RekapTransaksiController extends Controller
 
         if ($kois->isEmpty()) abort(404, 'Invoice tidak ditemukan');
 
-        $customerName = $kois->first()->customer?->name ?? 'Pelanggan';
-        $grandTotal   = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
-        $totalFee     = $kois->sum(fn($k) => $k->fee ?? 0);
+        $customerName  = $kois->first()->customer?->name ?? 'Pelanggan';
+        $grandTotal    = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
+        $totalFee      = $kois->sum(fn($k) => $k->fee ?? 0);
+        $totalShipping = $kois->sum(function ($k) {
+            if (!$k->shipping_cost || !$k->shipping_qty || !$k->kurs) return 0;
+            return round(floatval($k->shipping_cost) * floatval($k->kurs) / intval($k->shipping_qty));
+        });
+        $grandTotal   += $totalShipping;
 
         return Excel::download(
-            new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee),
+            new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee, (float) $totalShipping),
             $customerName . '.xlsx'
         );
     }

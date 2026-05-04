@@ -20,6 +20,7 @@ class InvoiceExport implements WithTitle, WithEvents
     private string $customerName;
     private float $grandTotal;
     private float $totalFee;
+    private float $totalShipping;
 
     // A=margin, B=No, C=Foto, D=Nama Ikan, E=Kode/Tgl, F=Qty, G=JPY, H=IDR, I=Total
     private const COL_WIDTHS = [
@@ -38,13 +39,14 @@ class InvoiceExport implements WithTitle, WithEvents
     private const IMG_PX     = 90;
     private const ROW_HEIGHT = 68; // pt ≈ 90px
 
-    public function __construct(string $invoiceNumber, $kois, string $customerName, float $grandTotal, float $totalFee)
+    public function __construct(string $invoiceNumber, $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0)
     {
-        $this->invoiceNumber = $invoiceNumber;
-        $this->kois          = $kois;
-        $this->customerName  = $customerName;
-        $this->grandTotal    = $grandTotal;
-        $this->totalFee      = $totalFee;
+        $this->invoiceNumber  = $invoiceNumber;
+        $this->kois           = $kois;
+        $this->customerName   = $customerName;
+        $this->grandTotal     = $grandTotal;
+        $this->totalFee       = $totalFee;
+        $this->totalShipping  = $totalShipping;
     }
 
     public function title(): string
@@ -238,13 +240,14 @@ class InvoiceExport implements WithTitle, WithEvents
         $ws->getRowDimension($row)->setRowHeight(8);
         $row++;
 
-        // ── Subtotal ───────────────────────────────────────────────────
+        // ── Subtotal (harga koi saja) ──────────────────────────────────
+        $koiSubtotal = $this->grandTotal - $this->totalShipping;
         $ws->getRowDimension($row)->setRowHeight(20);
         $ws->mergeCells('B' . $row . ':F' . $row);
         $ws->mergeCells('G' . $row . ':H' . $row);
         $ws->setCellValue('B' . $row, 'Thank you for your purchase!');
         $ws->setCellValue('G' . $row, 'Subtotal');
-        $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->grandTotal, 0, ',', '.'));
+        $ws->setCellValue('I' . $row, 'Rp ' . number_format($koiSubtotal, 0, ',', '.'));
         $this->style($ws, 'B' . $row . ':F' . $row, [
             'font'      => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
@@ -256,6 +259,21 @@ class InvoiceExport implements WithTitle, WithEvents
             'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
         ]);
         $row++;
+
+        // ── Shipping ──────────────────────────────────────────────────
+        if ($this->totalShipping > 0) {
+            $ws->getRowDimension($row)->setRowHeight(20);
+            $ws->mergeCells('G' . $row . ':H' . $row);
+            $ws->setCellValue('G' . $row, 'Biaya Shipping');
+            $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->totalShipping, 0, ',', '.'));
+            $this->style($ws, 'G' . $row . ':I' . $row, [
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
+                'font'      => ['bold' => true, 'size' => 10],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
+            ]);
+            $row++;
+        }
 
         // ── Total Fee ─────────────────────────────────────────────────
         if ($this->totalFee > 0) {
@@ -272,12 +290,11 @@ class InvoiceExport implements WithTitle, WithEvents
             $row++;
         }
 
-        // ── Grand Total (Subtotal − Fee) ───────────────────────────────
-        $netTotal = $this->grandTotal - $this->totalFee;
+        // ── Grand Total ───────────────────────────────────────────────
         $ws->getRowDimension($row)->setRowHeight(24);
         $ws->mergeCells('G' . $row . ':H' . $row);
         $ws->setCellValue('G' . $row, 'TOTAL');
-        $ws->setCellValue('I' . $row, 'Rp ' . number_format($netTotal, 0, ',', '.'));
+        $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->grandTotal, 0, ',', '.'));
         $this->style($ws, 'G' . $row . ':I' . $row, [
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C0392B']],
             'font'      => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],

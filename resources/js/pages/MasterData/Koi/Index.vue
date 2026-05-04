@@ -261,7 +261,7 @@ const editSalesPriceJpy  = computed(() => { const p = Number(editForm.unit_price
 const editSalesPriceIdr  = computed(() => { const jpy = editSalesPriceJpy.value; const k = Number(editKursInput.value) || 0; return jpy && k > 0 ? Math.round(jpy * k) : null })
 const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; const k = Number(editKursInput.value) || 0; return c > 0 && k > 0 ? Math.round(c * k) : null })
 const editShippingPerEkor= computed(() => { const cIdr = editShippingCostIdr.value || 0; const q = Number(editForm.shipping_qty) || 0; return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null })
-const editProfit         = computed(() => (editSalesPriceIdr.value ?? 0) - (editModalTerjualIdr.value ?? 0) - (editShippingPerEkor.value ?? 0) + Number(editForm.fee || 0))
+const editProfit         = computed(() => (editSalesPriceIdr.value ?? 0) - (editModalTerjualIdr.value ?? 0) + Number(editForm.fee || 0))
 const editProfitPositive = computed(() => editProfit.value >= 0)
 
 function onEditFeeSelect(val: unknown) {
@@ -403,9 +403,9 @@ const shippingPerEkor = computed(() => {
     return costIdr > 0 && qty > 0 ? Math.round(costIdr / qty) : null
 })
 
-// Profit = (Sell IDR − Modal IDR − Shipping/ekor) + Fee
+// Profit = Sales − Modal + Fee (shipping ditanggung customer)
 const profit = computed(() =>
-    (salesPriceIdr.value ?? 0) - (modalTerjualIdr.value ?? 0) - (shippingPerEkor.value ?? 0) + Number(form.fee || 0)
+    (salesPriceIdr.value ?? 0) - (modalTerjualIdr.value ?? 0) + Number(form.fee || 0)
 )
 
 const filteredBreeders  = computed(() => !breederSearch.value  ? breeders.value  : breeders.value.filter(b => b.name_breeder.toLowerCase().includes(breederSearch.value.toLowerCase())))
@@ -443,9 +443,34 @@ function fmtInput(val: string | number): string {
 function parseInput(e: Event): string {
     return (e.target as HTMLInputElement).value.replace(/\D/g, '')
 }
-function onKursInput(e: Event) { kursIsManual.value = true; kursInput.value = parseInput(e) }
+function addDots(val: string | number | null) {
+    const n = Number(String(val).replace(/\D/g, ''))
+    return n > 0 ? n.toLocaleString('id-ID') : ''
+}
+
+// Display refs — format hanya saat blur, bukan tiap ketukan
+const stockPriceDisplay   = ref('')
+const shippingCostDisplay = ref('')
+const unitPriceDisplay    = ref('')
+
+function onStockPriceInput(e: Event)   { const r = parseInput(e); stockPriceDisplay.value = r; form.stock_price = r }
+function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
+function onShippingCostInput(e: Event) { const r = parseInput(e); shippingCostDisplay.value = r; form.shipping_cost = r }
+function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
+function onUnitPriceInput(e: Event)    { const r = parseInput(e); unitPriceDisplay.value = r; form.unit_price = r }
+function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
+
+const kursDisplay = ref(addDots(kursInput.value))
+watch(kursInput, v => { kursDisplay.value = addDots(v) })
+
+function onKursInput(e: Event) {
+    const r = parseInput(e)
+    kursIsManual.value = true
+    kursInput.value    = r
+    kursDisplay.value  = r
+}
+function onKursBlur() { kursDisplay.value = addDots(kursInput.value) }
 function onBuyJpyInput(e: Event) { form.buy_jpy = parseInput(e) }
-function onUnitPriceInput(e: Event) { form.unit_price = parseInput(e) }
 function onFeeSelect(val: unknown) {
     feePct.value = val !== null ? String(val) : null
     form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100)))
@@ -651,7 +676,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 </div>
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
-                                    <input type="text" inputmode="numeric" :value="fmtInput(kursInput)" @input="onKursInput" placeholder="0"
+                                    <input type="text" inputmode="numeric" v-model="kursDisplay" @input="onKursInput" @blur="onKursBlur" placeholder="0"
                                         class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors" />
                                     <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
                                 </div>
@@ -677,8 +702,9 @@ function confirmDeleteKoi(id: number, name: string) {
                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        :value="fmtInput(form.stock_price)"
-                                                        @input="(e: Event) => { form.stock_price = parseInput(e) }"
+                                                        v-model="stockPriceDisplay"
+                                                        @input="onStockPriceInput"
+                                                        @blur="onStockPriceBlur"
                                                         placeholder="0"
                                                         class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500"
                                                     />
@@ -729,8 +755,9 @@ function confirmDeleteKoi(id: number, name: string) {
                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        :value="fmtInput(form.shipping_cost)"
-                                                        @input="(e: Event) => { form.shipping_cost = parseInput(e) }"
+                                                        v-model="shippingCostDisplay"
+                                                        @input="onShippingCostInput"
+                                                        @blur="onShippingCostBlur"
                                                         placeholder="0"
                                                         class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700"
                                                     />
@@ -956,8 +983,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                     </div>
 
                                     <!-- Harga -->
-                                    <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
-                                        <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Harga</p>
+                                    <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-3">
+                                        <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Harga</p>
 
                                         <!-- Stock JPY (dinonaktifkan sementara) -->
                                         <!-- <div class="space-y-1.5">
@@ -979,13 +1006,14 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid grid-cols-2 gap-3">
                                             <!-- Sales Price JPY -->
                                             <div class="space-y-1.5">
-                                                <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
+                                                <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Sales Price (JPY)</Label>
                                                 <div class="relative">
                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        :value="fmtInput(form.unit_price)"
+                                                        v-model="unitPriceDisplay"
                                                         @input="onUnitPriceInput"
+                                                        @blur="onUnitPriceBlur"
                                                         placeholder="0"
                                                         class="h-9 text-sm pl-7"
                                                     />
@@ -998,8 +1026,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                             </div>
                                             <!-- Total Sales IDR (auto dari unit_price × qty × kurs) -->
                                             <div class="space-y-1.5">
-                                                <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
-                                                <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
+                                                <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                                <div class="flex h-9 items-center rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-3 text-sm font-semibold text-amber-800 dark:text-amber-200">
                                                     {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
                                                 </div>
                                                 <p class="text-[10px] text-muted-foreground">Sales JPY × {{ form.sale_qty || 1 }} ekor × kurs</p>
@@ -1008,7 +1036,7 @@ function confirmDeleteKoi(id: number, name: string) {
 
                                         <!-- Fee -->
                                         <div class="grid gap-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">Fee</Label>
+                                            <Label class="text-xs font-medium text-amber-700 dark:text-amber-400">Fee</Label>
                                             <Select v-model="feePct" @update:model-value="onFeeSelect">
                                                 <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
                                                 <SelectContent>
@@ -1075,7 +1103,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
                                                 <div>
                                                     <p class="font-bold text-sm text-foreground">Profit</p>
-                                                    <p class="text-[10px] text-muted-foreground mt-0.5">(Sell IDR − Modal − Shipping) + Fee</p>
+                                                    <p class="text-[10px] text-muted-foreground mt-0.5">Sales − Modal + Fee</p>
                                                 </div>
                                                 <span class="text-base font-bold"
                                                     :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
@@ -1617,14 +1645,14 @@ function confirmDeleteKoi(id: number, name: string) {
 
 
                             <!-- Harga -->
-                            <div class="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
-                                <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Harga</p>
+                            <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-3">
+                                <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Harga</p>
 
                                 <!-- Sales Price JPY & Total Sales IDR -->
                                 <div class="grid grid-cols-2 gap-3">
                                     <!-- Sales Price JPY -->
                                     <div class="space-y-1.5">
-                                        <Label class="text-xs font-medium text-muted-foreground">Sales Price (JPY)</Label>
+                                        <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Sales Price (JPY)</Label>
                                         <div class="relative">
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
                                             <Input
@@ -1643,8 +1671,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                     </div>
                                     <!-- Total Sales IDR (auto) -->
                                     <div class="space-y-1.5">
-                                        <Label class="text-xs font-semibold text-green-700 dark:text-green-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
-                                        <div class="flex h-9 items-center rounded-md border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-3 text-sm font-semibold text-green-800 dark:text-green-200">
+                                        <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                        <div class="flex h-9 items-center rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-3 text-sm font-semibold text-amber-800 dark:text-amber-200">
                                             {{ editSalesPriceIdr ? fmtIDR(editSalesPriceIdr) : '-' }}
                                         </div>
                                         <p class="text-[10px] text-muted-foreground">Sales JPY × {{ editForm.sale_qty || 1 }} ekor × kurs</p>
@@ -1653,7 +1681,7 @@ function confirmDeleteKoi(id: number, name: string) {
 
                                 <!-- Fee -->
                                 <div class="grid gap-1.5">
-                                    <Label class="text-xs font-medium text-muted-foreground">Fee</Label>
+                                    <Label class="text-xs font-medium text-amber-700 dark:text-amber-400">Fee</Label>
                                     <Select v-model="editFeePct" @update:model-value="onEditFeeSelect">
                                         <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
                                         <SelectContent>
@@ -1720,7 +1748,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                     <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
                                         <div>
                                             <p class="font-bold text-sm text-foreground">Profit</p>
-                                            <p class="text-[10px] text-muted-foreground mt-0.5">(Sell IDR − Modal − Shipping) + Fee</p>
+                                            <p class="text-[10px] text-muted-foreground mt-0.5">Sales − Modal + Fee</p>
                                         </div>
                                         <span class="text-base font-bold"
                                             :class="editProfitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">

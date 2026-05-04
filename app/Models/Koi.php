@@ -40,7 +40,11 @@ class Koi extends Model
         'sale_status',
         'sale_invoice',
         'sale_shipped_date',
+        'shipping_cost',
+        'shipping_qty',
+        'shipping_note',
         'shipping_date',
+        'azukari_period',
     ];
 
     protected $casts = [

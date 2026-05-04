@@ -332,10 +332,35 @@
         </div>
         <div class="total-right">
             <table class="sum-table">
+                @php $koiSubtotal = $grandTotal - ($totalShipping ?? 0); @endphp
                 <tr>
                     <td class="sum-label">Subtotal</td>
-                    <td class="sum-val">IDR {{ number_format($grandTotal, 0, ',', '.') }}</td>
+                    <td class="sum-val">IDR {{ number_format($koiSubtotal, 0, ',', '.') }}</td>
                 </tr>
+                @if(!empty($totalShipping) && $totalShipping > 0)
+                @php
+                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty && $k->kurs)
+                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty . '|' . $k->kurs);
+                @endphp
+                <tr>
+                    <td class="sum-label" style="vertical-align:top;">
+                        Biaya Shipping
+                        @foreach($shippingGroups as $key => $group)
+                        @php
+                            [$sc, $sq, $kr] = explode('|', $key);
+                            $perEkor = round(floatval($sc) * floatval($kr) / intval($sq));
+                            $groupQty = $group->sum(fn($k) => intval($k->sale_qty ?? 1));
+                            $note = $group->first()->shipping_note;
+                        @endphp
+                        <div style="font-size:7px; color:#999; margin-top:2px;">
+                            ¥{{ number_format($sc) }} ÷ {{ $sq }} ikan × {{ $groupQty }} terjual
+                            @if($note) · {{ $note }}@endif
+                        </div>
+                        @endforeach
+                    </td>
+                    <td class="sum-val">IDR {{ number_format($totalShipping, 0, ',', '.') }}</td>
+                </tr>
+                @endif
                 @if($totalFee > 0)
                 <tr>
                     <td class="sum-label">Total Fee</td>
@@ -344,7 +369,7 @@
                 @endif
                 <tr class="sum-grand">
                     <td class="sum-label">Total</td>
-                    <td class="sum-val">IDR{{ number_format($grandTotal, 0, ',', '.') }}</td>
+                    <td class="sum-val">IDR {{ number_format($grandTotal, 0, ',', '.') }}</td>
                 </tr>
             </table>
         </div>

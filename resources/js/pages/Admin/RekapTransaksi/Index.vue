@@ -397,7 +397,7 @@ const visibleColCount = computed(() => {
                         <RotateCcw class="w-3.5 h-3.5" /> Reset
                     </button>
                     <button @click="applyFilter"
-                        class="inline-flex items-center gap-1.5 rounded-md bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 text-sm font-medium transition h-[38px]">
+                        class="inline-flex items-center gap-1.5 rounded-md bg-black hover:bg-gray-900 text-white px-4 py-1.5 text-sm font-medium transition h-[38px]">
                         <Search class="w-3.5 h-3.5" /> Filter
                     </button>
                 </div>

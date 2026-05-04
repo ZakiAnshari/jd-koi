@@ -33,6 +33,10 @@ type Koi = {
     stock_price: string | null
     fee: string | null
     sale_status: string | null
+    shipping_cost: string | null
+    shipping_qty: number | null
+    shipping_note: string | null
+    shipping_date: string | null
     created_at: string
 }
 
@@ -81,10 +85,21 @@ const stockPriceIdr = computed(() => {
 })
 const totalModalIdr = computed(() => {
     const m = Number(props.koi.stock_price) || 0
+    const k = Number(props.koi.kurs)        || 0
     const q = Number(props.koi.sale_qty)    || 1
-    return m > 0 ? Math.round(m * q) : null
+    return m > 0 && k > 0 ? Math.round(m * k * q) : null
 })
-const profit        = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) - Number(props.koi.fee ?? 0))
+const shippingCostIdr = computed(() => {
+    const c = Number(props.koi.shipping_cost) || 0
+    const k = Number(props.koi.kurs)          || 0
+    return c > 0 && k > 0 ? Math.round(c * k) : null
+})
+const shippingPerEkor = computed(() => {
+    const cIdr = shippingCostIdr.value       || 0
+    const q    = Number(props.koi.shipping_qty) || 0
+    return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null
+})
+const profit        = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) + Number(props.koi.fee ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -203,15 +218,20 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtDate(koi.sale_tanggal) }}</dd>
                             </div>
-                            <div class="rounded-lg border border-border p-3">
+                            <!-- <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipped Date</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtDate(koi.sale_shipped_date) }}</dd>
+                            </div> -->
+                            <div class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ fmtDate(koi.shipping_date) }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.sale_qty ?? '-' }}</dd>
                             </div>
                         </dl>
+
                     </div>
 
                     <!-- Harga -->
@@ -220,8 +240,8 @@ const STATUS_CLASS: Record<string, string> = {
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                             <!-- Modal Price — admin only -->
                             <div v-if="isAdmin" class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price (IDR/ekor)</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.stock_price != null ? fmtIDR(koi.stock_price) : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.stock_price != null ? '¥' + Number(koi.stock_price).toLocaleString('ja-JP') : '-' }}</dd>
                                 <dd v-if="totalModalIdr" class="mt-0.5 text-xs text-blue-600 dark:text-blue-400">Total × {{ koi.sale_qty || 1 }} = {{ fmtIDR(totalModalIdr) }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
@@ -244,15 +264,59 @@ const STATUS_CLASS: Record<string, string> = {
                                     {{ koi.kurs != null ? 'Rp ' + Number(koi.kurs).toLocaleString('id-ID') + ' / ¥1' : '-' }}
                                 </dd>
                             </div>
+                            <!-- Shipping — tampil untuk semua jika ada -->
+                            <div v-if="shippingPerEkor" class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">Biaya Shipping</dt>
+                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ ¥{{ Number(koi.shipping_cost).toLocaleString('ja-JP') }}</dd>
+                                <dd class="mt-0.5 text-[11px] text-muted-foreground">
+                                    {{ fmtIDR(shippingCostIdr) }} ÷ {{ koi.shipping_qty }} ikan
+                                    <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
+                                </dd>
+                            </div>
+
                             <!-- Fee — admin only -->
                             <div v-if="isAdmin" class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
                             </div>
-                            <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Diterima</dt>
-                                <dd class="mt-1 font-semibold text-foreground">{{ fmtIDR(salesPriceIdr - Number(koi.fee ?? 0)) }}</dd>
+
+                            <!-- Ringkasan Total -->
+                            <div class="col-span-2 lg:col-span-3 rounded-lg border border-border overflow-hidden text-sm">
+                                <div class="px-4 py-2.5 border-b border-border bg-muted/40">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ringkasan Pembayaran</p>
+                                </div>
+
+                                <div class="divide-y divide-border">
+                                    <!-- Harga Koi -->
+                                    <div class="flex justify-between items-center px-4 py-3">
+                                        <div>
+                                            <p class="font-medium text-foreground">Harga Koi</p>
+                                            <p class="text-[11px] text-muted-foreground mt-0.5">¥{{ Number(koi.unit_price || 0).toLocaleString('ja-JP') }} × {{ koi.sale_qty || 1 }} ekor × kurs</p>
+                                        </div>
+                                        <span class="font-medium text-foreground">{{ fmtIDR(salesPriceIdr) }}</span>
+                                    </div>
+
+                                    <!-- Shipping -->
+                                    <div v-if="shippingPerEkor" class="flex justify-between items-center px-4 py-3">
+                                        <div>
+                                            <p class="font-medium text-foreground">Biaya Shipping</p>
+                                            <p class="text-[11px] text-muted-foreground mt-0.5">
+                                                {{ fmtIDR(shippingCostIdr) }} ÷ {{ koi.shipping_qty }} ikan
+                                                <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
+                                            </p>
+                                            <p v-if="koi.shipping_date" class="text-[11px] text-muted-foreground">Tgl. Shipping: {{ fmtDate(koi.shipping_date) }}</p>
+                                        </div>
+                                        <span class="font-medium text-foreground">+ {{ fmtIDR(shippingPerEkor) }}</span>
+                                    </div>
+
+                                    <!-- Total -->
+                                    <div class="flex justify-between items-center px-4 py-3 bg-muted/40">
+                                        <p class="font-semibold text-foreground">Total yang Dibayar</p>
+                                        <span class="font-semibold text-foreground">{{ fmtIDR(salesPriceIdr + (shippingPerEkor ?? 0)) }}</span>
+                                    </div>
+                                </div>
                             </div>
+
                             <!-- Profit — admin only -->
                             <div v-if="isAdmin" class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</dt>

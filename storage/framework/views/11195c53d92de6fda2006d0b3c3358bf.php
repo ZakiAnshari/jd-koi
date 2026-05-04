@@ -332,16 +332,19 @@
                         <!-- Right: Harga -->
                         <?php
                             $unitPriceJpy  = $koi->unit_price ? (float) $koi->unit_price : null;
-                            $stockJpy      = $koi->buy_jpy    ? (float) $koi->buy_jpy    : null;
+                            $stockJpy      = $koi->stock_price ? (float) $koi->stock_price : null;
                             $qty           = $koi->sale_qty   ? (int)   $koi->sale_qty   : 1;
                             $salesPriceJpy = $unitPriceJpy ? $unitPriceJpy * $qty : null;
                             $kursVal       = $koi->kurs ? (float) $koi->kurs : null;
                             $unitPriceIdr  = ($unitPriceJpy && $kursVal) ? round($unitPriceJpy * $kursVal) : null;
-                            $stockPriceIdr = ($stockJpy && $kursVal)     ? round($stockJpy     * $kursVal) : null;
+                            $modalIdr      = ($stockJpy && $kursVal) ? round($stockJpy * $kursVal * $qty) : null;
                             $salesPriceIdr = $koi->sell_idr ? (float) $koi->sell_idr : null;
                             $fee           = $koi->fee ? (float) $koi->fee : 0;
-                            $profit        = $salesPriceIdr !== null && $stockPriceIdr !== null
-                                             ? $salesPriceIdr - $stockPriceIdr - $fee
+                            $shippingIdr   = ($koi->shipping_cost && $koi->shipping_qty && $kursVal)
+                                             ? round((float)$koi->shipping_cost * $kursVal / (int)$koi->shipping_qty)
+                                             : null;
+                            $profit        = $salesPriceIdr !== null && $modalIdr !== null
+                                             ? $salesPriceIdr - $modalIdr + $fee
                                              : null;
                         ?>
                         <div class="g2-right">
@@ -368,15 +371,31 @@
                                             <?php endif; ?>
                                         </td>
                                     </tr>
-                                    <?php if($isAdmin && $profit !== null): ?>
-                                        <tr style="border-top: 1px solid #2255bb;">
-                                            <td class="lbl" style="color:<?php echo e($profit >= 0 ? '#c0392b' : '#c0392b'); ?>; font-weight:bold;">Profit</td>
-                                            <td class="val" style="color:<?php echo e($profit >= 0 ? '#c0392b' : '#c0392b'); ?>; font-weight:bold;">
-                                                Rp <?php echo e(number_format($profit, 0, ',', '.')); ?>
+                                    <tr>
+                                        <td class="lbl">Shipping</td>
+                                        <td class="val">
+                                            <?php if($shippingIdr): ?>
+                                                Rp <?php echo e(number_format($shippingIdr, 0, ',', '.')); ?>
 
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
+                                                <?php if($koi->shipping_note): ?>
+                                                    <br><span style="font-size:9px; color:#888;"><?php echo e($koi->shipping_note); ?></span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                        $totalHarga = ($salesPriceIdr ?? 0) + ($shippingIdr ?? 0);
+                                    ?>
+                                    <tr style="border-top: 2px solid #c5d3f0;">
+                                        <td class="lbl" style="font-weight:bold; color:#2255bb;">Total</td>
+                                        <td class="val" style="font-weight:bold; color:#2255bb;">
+                                            Rp <?php echo e(number_format($totalHarga, 0, ',', '.')); ?>
+
+                                        </td>
+                                    </tr>
+                                    
                                 </table>
                             </div>
                         </div>

@@ -146,23 +146,31 @@ watch([katalogEnabled, katalogMode], () => {
     form.katalog_mode = katalogEnabled.value ? katalogMode.value : 'none'
 })
 
-// Auto-calc price_idr ketika price_jpy berubah
+// Auto-calc price_idr ketika price_jpy berubah (debounced)
+let priceIdrTimer: ReturnType<typeof setTimeout> | null = null
 watch(() => form.pembelian_price_jpy, (jpy) => {
-    if (!isPriceIdrManual.value && exchangeRate.value > 0 && jpy) {
-        form.pembelian_price_idr = String(Math.round(Number(jpy) * exchangeRate.value))
-    }
+    if (priceIdrTimer) clearTimeout(priceIdrTimer)
+    priceIdrTimer = setTimeout(() => {
+        if (!isPriceIdrManual.value && exchangeRate.value > 0 && jpy) {
+            form.pembelian_price_idr = String(Math.round(Number(jpy) * exchangeRate.value))
+        }
+    }, 300)
 })
 
-// Auto-calc sell_idr = unit_price × qty
+// Auto-calc sell_idr = unit_price × qty (debounced)
+let sellIdrTimer: ReturnType<typeof setTimeout> | null = null
 watch([() => form.katalog_unit_price, () => form.katalog_qty], ([price, qty]) => {
-    const p = Number(price) || 0
-    const q = Number(qty) || 1
-    form.katalog_sell_idr = String(Math.round(p * q))
+    if (sellIdrTimer) clearTimeout(sellIdrTimer)
+    sellIdrTimer = setTimeout(() => {
+        const p = Number(price) || 0
+        const q = Number(qty) || 1
+        form.katalog_sell_idr = String(Math.round(p * q))
+    }, 300)
 })
 
 // ─── Computed helpers untuk Katalog ──────────────────────
 const katalogSalesPrice     = computed(() => (Number(form.katalog_unit_price) || 0) * (Number(form.katalog_qty) || 1))
-const katalogMargin         = computed(() => katalogSalesPrice.value - (Number(form.katalog_stock_price) || 0))
+const katalogMargin         = computed(() => katalogSalesPrice.value - (Number(form.katalog_stock_price) || 0) + (Number(form.katalog_fee) || 0))
 const katalogMarginPositive = computed(() => katalogMargin.value >= 0)
 const katalogNeedsPembelian = computed(() => katalogEnabled.value && katalogMode.value === 'create' && !pembelianEnabled.value)
 
@@ -220,7 +228,7 @@ function submit() {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Tambah Koi" />
 
-        <div class="space-y-6 p-6">
+        <div class="space-y-6 p-6 mx-auto max-w-6xl">
             <!-- Header -->
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
