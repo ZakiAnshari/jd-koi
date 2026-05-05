@@ -91,8 +91,7 @@ const totalModalIdr = computed(() => {
 })
 const shippingCostIdr = computed(() => {
     const c = Number(props.koi.shipping_cost) || 0
-    const k = Number(props.koi.kurs)          || 0
-    return c > 0 && k > 0 ? Math.round(c * k) : null
+    return c > 0 ? c : null
 })
 const shippingPerEkor = computed(() => {
     const cIdr = shippingCostIdr.value       || 0
@@ -100,6 +99,12 @@ const shippingPerEkor = computed(() => {
     return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null
 })
 const profit        = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) + Number(props.koi.fee ?? 0))
+const feePct        = computed(() => {
+    const fee  = Number(props.koi.fee)      || 0
+    const sell = Number(props.koi.sell_idr) || 0
+    if (!fee || !sell) return null
+    return Math.round(fee / sell * 100)
+})
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -280,6 +285,14 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
                             </div>
 
+                            <!-- Profit — admin only -->
+                            <div v-if="isAdmin" class="rounded-lg border border-border p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</dt>
+                                <dd class="mt-1 font-semibold" :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                    {{ fmtIDR(profit) }}
+                                </dd>
+                            </div>
+
                             <!-- Ringkasan Total -->
                             <div class="col-span-2 lg:col-span-3 rounded-lg border border-border overflow-hidden text-sm">
                                 <div class="px-4 py-2.5 border-b border-border bg-muted/40">
@@ -309,20 +322,18 @@ const STATUS_CLASS: Record<string, string> = {
                                         <span class="font-medium text-foreground">+ {{ fmtIDR(shippingPerEkor) }}</span>
                                     </div>
 
+                                    <!-- Fee % — admin only -->
+                                    <div v-if="isAdmin && feePct" class="flex justify-between items-center px-4 py-3">
+                                        <p class="font-medium text-foreground">Fee</p>
+                                        <span class="font-medium text-foreground">{{ feePct }}%</span>
+                                    </div>
+
                                     <!-- Total -->
                                     <div class="flex justify-between items-center px-4 py-3 bg-muted/40">
                                         <p class="font-semibold text-foreground">Total yang Dibayar</p>
                                         <span class="font-semibold text-foreground">{{ fmtIDR(salesPriceIdr + (shippingPerEkor ?? 0)) }}</span>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Profit — admin only -->
-                            <div v-if="isAdmin" class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profit</dt>
-                                <dd class="mt-1 font-semibold" :class="profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
-                                    {{ fmtIDR(profit) }}
-                                </dd>
                             </div>
                         </dl>
                     </div>

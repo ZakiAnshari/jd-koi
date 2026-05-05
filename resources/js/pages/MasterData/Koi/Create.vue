@@ -160,8 +160,7 @@ const salesPriceIdr = computed(() => {
 })
 const shippingCostIdr = computed(() => {
     const c = Number(form.shipping_cost) || 0
-    const k = Number(kursInput.value)    || 0
-    return c > 0 && k > 0 ? Math.round(c * k) : null
+    return c > 0 ? c : null
 })
 const shippingPerEkor = computed(() => {
     const costIdr = shippingCostIdr.value     || 0
@@ -192,12 +191,12 @@ const stockPriceDisplay   = ref('')
 const shippingCostDisplay = ref('')
 const unitPriceDisplay    = ref('')
 
-function onStockPriceInput(e: Event)   { stockPriceDisplay.value = parseInput(e) }
-function onStockPriceBlur()            { form.stock_price = stockPriceDisplay.value; stockPriceDisplay.value = addDots(stockPriceDisplay.value) }
-function onShippingCostInput(e: Event) { shippingCostDisplay.value = parseInput(e) }
-function onShippingCostBlur()          { form.shipping_cost = shippingCostDisplay.value; shippingCostDisplay.value = addDots(shippingCostDisplay.value) }
-function onUnitPriceInput(e: Event)    { unitPriceDisplay.value = parseInput(e) }
-function onUnitPriceBlur()             { form.unit_price = unitPriceDisplay.value; unitPriceDisplay.value = addDots(unitPriceDisplay.value) }
+function onStockPriceChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
+function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
+function onShippingCostInput(e: Event) { const r = parseInput(e); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
+function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
+function onUnitPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
+function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
 
 const kursDisplay = ref('')
 watch(kursInput, v => { kursDisplay.value = addDots(v) })
@@ -431,7 +430,7 @@ function submit() {
                                             <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="stockPriceDisplay" @input="onStockPriceInput" @blur="onStockPriceBlur" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
+                                                <Input type="text" inputmode="numeric" :modelValue="stockPriceDisplay" @update:modelValue="onStockPriceChange" @blur="onStockPriceBlur" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
                                             </div>
                                             <div v-if="modalPriceIdr" class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] flex justify-between">
                                                 <span class="text-muted-foreground">≈ IDR/ekor</span>
@@ -466,14 +465,10 @@ function submit() {
                                 <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="space-y-1.5">
-                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
                                             <div class="relative">
-                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @input="onShippingCostInput" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700" />
-                                            </div>
-                                            <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                                <span class="text-muted-foreground">≈ IDR</span>
-                                                <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(shippingCostIdr) }}</span>
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
+                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @input="onShippingCostInput" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
                                             </div>
                                             <InputError :message="(form.errors as any).shipping_cost" />
                                         </div>
@@ -588,7 +583,7 @@ function submit() {
                                             <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Sales Price (JPY)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="unitPriceDisplay" @input="onUnitPriceInput" @blur="onUnitPriceBlur" placeholder="0" class="h-9 text-sm pl-7" />
+                                                <Input type="text" inputmode="numeric" :modelValue="unitPriceDisplay" @update:modelValue="onUnitPriceChange" @blur="onUnitPriceBlur" placeholder="0" class="h-9 text-sm pl-7" />
                                             </div>
                                             <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
                                                 <span class="text-muted-foreground">≈ IDR/unit</span>

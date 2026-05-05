@@ -41,6 +41,7 @@ type Koi = {
     sale_invoice: string | null
     sale_tanggal: string | null
     sale_shipped_date: string | null
+    shipping_date: string | null
     sale_qty: number | null
     unit_price: string | null
     buy_jpy: string | null
@@ -266,8 +267,8 @@ function submitEdit() {
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.sale_tanggal ? fmtDate(koi.sale_tanggal) : '-' }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipped Date</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.sale_shipped_date ? fmtDate(koi.sale_shipped_date) : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.shipping_date ? fmtDate(koi.shipping_date) : '-' }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</dt>

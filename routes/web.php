@@ -13,8 +13,6 @@ use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RekapTransaksiController;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
-use App\Models\ActivityLog;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 

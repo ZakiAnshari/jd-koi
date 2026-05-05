@@ -181,7 +181,10 @@ const editFilteredInvoices  = computed(() => {
     return invoices.value.filter(i => i.sale_invoice.toLowerCase().includes(q))
 })
 
-const editModalQty = ref('')
+const editModalQty             = ref('')
+const editStockPriceDisplay    = ref('')
+const editUnitPriceDisplay     = ref('')
+const editShippingCostDisplay2 = ref('')
 
 const editForm = useForm({
     breeder_id: '', jenis_koi_id: '', code: '', name: '', description: '',
@@ -230,7 +233,10 @@ function openEditModal(koi: Koi) {
     editForm.shipping_qty      = koi.shipping_qty != null ? String(koi.shipping_qty) : ''
     editForm.shipping_note     = koi.shipping_note ?? ''
     editForm.shipping_date     = koi.shipping_date ? String(koi.shipping_date).substring(0, 10) : ''
-    editModalQty.value         = koi.sale_qty != null ? String(koi.sale_qty) : ''
+    editModalQty.value             = koi.sale_qty != null ? String(koi.sale_qty) : ''
+    editStockPriceDisplay.value    = addDots(koi.stock_price)
+    editUnitPriceDisplay.value     = addDots(koi.unit_price)
+    editShippingCostDisplay2.value = addDots(koi.shipping_cost)
 
     const existingKurs = koi.kurs ? Number(koi.kurs) : 0
     editKursIsManual.value = existingKurs > 0
@@ -259,11 +265,14 @@ const editModalTerjualIdr= computed(() => { const m = editModalPriceIdr.value ||
 const editUnitPriceIdr   = computed(() => { const p = Number(editForm.unit_price) || 0; const k = Number(editKursInput.value) || 0; return p > 0 && k > 0 ? Math.round(p * k) : null })
 const editSalesPriceJpy  = computed(() => { const p = Number(editForm.unit_price) || 0; const q = Number(editForm.sale_qty) || 1; return p > 0 ? p * q : null })
 const editSalesPriceIdr  = computed(() => { const jpy = editSalesPriceJpy.value; const k = Number(editKursInput.value) || 0; return jpy && k > 0 ? Math.round(jpy * k) : null })
-const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; const k = Number(editKursInput.value) || 0; return c > 0 && k > 0 ? Math.round(c * k) : null })
+const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; return c > 0 ? c : null })
 const editShippingPerEkor= computed(() => { const cIdr = editShippingCostIdr.value || 0; const q = Number(editForm.shipping_qty) || 0; return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null })
 const editProfit         = computed(() => (editSalesPriceIdr.value ?? 0) - (editModalTerjualIdr.value ?? 0) + Number(editForm.fee || 0))
 const editProfitPositive = computed(() => editProfit.value >= 0)
 
+function onEditStockPriceChange(val: string | number)    { const r = String(val).replace(/\D/g, ''); editForm.stock_price = r; editStockPriceDisplay.value = addDots(r) }
+function onEditUnitPriceChange(val: string | number)     { const r = String(val).replace(/\D/g, ''); editForm.unit_price = r; editUnitPriceDisplay.value = addDots(r) }
+function onEditShippingCostChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); editForm.shipping_cost = r; editShippingCostDisplay2.value = addDots(r) }
 function onEditFeeSelect(val: unknown) {
     editFeePct.value = val !== null ? String(val) : null
     editForm.fee = String(Math.round(Number(editForm.sell_idr) * (Number(val) / 100)))
@@ -391,11 +400,10 @@ const salesPriceIdr = computed(() => {
     const k   = Number(kursInput.value) || 0
     return jpy && k > 0 ? Math.round(jpy * k) : null
 })
-// Shipping: input JPY → konversi ke IDR dulu
+// Shipping: input langsung IDR
 const shippingCostIdr = computed(() => {
     const cost = Number(form.shipping_cost) || 0
-    const k    = Number(kursInput.value)    || 0
-    return cost > 0 && k > 0 ? Math.round(cost * k) : null
+    return cost > 0 ? cost : null
 })
 const shippingPerEkor = computed(() => {
     const costIdr = shippingCostIdr.value   || 0
@@ -453,11 +461,11 @@ const stockPriceDisplay   = ref('')
 const shippingCostDisplay = ref('')
 const unitPriceDisplay    = ref('')
 
-function onStockPriceInput(e: Event)   { const r = parseInput(e); stockPriceDisplay.value = r; form.stock_price = r }
+function onStockPriceChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
 function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
-function onShippingCostInput(e: Event) { const r = parseInput(e); shippingCostDisplay.value = r; form.shipping_cost = r }
+function onShippingCostChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
 function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
-function onUnitPriceInput(e: Event)    { const r = parseInput(e); unitPriceDisplay.value = r; form.unit_price = r }
+function onUnitPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
 function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
 
 const kursDisplay = ref(addDots(kursInput.value))
@@ -702,8 +710,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        v-model="stockPriceDisplay"
-                                                        @input="onStockPriceInput"
+                                                        :modelValue="stockPriceDisplay"
+                                                        @update:modelValue="onStockPriceChange"
                                                         @blur="onStockPriceBlur"
                                                         placeholder="0"
                                                         class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500"
@@ -750,21 +758,17 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <div class="grid grid-cols-2 gap-3">
                                             <!-- Total Biaya Shipping -->
                                             <div class="space-y-1.5">
-                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
                                                 <div class="relative">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        v-model="shippingCostDisplay"
-                                                        @input="onShippingCostInput"
+                                                        :modelValue="shippingCostDisplay"
+                                                        @update:modelValue="onShippingCostChange"
                                                         @blur="onShippingCostBlur"
                                                         placeholder="0"
-                                                        class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700"
+                                                        class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
                                                     />
-                                                </div>
-                                                <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                                    <span class="text-muted-foreground">≈ IDR</span>
-                                                    <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(shippingCostIdr) }}</span>
                                                 </div>
                                                 <InputError :message="(form.errors as any).shipping_cost" />
                                             </div>
@@ -1011,8 +1015,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
                                                     <Input
                                                         type="text" inputmode="numeric"
-                                                        v-model="unitPriceDisplay"
-                                                        @input="onUnitPriceInput"
+                                                        :modelValue="unitPriceDisplay"
+                                                        @update:modelValue="onUnitPriceChange"
                                                         @blur="onUnitPriceBlur"
                                                         placeholder="0"
                                                         class="h-9 text-sm pl-7"
@@ -1395,8 +1399,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
                                             <Input
                                                 type="text" inputmode="numeric"
-                                                :model-value="fmtInput(editForm.stock_price)"
-                                                @input="(e: Event) => { editForm.stock_price = parseInput(e) }"
+                                                :modelValue="editStockPriceDisplay"
+                                                @update:modelValue="onEditStockPriceChange"
                                                 placeholder="0"
                                                 class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500"
                                             />
@@ -1441,20 +1445,16 @@ function confirmDeleteKoi(id: number, name: string) {
                                 <div class="grid grid-cols-2 gap-3">
                                     <!-- Total Biaya Shipping -->
                                     <div class="space-y-1.5">
-                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
                                         <div class="relative">
-                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
                                             <Input
                                                 type="text" inputmode="numeric"
-                                                :value="fmtInput(editForm.shipping_cost)"
-                                                @input="(e: Event) => { editForm.shipping_cost = parseInput(e) }"
+                                                :modelValue="editShippingCostDisplay2"
+                                                @update:modelValue="onEditShippingCostChange"
                                                 placeholder="0"
-                                                class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700"
+                                                class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
                                             />
-                                        </div>
-                                        <div v-if="editShippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                            <span class="text-muted-foreground">≈ IDR</span>
-                                            <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(editShippingCostIdr) }}</span>
                                         </div>
                                         <InputError :message="(editForm.errors as any).shipping_cost" />
                                     </div>
@@ -1657,8 +1657,8 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
                                             <Input
                                                 type="text" inputmode="numeric"
-                                                :model-value="fmtInput(editForm.unit_price)"
-                                                @input="(e: Event) => { editForm.unit_price = parseInput(e) }"
+                                                :modelValue="editUnitPriceDisplay"
+                                                @update:modelValue="onEditUnitPriceChange"
                                                 placeholder="0"
                                                 class="h-9 text-sm pl-7"
                                             />

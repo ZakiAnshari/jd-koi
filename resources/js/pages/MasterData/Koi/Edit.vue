@@ -204,8 +204,7 @@ const salesPriceIdr = computed(() => {
 })
 const shippingCostIdr = computed(() => {
     const c = Number(form.shipping_cost) || 0
-    const k = Number(kursInput.value)    || 0
-    return c > 0 && k > 0 ? Math.round(c * k) : null
+    return c > 0 ? c : null
 })
 const shippingPerEkor = computed(() => {
     const costIdr = shippingCostIdr.value     || 0
@@ -247,8 +246,8 @@ const unitPriceDisplay    = ref(addDots(koi.unit_price))
 // Blur: baru update form → computed hanya recompute sekali saat pindah field
 function onStockPriceInput(e: Event)   { stockPriceDisplay.value = parseInput(e) }
 function onStockPriceBlur()            { form.stock_price = stockPriceDisplay.value; stockPriceDisplay.value = addDots(stockPriceDisplay.value) }
-function onShippingCostFocus()          { shippingCostDisplay.value = shippingCostDisplay.value.replace(/\D/g, '') }
-function onShippingCostBlur()          { form.shipping_cost = shippingCostDisplay.value.replace(/\D/g, ''); shippingCostDisplay.value = addDots(shippingCostDisplay.value) }
+function onShippingCostChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
+function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
 function onUnitPriceInput(e: Event)    { unitPriceDisplay.value = parseInput(e) }
 function onUnitPriceBlur()             { form.unit_price = unitPriceDisplay.value; unitPriceDisplay.value = addDots(unitPriceDisplay.value) }
 const kursDisplay = ref(addDots(kursInput.value))
@@ -572,16 +571,12 @@ const submit = () => {
                             <div class="space-y-3 pl-3">
                                 <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
                                     <div class="grid grid-cols-2 gap-3">
-                                        <!-- Total Biaya Shipping JPY -->
+                                        <!-- Total Biaya Shipping IDR -->
                                         <div class="space-y-1.5">
-                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
                                             <div class="relative">
-                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @focus="onShippingCostFocus" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700" />
-                                            </div>
-                                            <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
-                                                <span class="text-muted-foreground">≈ IDR</span>
-                                                <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(shippingCostIdr) }}</span>
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
+                                                <Input type="text" inputmode="numeric" :modelValue="shippingCostDisplay" @update:modelValue="onShippingCostChange" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
                                             </div>
                                             <InputError :message="(form.errors as any).shipping_cost" />
                                         </div>
