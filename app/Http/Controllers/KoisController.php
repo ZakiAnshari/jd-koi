@@ -53,6 +53,19 @@ class KoisController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        $breeders  = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
+        $jenisKois = JenisKoi::select(['id', 'nama_jenis'])->orderBy('nama_jenis')->get();
+        $customers = User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get();
+
+        return Inertia::render('MasterData/Koi/Create', [
+            'breeders'  => $breeders,
+            'jenisKois' => $jenisKois,
+            'customers' => $customers,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -184,6 +197,7 @@ class KoisController extends Controller
             'stock_price'     => 'nullable|numeric|min:0',
             'fee'             => 'nullable|numeric|min:0',
             'sale_status'       => 'nullable|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
+            'sale_invoice'      => 'nullable|string|max:100',
             'sale_shipped_date' => 'nullable|date',
             'azukari_period'    => 'nullable|string|max:255',
             'shipping_cost'     => 'nullable|numeric|min:0',

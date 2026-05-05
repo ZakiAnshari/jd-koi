@@ -18,32 +18,14 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 
-type Breeder       = { id: number; name_breeder: string }
-type JenisKoi      = { id: number; nama_jenis: string }
-type PembelianItem = {
-    id: number
-    koi_id: number
-    date: string
-    qty: number
-    price_jpy: number
-    price_idr: number
-    status: string
-    koi?: { id: number; code: string; name: string }
-}
-type KatalogItem = {
-    id: number
-    koi_id: number
-    pembelian_id: number
-    tanggal: string
-    sell_idr: number
-    koi?: { id: number; code: string; name: string }
-}
+type Breeder  = { id: number; name_breeder: string }
+type JenisKoi = { id: number; nama_jenis: string }
+type Customer = { id: number; name: string }
 
-const page       = usePage()
-const breeders   = (page.props.breeders   as Breeder[]       ) || []
-const jenisKois  = (page.props.jenisKois  as JenisKoi[]      ) || []
-const pembelians = (page.props.pembelians as PembelianItem[]  ) || []
-const katalogs   = (page.props.katalogs   as KatalogItem[]   ) || []
+const page      = usePage()
+const breeders  = (page.props.breeders  as Breeder[])  || []
+const jenisKois = (page.props.jenisKois as JenisKoi[]) || []
+const customers = (page.props.customers as Customer[]) || []
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -51,9 +33,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Tambah Koi', href: '/master-data/koi/create' },
 ]
 
-// ─── Breeder / Jenis search ───────────────────────────────
+// ─── Search filters ───────────────────────────────────────
 const breederSearch = ref('')
 const jenisSearch   = ref('')
+const customerSearch = ref('')
 const filteredBreeders = computed(() => {
     if (!breederSearch.value) return breeders
     const q = breederSearch.value.toLowerCase()
@@ -64,47 +47,17 @@ const filteredJenisKois = computed(() => {
     const q = jenisSearch.value.toLowerCase()
     return jenisKois.filter(j => j.nama_jenis.toLowerCase().includes(q))
 })
+const filteredCustomers = computed(() => {
+    if (!customerSearch.value) return customers
+    const q = customerSearch.value.toLowerCase()
+    return customers.filter(c => c.name.toLowerCase().includes(q))
+})
 
 // ─── Images ───────────────────────────────────────────────
 const fotoPreviews = ref<{ file: File; url: string }[]>([])
 
-// ─── Section enable flags ─────────────────────────────────
-const pembelianEnabled = ref(false)
-const pembelianMode    = ref<'existing' | 'create'>('create')
-const katalogEnabled   = ref(false)
-const katalogMode      = ref<'existing' | 'create'>('create')
-
-// ─── Exchange rate (for create-pembelian mode) ────────────
-const exchangeRate        = ref(0)
-const exchangeRateLoading = ref(false)
-const exchangeRateError   = ref(false)
-const isPriceIdrManual    = ref(false)
-
-async function fetchExchangeRate() {
-    if (exchangeRate.value > 0) return
-    exchangeRateLoading.value = true
-    exchangeRateError.value   = false
-    try {
-        const res  = await fetch('https://api.exchangerate-api.com/v4/latest/JPY')
-        if (!res.ok) throw new Error()
-        const data = await res.json()
-        exchangeRate.value = Math.round(Number(data?.rates?.IDR ?? 0))
-        if (!exchangeRate.value) throw new Error()
-    } catch {
-        exchangeRateError.value = true
-        exchangeRate.value      = 110
-    } finally {
-        exchangeRateLoading.value = false
-    }
-}
-
-watch([pembelianEnabled, pembelianMode], ([enabled, mode]) => {
-    if (enabled && mode === 'create') fetchExchangeRate()
-})
-
 // ─── Form ─────────────────────────────────────────────────
 const form = useForm({
-    // Data Koi
     breeder_id:   '',
     jenis_koi_id: '',
     code:         '',
@@ -115,64 +68,150 @@ const form = useForm({
     weight:       '',
     total_weight: '',
     images:       [] as File[],
-
-    // Pembelian
-    pembelian_mode:        'none' as 'none' | 'existing' | 'create',
-    pembelian_existing_id: '',
-    pembelian_date:        '',
-    pembelian_qty:         '1',
-    pembelian_price_jpy:   '',
-    pembelian_price_idr:   '',
-
-    // Katalog
-    katalog_mode:        'none' as 'none' | 'existing' | 'create',
-    katalog_existing_id: '',
-    katalog_tanggal:     '',
-    katalog_qty:         '1',
-    katalog_unit_price:  '',
-    katalog_sell_idr:    '',
-    katalog_stock_price: '',
-    katalog_fee:         '0',
+    // Penjualan
+    customer_id:       '',
+    sale_tanggal:      '',
+    sale_qty:          '1',
+    unit_price:        '',
+    buy_jpy:           '',
+    kurs:              '',
+    sell_idr:          '',
+    stock_price:       '',
+    fee:               '0',
+    sale_status:       '',
+    shipping_cost:     '',
+    shipping_qty:      '',
+    shipping_note:     '',
+    shipping_date:     '',
+    azukari_period:    '',
 })
 
-// Sync mode flags → form fields
-watch([pembelianEnabled, pembelianMode], () => {
-    form.pembelian_mode = pembelianEnabled.value ? pembelianMode.value : 'none'
-    if (!pembelianEnabled.value) {
-        isPriceIdrManual.value = false
+// ─── Exchange rate ────────────────────────────────────────
+const exchangeRate        = ref(0)
+const exchangeRateLoading = ref(false)
+const exchangeRateError   = ref(false)
+const kursIsManual        = ref(false)
+const kursInput           = ref('')
+watch(kursInput, v => { form.kurs = v })
+
+const modalQty = ref('')
+
+async function fetchExchangeRate() {
+    if (kursIsManual.value) return
+    exchangeRateLoading.value = true; exchangeRateError.value = false
+    try {
+        const res  = await fetch('https://api.exchangerate-api.com/v4/latest/JPY')
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        exchangeRate.value = Math.round(Number(data?.rates?.IDR ?? 0))
+        if (!exchangeRate.value) throw new Error()
+    } catch { exchangeRateError.value = true; exchangeRate.value = 110 }
+    finally  { exchangeRateLoading.value = false }
+}
+fetchExchangeRate()
+watch(exchangeRate, rate => {
+    if (rate > 0 && !kursIsManual.value) {
+        kursInput.value = String(rate)
     }
 })
-watch([katalogEnabled, katalogMode], () => {
-    form.katalog_mode = katalogEnabled.value ? katalogMode.value : 'none'
+function resetKurs() {
+    kursIsManual.value = false
+    kursInput.value    = String(exchangeRate.value)
+}
+
+// unit_price × qty × kurs → sell_idr
+watch([() => form.unit_price, () => form.sale_qty, kursInput], ([price, qty, kurs]) => {
+    const p = Number(price) || 0
+    const q = Number(qty)   || 1
+    const k = Number(kurs)  || 0
+    form.sell_idr = p > 0 && k > 0 ? String(Math.round(p * q * k)) : ''
 })
 
-// Auto-calc price_idr ketika price_jpy berubah (debounced)
-let priceIdrTimer: ReturnType<typeof setTimeout> | null = null
-watch(() => form.pembelian_price_jpy, (jpy) => {
-    if (priceIdrTimer) clearTimeout(priceIdrTimer)
-    priceIdrTimer = setTimeout(() => {
-        if (!isPriceIdrManual.value && exchangeRate.value > 0 && jpy) {
-            form.pembelian_price_idr = String(Math.round(Number(jpy) * exchangeRate.value))
-        }
-    }, 300)
+// ─── Computeds ────────────────────────────────────────────
+const modalPriceIdr = computed(() => {
+    const m = Number(form.stock_price) || 0
+    const k = Number(kursInput.value)  || 0
+    return m > 0 && k > 0 ? Math.round(m * k) : null
 })
-
-// Auto-calc sell_idr = unit_price × qty (debounced)
-let sellIdrTimer: ReturnType<typeof setTimeout> | null = null
-watch([() => form.katalog_unit_price, () => form.katalog_qty], ([price, qty]) => {
-    if (sellIdrTimer) clearTimeout(sellIdrTimer)
-    sellIdrTimer = setTimeout(() => {
-        const p = Number(price) || 0
-        const q = Number(qty) || 1
-        form.katalog_sell_idr = String(Math.round(p * q))
-    }, 300)
+const totalModalIdr = computed(() => {
+    const m = modalPriceIdr.value    || 0
+    const q = Number(modalQty.value) || 0
+    return m > 0 && q > 0 ? Math.round(m * q) : null
 })
+const modalTerjualIdr = computed(() => {
+    const m = modalPriceIdr.value   || 0
+    const q = Number(form.sale_qty) || 1
+    return m > 0 ? Math.round(m * q) : null
+})
+const unitPriceIdr = computed(() => {
+    const p = Number(form.unit_price) || 0
+    const k = Number(kursInput.value) || 0
+    return p > 0 && k > 0 ? Math.round(p * k) : null
+})
+const salesPriceJpy = computed(() => {
+    const p = Number(form.unit_price) || 0
+    const q = Number(form.sale_qty)   || 1
+    return p > 0 ? p * q : null
+})
+const salesPriceIdr = computed(() => {
+    const jpy = salesPriceJpy.value
+    const k   = Number(kursInput.value) || 0
+    return jpy && k > 0 ? Math.round(jpy * k) : null
+})
+const shippingCostIdr = computed(() => {
+    const c = Number(form.shipping_cost) || 0
+    const k = Number(kursInput.value)    || 0
+    return c > 0 && k > 0 ? Math.round(c * k) : null
+})
+const shippingPerEkor = computed(() => {
+    const costIdr = shippingCostIdr.value     || 0
+    const qty     = Number(form.shipping_qty) || 0
+    return costIdr > 0 && qty > 0 ? Math.round(costIdr / qty) : null
+})
+const profit         = computed(() => (salesPriceIdr.value ?? 0) - (modalTerjualIdr.value ?? 0) + Number(form.fee || 0))
+const profitPositive = computed(() => profit.value >= 0)
 
-// ─── Computed helpers untuk Katalog ──────────────────────
-const katalogSalesPrice     = computed(() => (Number(form.katalog_unit_price) || 0) * (Number(form.katalog_qty) || 1))
-const katalogMargin         = computed(() => katalogSalesPrice.value - (Number(form.katalog_stock_price) || 0) + (Number(form.katalog_fee) || 0))
-const katalogMarginPositive = computed(() => katalogMargin.value >= 0)
-const katalogNeedsPembelian = computed(() => katalogEnabled.value && katalogMode.value === 'create' && !pembelianEnabled.value)
+// ─── Fee select ───────────────────────────────────────────
+const feePct = ref<string | null>(null)
+function onFeeSelect(val: unknown) {
+    feePct.value = val !== null ? String(val) : null
+    form.fee = String(Math.round((salesPriceIdr.value ?? 0) * (Number(val) / 100)))
+}
+
+// ─── Input helpers ────────────────────────────────────────
+function parseInput(e: Event): string {
+    return (e.target as HTMLInputElement).value.replace(/\D/g, '')
+}
+function addDots(val: string | number | null) {
+    const n = Number(String(val ?? '').replace(/\D/g, ''))
+    return n > 0 ? n.toLocaleString('id-ID') : ''
+}
+
+// Display refs — format hanya saat blur
+const stockPriceDisplay   = ref('')
+const shippingCostDisplay = ref('')
+const unitPriceDisplay    = ref('')
+
+function onStockPriceInput(e: Event)   { stockPriceDisplay.value = parseInput(e) }
+function onStockPriceBlur()            { form.stock_price = stockPriceDisplay.value; stockPriceDisplay.value = addDots(stockPriceDisplay.value) }
+function onShippingCostInput(e: Event) { shippingCostDisplay.value = parseInput(e) }
+function onShippingCostBlur()          { form.shipping_cost = shippingCostDisplay.value; shippingCostDisplay.value = addDots(shippingCostDisplay.value) }
+function onUnitPriceInput(e: Event)    { unitPriceDisplay.value = parseInput(e) }
+function onUnitPriceBlur()             { form.unit_price = unitPriceDisplay.value; unitPriceDisplay.value = addDots(unitPriceDisplay.value) }
+
+const kursDisplay = ref('')
+watch(kursInput, v => { kursDisplay.value = addDots(v) })
+function onKursInputHandler(e: Event) {
+    kursIsManual.value = true
+    kursDisplay.value  = parseInput(e)
+}
+function onKursBlur() {
+    kursInput.value   = kursDisplay.value
+    kursDisplay.value = addDots(kursDisplay.value)
+}
+
+const fmtIDR = (v: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v)
 
 // ─── Image handlers ───────────────────────────────────────
 function handleImagesChange(e: Event) {
@@ -190,23 +229,6 @@ function handleImagesChange(e: Event) {
 function removeNewImage(index: number) {
     fotoPreviews.value.splice(index, 1)
     form.images = form.images.filter((_, i) => i !== index)
-}
-
-// ─── Formatters ───────────────────────────────────────────
-const fmtIDR = (v: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v)
-const fmtJPY = (v: number) =>
-    new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(v)
-const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })
-
-function pembelianLabel(p: PembelianItem) {
-    const koi = p.koi ? `${p.koi.code} - ${p.koi.name}` : `ID ${p.koi_id}`
-    return `${fmtDate(p.date)} | ${koi} | ${fmtIDR(p.price_idr)}`
-}
-function katalogLabel(k: KatalogItem) {
-    const koi = k.koi ? `${k.koi.code} - ${k.koi.name}` : `KoiID ${k.koi_id}`
-    return `${fmtDate(k.tanggal)} | ${koi} | ${fmtIDR(k.sell_idr)}`
 }
 
 // ─── Submit ───────────────────────────────────────────────
@@ -233,7 +255,7 @@ function submit() {
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold">Tambah Koi</h1>
-                    <p class="text-sm text-muted-foreground">Isi data koi beserta data pembelian dan katalog (opsional).</p>
+                    <p class="text-sm text-muted-foreground">Isi data koi beserta informasi penjualan (opsional).</p>
                 </div>
                 <Link href="/master-data/koi"
                     class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted">
@@ -252,7 +274,6 @@ function submit() {
                     <div class="space-y-4">
                         <!-- Breeder & Jenis Koi -->
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <!-- Breeder -->
                             <div class="grid gap-2">
                                 <Label>Breeder <span class="text-red-500">*</span></Label>
                                 <Select v-model="form.breeder_id">
@@ -274,9 +295,8 @@ function submit() {
                                 <InputError :message="form.errors.breeder_id" />
                             </div>
 
-                            <!-- Jenis Koi -->
                             <div class="grid gap-2">
-                                <Label>Jenis Koi</Label>
+                                <Label>Jenis Koi <span class="text-xs font-normal text-muted-foreground">(opsional)</span></Label>
                                 <Select v-model="form.jenis_koi_id">
                                     <SelectTrigger class="w-full">
                                         <SelectValue placeholder="Pilih jenis koi (opsional)" />
@@ -362,258 +382,296 @@ function submit() {
                 </div>
 
                 <!-- ═══════════════════════════════════════════
-                     SECTION 2: PEMBELIAN
+                     SECTION 2: PENJUALAN
                 ═══════════════════════════════════════════════ -->
                 <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
-                    <!-- Section header + toggle enable -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 class="text-base font-semibold">Pembelian</h2>
-                            <p class="text-xs text-muted-foreground">Tambahkan data pembelian untuk koi ini (opsional).</p>
-                        </div>
-                        <label class="flex cursor-pointer items-center gap-2 select-none">
-                            <span class="text-sm text-muted-foreground">Aktifkan</span>
+                    <h2 class="mb-5 text-base font-semibold">Penjualan <span class="text-xs font-normal text-muted-foreground">(opsional)</span></h2>
+
+                    <div class="space-y-5">
+
+                        <!-- ══ Kurs JPY → IDR ══ -->
+                        <div class="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/30 p-3 space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <Label class="text-xs font-semibold text-red-700 dark:text-red-400">Kurs JPY → IDR</Label>
+                                <div class="flex items-center gap-1.5">
+                                    <span v-if="exchangeRateLoading" class="text-[10px] text-red-400 animate-pulse">Memuat kurs...</span>
+                                    <template v-else>
+                                        <span v-if="kursIsManual" class="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">✎ Manual</span>
+                                        <span v-else-if="exchangeRateError" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-400">⚠ Fallback</span>
+                                        <span v-else class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">✓ Live API</span>
+                                        <button v-if="kursIsManual" type="button" @click="resetKurs" class="text-[10px] underline text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">Gunakan API</button>
+                                    </template>
+                                </div>
+                            </div>
                             <div class="relative">
-                                <input type="checkbox" v-model="pembelianEnabled" class="sr-only peer" />
-                                <div class="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors"></div>
-                                <div class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 dark:text-red-400">Rp</span>
+                                <input type="text" inputmode="numeric"
+                                    v-model="kursDisplay"
+                                    @input="onKursInputHandler"
+                                    @blur="onKursBlur"
+                                    placeholder="0"
+                                    class="flex h-9 w-full rounded-md border-2 border-red-400 dark:border-red-600 bg-white dark:bg-red-900/20 pl-9 pr-14 text-sm font-semibold text-red-800 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 transition-colors" />
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-red-500 dark:text-red-400">/ ¥1</span>
                             </div>
-                        </label>
-                    </div>
-
-                    <div v-if="pembelianEnabled" class="space-y-5">
-                        <!-- Mode toggle -->
-                        <div class="flex rounded-lg border border-border overflow-hidden text-sm font-medium w-fit">
-                            <button type="button"
-                                :class="pembelianMode === 'existing' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'"
-                                class="px-4 py-2 transition-colors"
-                                @click="pembelianMode = 'existing'">
-                                Pilih yang Ada
-                            </button>
-                            <button type="button"
-                                :class="pembelianMode === 'create' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'"
-                                class="px-4 py-2 border-l border-border transition-colors"
-                                @click="pembelianMode = 'create'">
-                                Buat Baru
-                            </button>
+                            <p class="text-[11px] text-red-600/80 dark:text-red-400/80">Otomatis dari API · langsung ketik untuk ubah manual</p>
                         </div>
 
-                        <!-- Select Existing -->
-                        <div v-if="pembelianMode === 'existing'" class="space-y-3">
-                            <div class="grid gap-2">
-                                <Label>Pilih Pembelian <span class="text-red-500">*</span></Label>
-                                <Select v-model="form.pembelian_existing_id">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pilih data pembelian..." />
-                                    </SelectTrigger>
-                                    <SelectContent class="w-[--radix-select-trigger-width] p-0">
-                                        <div class="max-h-56 overflow-y-auto">
-                                            <SelectItem v-for="p in pembelians" :key="p.id" :value="String(p.id)">
-                                                {{ pembelianLabel(p) }}
-                                            </SelectItem>
-                                        </div>
-                                    </SelectContent>
-                                </Select>
-                                <InputError :message="form.errors.pembelian_existing_id" />
-                            </div>
+                        <div class="border-t border-border"></div>
 
-                            <!-- Info box selected pembelian -->
-                            <div v-if="form.pembelian_existing_id" class="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 text-sm">
-                                <template v-if="pembelians.find(p => p.id === Number(form.pembelian_existing_id))">
+                        <!-- ══ SECTION: Modal ══ -->
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="h-4 w-1 rounded-full bg-blue-500"></div>
+                                <p class="text-sm font-semibold">Modal</p>
+                            </div>
+                            <div class="pl-3">
+                                <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-3">
                                     <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Tanggal</p>
-                                            <p class="font-medium">{{ fmtDate(pembelians.find(p => p.id === Number(form.pembelian_existing_id))!.date) }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Qty</p>
-                                            <p class="font-medium">{{ pembelians.find(p => p.id === Number(form.pembelian_existing_id))!.qty }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Harga JPY</p>
-                                            <p class="font-medium">{{ fmtJPY(pembelians.find(p => p.id === Number(form.pembelian_existing_id))!.price_jpy) }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs text-muted-foreground">Harga IDR</p>
-                                            <p class="font-medium">{{ fmtIDR(pembelians.find(p => p.id === Number(form.pembelian_existing_id))!.price_idr) }}</p>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Create New -->
-                        <div v-if="pembelianMode === 'create'" class="space-y-4">
-                            <!-- Exchange rate info -->
-                            <div class="rounded-lg bg-muted/50 px-4 py-2 text-xs flex items-center gap-2">
-                                <span v-if="exchangeRateLoading" class="text-muted-foreground">Memuat kurs JPY→IDR...</span>
-                                <span v-else-if="exchangeRateError" class="text-orange-500">Gagal memuat kurs (menggunakan fallback {{ exchangeRate }})</span>
-                                <span v-else class="text-muted-foreground">Kurs JPY→IDR: <strong>Rp {{ exchangeRate.toLocaleString('id-ID') }}</strong></span>
-                            </div>
-
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div class="grid gap-2">
-                                    <Label for="pem_date">Tanggal Pembelian <span class="text-red-500">*</span></Label>
-                                    <Input id="pem_date" v-model="form.pembelian_date" type="date" />
-                                    <InputError :message="form.errors.pembelian_date" />
-                                </div>
-                                <div class="grid gap-2">
-                                    <Label for="pem_qty">Qty <span class="text-red-500">*</span></Label>
-                                    <Input id="pem_qty" v-model="form.pembelian_qty" type="number" min="1" placeholder="1" />
-                                    <InputError :message="form.errors.pembelian_qty" />
-                                </div>
-                                <div class="grid gap-2">
-                                    <Label for="pem_jpy">Harga Beli JPY <span class="text-red-500">*</span></Label>
-                                    <Input id="pem_jpy" v-model="form.pembelian_price_jpy" type="number" min="0" placeholder="0" />
-                                    <InputError :message="form.errors.pembelian_price_jpy" />
-                                </div>
-                                <div class="grid gap-2">
-                                    <Label for="pem_idr">
-                                        Harga Beli IDR <span class="text-red-500">*</span>
-                                        <span class="ml-1 text-xs font-normal text-muted-foreground">(auto dari kurs)</span>
-                                    </Label>
-                                    <Input id="pem_idr" v-model="form.pembelian_price_idr" type="number" min="0" placeholder="0"
-                                        @input="isPriceIdrManual = true" @focus="isPriceIdrManual = true" />
-                                    <InputError :message="form.errors.pembelian_price_idr" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Disabled state info -->
-                    <p v-else class="text-sm text-muted-foreground italic">Aktifkan untuk menambahkan data pembelian sekaligus.</p>
-                </div>
-
-                <!-- ═══════════════════════════════════════════
-                     SECTION 3: KATALOG KOI
-                ═══════════════════════════════════════════════ -->
-                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 dark:border-sidebar-border">
-                    <!-- Section header + toggle enable -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 class="text-base font-semibold">Katalog Koi</h2>
-                            <p class="text-xs text-muted-foreground">Tambahkan entri katalog untuk koi ini (opsional).</p>
-                        </div>
-                        <label class="flex cursor-pointer items-center gap-2 select-none">
-                            <span class="text-sm text-muted-foreground">Aktifkan</span>
-                            <div class="relative">
-                                <input type="checkbox" v-model="katalogEnabled" class="sr-only peer" />
-                                <div class="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors"></div>
-                                <div class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div v-if="katalogEnabled" class="space-y-5">
-                        <!-- Mode toggle -->
-                        <div class="flex rounded-lg border border-border overflow-hidden text-sm font-medium w-fit">
-                            <button type="button"
-                                :class="katalogMode === 'existing' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'"
-                                class="px-4 py-2 transition-colors"
-                                @click="katalogMode = 'existing'">
-                                Pilih yang Ada
-                            </button>
-                            <button type="button"
-                                :class="katalogMode === 'create' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'"
-                                class="px-4 py-2 border-l border-border transition-colors"
-                                @click="katalogMode = 'create'">
-                                Buat Baru
-                            </button>
-                        </div>
-
-                        <!-- Select Existing -->
-                        <div v-if="katalogMode === 'existing'" class="space-y-3">
-                            <p class="text-xs text-muted-foreground">Hubungkan koi baru ini ke entri katalog yang sudah ada (koi_id pada katalog tersebut akan diperbarui).</p>
-                            <div class="grid gap-2">
-                                <Label>Pilih Katalog <span class="text-red-500">*</span></Label>
-                                <Select v-model="form.katalog_existing_id">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Pilih entri katalog..." />
-                                    </SelectTrigger>
-                                    <SelectContent class="w-[--radix-select-trigger-width] p-0">
-                                        <div class="max-h-56 overflow-y-auto">
-                                            <SelectItem v-for="k in katalogs" :key="k.id" :value="String(k.id)">
-                                                {{ katalogLabel(k) }}
-                                            </SelectItem>
-                                        </div>
-                                    </SelectContent>
-                                </Select>
-                                <InputError :message="form.errors.katalog_existing_id" />
-                            </div>
-                        </div>
-
-                        <!-- Create New -->
-                        <div v-if="katalogMode === 'create'" class="space-y-4">
-                            <!-- Warning jika pembelian tidak aktif -->
-                            <div v-if="katalogNeedsPembelian" class="rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 px-4 py-3 text-sm text-orange-700 dark:text-orange-300">
-                                Aktifkan section <strong>Pembelian</strong> di atas (pilih yang ada atau buat baru) sebelum membuat katalog baru — pembelian diperlukan untuk mengisi data harga beli.
-                            </div>
-
-                            <template v-if="!katalogNeedsPembelian">
-                                <!-- Tanggal -->
-                                <div class="grid gap-4 sm:grid-cols-2">
-                                    <div class="grid gap-2">
-                                        <Label for="kat_tanggal">Tanggal Katalog <span class="text-red-500">*</span></Label>
-                                        <Input id="kat_tanggal" v-model="form.katalog_tanggal" type="date" />
-                                        <InputError :message="form.errors.katalog_tanggal" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="kat_fee">Fee IDR</Label>
-                                        <Input id="kat_fee" v-model="form.katalog_fee" type="number" min="0" placeholder="0" />
-                                        <InputError :message="form.errors.katalog_fee" />
-                                    </div>
-                                </div>
-
-                                <!-- Kalkulasi harga -->
-                                <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kalkulasi Harga</p>
-
-                                    <!-- Unit Price & Qty -->
-                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div class="grid gap-2">
-                                            <Label for="kat_unit_price">Unit Price (IDR) <span class="text-red-500">*</span></Label>
-                                            <Input id="kat_unit_price" v-model="form.katalog_unit_price" type="number" min="0" placeholder="0" />
-                                            <InputError :message="(form.errors as any).katalog_unit_price" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label for="kat_qty">Qty/Stok <span class="text-red-500">*</span></Label>
-                                            <Input id="kat_qty" v-model="form.katalog_qty" type="number" min="1" placeholder="1" />
-                                            <InputError :message="form.errors.katalog_qty" />
-                                        </div>
-                                    </div>
-
-                                    <!-- Sales Price (auto) -->
-                                    <div class="grid gap-2">
-                                        <Label class="flex items-center gap-1.5">
-                                            Sales Price (IDR)
-                                            <span class="text-xs font-normal text-muted-foreground">(Unit Price × Qty)</span>
-                                        </Label>
-                                        <Input :model-value="katalogSalesPrice" type="number" disabled readonly class="font-semibold bg-muted/50" />
-                                        <InputError :message="form.errors.katalog_sell_idr" />
-                                    </div>
-
-                                    <!-- Stock Price & Margin -->
-                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
-                                        <div class="grid gap-2">
-                                            <Label for="kat_stock_price">Stock Price (IDR) <span class="text-red-500">*</span></Label>
-                                            <Input id="kat_stock_price" v-model="form.katalog_stock_price" type="number" min="0" placeholder="0" />
-                                            <InputError :message="(form.errors as any).katalog_stock_price" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Margin (IDR)</Label>
-                                            <div class="flex h-9 items-center rounded-md border px-3 text-sm font-semibold"
-                                                :class="katalogMarginPositive ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400' : 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400'">
-                                                {{ fmtIDR(katalogMargin) }}
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
+                                                <Input type="text" inputmode="numeric" v-model="stockPriceDisplay" @input="onStockPriceInput" @blur="onStockPriceBlur" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
                                             </div>
+                                            <div v-if="modalPriceIdr" class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                <span class="text-muted-foreground">≈ IDR/ekor</span>
+                                                <span class="font-semibold text-blue-700 dark:text-blue-400">{{ fmtIDR(modalPriceIdr) }}</span>
+                                            </div>
+                                            <InputError :message="(form.errors as any).stock_price" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty Modal (ekor)</Label>
+                                            <Input type="number" min="1" v-model="modalQty" placeholder="0" class="h-9 text-sm border-blue-300 dark:border-blue-700" />
+                                            <p class="text-[10px] text-muted-foreground">Stok yang disiapkan</p>
+                                        </div>
+                                    </div>
+                                    <div v-if="totalModalIdr" class="rounded border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                        <span class="text-blue-700 dark:text-blue-300 font-medium">Total Modal ({{ modalQty || 1 }} ekor)</span>
+                                        <span class="font-bold text-blue-800 dark:text-blue-200">{{ fmtIDR(totalModalIdr) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-border"></div>
+
+                        <!-- ══ SECTION: Shipping ══ -->
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="h-4 w-1 rounded-full bg-orange-500"></div>
+                                <p class="text-sm font-semibold">Shipping</p>
+                                <span class="text-xs text-muted-foreground">(opsional)</span>
+                            </div>
+                            <div class="space-y-3 pl-3">
+                                <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
+                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @input="onShippingCostInput" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700" />
+                                            </div>
+                                            <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                <span class="text-muted-foreground">≈ IDR</span>
+                                                <span class="font-semibold text-orange-700 dark:text-orange-400">{{ fmtIDR(shippingCostIdr) }}</span>
+                                            </div>
+                                            <InputError :message="(form.errors as any).shipping_cost" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
+                                            <Input v-model="form.shipping_qty" type="number" min="1" placeholder="1" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
+                                            <InputError :message="(form.errors as any).shipping_qty" />
+                                        </div>
+                                    </div>
+                                    <div v-if="shippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
+                                        <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                        <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
+                                            <Input v-model="form.shipping_note" type="text" placeholder="Contoh: Sea freight Nov 2025, JNE Express..." class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <InputError :message="(form.errors as any).shipping_note" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Date <span class="font-normal opacity-60">(opsional)</span></Label>
+                                            <Input v-model="form.shipping_date" type="date" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <InputError :message="(form.errors as any).shipping_date" />
                                         </div>
                                     </div>
                                 </div>
-                            </template>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Disabled state info -->
-                    <p v-else class="text-sm text-muted-foreground italic">Aktifkan untuk menambahkan entri katalog sekaligus.</p>
+                        <div class="border-t border-border"></div>
+
+                        <!-- ══ SECTION: Transaksi ══ -->
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="h-4 w-1 rounded-full bg-green-500"></div>
+                                <p class="text-sm font-semibold">Transaksi</p>
+                            </div>
+
+                            <div class="space-y-3 pl-3">
+
+                                <!-- Customer & Status -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Customer</Label>
+                                        <Select v-model="form.customer_id">
+                                            <SelectTrigger class="w-full"><SelectValue placeholder="Pilih customer (opsional)" /></SelectTrigger>
+                                            <SelectContent class="w-[--radix-select-trigger-width] min-w-[20rem] p-0">
+                                                <div class="sticky top-0 border-b bg-background p-2">
+                                                    <Input v-model="customerSearch" placeholder="Cari customer..." class="h-8" @keydown.stop />
+                                                </div>
+                                                <div class="max-h-48 overflow-y-auto">
+                                                    <div v-if="filteredCustomers.length === 0" class="px-2 py-2 text-sm text-muted-foreground">Tidak ditemukan</div>
+                                                    <SelectItem v-for="c in filteredCustomers" :key="c.id" :value="String(c.id)">{{ c.name }}</SelectItem>
+                                                </div>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.customer_id" />
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Status</Label>
+                                        <Select v-model="form.sale_status">
+                                            <SelectTrigger class="w-full"><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="cancel">Cancel</SelectItem>
+                                                <SelectItem value="dead_refund">Dead Refund</SelectItem>
+                                                <SelectItem value="refund">Refund</SelectItem>
+                                                <SelectItem value="cancel_refund">Cancel Refund</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="shipped">Shipped</SelectItem>
+                                                <SelectItem value="azukari">Azukari</SelectItem>
+                                                <SelectItem value="dead">Dead</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.sale_status" />
+                                    </div>
+                                </div>
+
+                                <!-- Azukari period -->
+                                <div v-if="form.sale_status === 'azukari'" class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
+                                    <Input v-model="form.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
+                                    <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
+                                    <InputError :message="(form.errors as any).azukari_period" />
+                                </div>
+
+                                <!-- Tanggal & Qty Jual -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Tanggal</Label>
+                                        <Input v-model="form.sale_tanggal" type="date" class="h-9 text-sm" />
+                                        <InputError :message="form.errors.sale_tanggal" />
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">
+                                            Qty Jual (ekor)
+                                            <span v-if="modalQty" class="font-normal text-muted-foreground">maks. {{ modalQty }}</span>
+                                        </Label>
+                                        <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="1" class="h-9 text-sm" />
+                                        <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
+                                        <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
+                                        <InputError :message="form.errors.sale_qty" />
+                                    </div>
+                                </div>
+
+                                <!-- Harga -->
+                                <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-3">
+                                    <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Harga</p>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Sales Price (JPY)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                                <Input type="text" inputmode="numeric" v-model="unitPriceDisplay" @input="onUnitPriceInput" @blur="onUnitPriceBlur" placeholder="0" class="h-9 text-sm pl-7" />
+                                            </div>
+                                            <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                <span class="text-muted-foreground">≈ IDR/unit</span>
+                                                <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(unitPriceIdr) }}</span>
+                                            </div>
+                                            <InputError :message="form.errors.sell_idr" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Total Sales (IDR) <span class="font-normal opacity-60">auto</span></Label>
+                                            <div class="flex h-9 items-center rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-3 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                                {{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}
+                                            </div>
+                                            <p class="text-[10px] text-muted-foreground">Sales JPY × {{ form.sale_qty || 1 }} ekor × kurs</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fee -->
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-amber-700 dark:text-amber-400">Fee</Label>
+                                        <Select v-model="feePct" @update:model-value="onFeeSelect">
+                                            <SelectTrigger class="h-9 text-sm"><SelectValue placeholder="Pilih fee %" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">No Fee</SelectItem>
+                                                <SelectItem value="5">5%</SelectItem>
+                                                <SelectItem value="7.5">7.5%</SelectItem>
+                                                <SelectItem value="10">10%</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError :message="form.errors.fee" />
+                                    </div>
+                                </div>
+
+                                <!-- Ringkasan -->
+                                <div v-if="salesPriceIdr || modalTerjualIdr" class="rounded-md border border-border overflow-hidden text-xs">
+                                    <div class="bg-muted/60 px-4 py-2 border-b border-border flex items-center justify-between">
+                                        <p class="text-[11px] font-semibold text-foreground uppercase tracking-wider">Ringkasan</p>
+                                        <span class="text-[10px] text-muted-foreground">Kurs ¥1 = Rp {{ Number(kursInput || 0).toLocaleString('id-ID') }}</span>
+                                    </div>
+                                    <div class="divide-y divide-border/60">
+                                        <div class="px-4 py-2.5 flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-foreground">Modal Terjual</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">¥{{ Number(form.stock_price||0).toLocaleString('ja-JP') }} × kurs × {{ form.sale_qty || 1 }} ekor terjual</p>
+                                            </div>
+                                            <span class="font-semibold text-blue-600 dark:text-blue-400">{{ modalTerjualIdr ? fmtIDR(modalTerjualIdr) : '-' }}</span>
+                                        </div>
+                                        <div class="px-4 py-2.5 flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-foreground">Total Sales</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">¥{{ Number(form.unit_price||0).toLocaleString('ja-JP') }} × {{ form.sale_qty||1 }} ekor × kurs</p>
+                                            </div>
+                                            <span class="font-semibold text-green-600 dark:text-green-400">{{ salesPriceIdr ? fmtIDR(salesPriceIdr) : '-' }}</span>
+                                        </div>
+                                        <div v-if="shippingPerEkor" class="px-4 py-2.5 flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-foreground">Shipping/ekor</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">
+                                                    {{ fmtIDR(Number(form.shipping_cost)) }} ÷ {{ form.shipping_qty }} ikan
+                                                    <span v-if="form.shipping_note" class="ml-1 italic">· {{ form.shipping_note }}</span>
+                                                </p>
+                                            </div>
+                                            <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(shippingPerEkor) }}</span>
+                                        </div>
+                                        <div v-if="Number(form.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
+                                            <p class="font-medium text-foreground">Fee <span v-if="feePct && Number(feePct) > 0" class="font-normal text-muted-foreground">({{ feePct }}%)</span></p>
+                                            <span class="font-semibold text-green-600 dark:text-green-400">+ {{ fmtIDR(Number(form.fee)) }}</span>
+                                        </div>
+                                        <div class="px-4 py-3 flex justify-between items-start bg-muted/30">
+                                            <div>
+                                                <p class="font-bold text-sm text-foreground">Profit</p>
+                                                <p class="text-[10px] text-muted-foreground mt-0.5">Sales − Modal + Fee</p>
+                                            </div>
+                                            <span class="text-base font-bold" :class="profitPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+                                                {{ fmtIDR(profit) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <!-- Submit -->

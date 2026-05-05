@@ -117,6 +117,7 @@ const form = useForm({
     stock_price:       koi.stock_price != null ? String(Number(koi.stock_price)) : '',
     fee:               koi.fee != null ? String(Number(koi.fee)) : '0',
     sale_status:       koi.sale_status ?? '',
+    sale_invoice:      koi.sale_invoice ?? '',
     sale_shipped_date: koi.sale_shipped_date ?? '',
     shipping_cost:     koi.shipping_cost != null ? String(Number(koi.shipping_cost)) : '',
     shipping_qty:      koi.shipping_qty != null ? String(Number(koi.shipping_qty)) : '',
@@ -242,22 +243,25 @@ const stockPriceDisplay   = ref(addDots(koi.stock_price))
 const shippingCostDisplay = ref(addDots(koi.shipping_cost))
 const unitPriceDisplay    = ref(addDots(koi.unit_price))
 
-function onStockPriceInput(e: Event)   { const r = parseInput(e); stockPriceDisplay.value = r; form.stock_price = r }
-function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
-function onShippingCostInput(e: Event) { const r = parseInput(e); shippingCostDisplay.value = r; form.shipping_cost = r }
-function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
-function onUnitPriceInput(e: Event)    { const r = parseInput(e); unitPriceDisplay.value = r; form.unit_price = r }
-function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
+// Input: hanya update display (tidak trigger computed)
+// Blur: baru update form → computed hanya recompute sekali saat pindah field
+function onStockPriceInput(e: Event)   { stockPriceDisplay.value = parseInput(e) }
+function onStockPriceBlur()            { form.stock_price = stockPriceDisplay.value; stockPriceDisplay.value = addDots(stockPriceDisplay.value) }
+function onShippingCostFocus()          { shippingCostDisplay.value = shippingCostDisplay.value.replace(/\D/g, '') }
+function onShippingCostBlur()          { form.shipping_cost = shippingCostDisplay.value.replace(/\D/g, ''); shippingCostDisplay.value = addDots(shippingCostDisplay.value) }
+function onUnitPriceInput(e: Event)    { unitPriceDisplay.value = parseInput(e) }
+function onUnitPriceBlur()             { form.unit_price = unitPriceDisplay.value; unitPriceDisplay.value = addDots(unitPriceDisplay.value) }
 const kursDisplay = ref(addDots(kursInput.value))
 watch(kursInput, v => { kursDisplay.value = addDots(v) })
 
 function onKursInputHandler(e: Event) {
-    const r = parseInput(e)
     kursIsManual.value = true
-    kursInput.value    = r
-    kursDisplay.value  = r
+    kursDisplay.value  = parseInput(e)   // hanya display, kursInput belum berubah
 }
-function onKursBlur() { kursDisplay.value = addDots(kursInput.value) }
+function onKursBlur() {
+    kursInput.value   = kursDisplay.value  // baru update kursInput → computed recompute
+    kursDisplay.value = addDots(kursDisplay.value)
+}
 
 const fmtIDR = (v: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v)
@@ -573,7 +577,7 @@ const submit = () => {
                                             <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (JPY)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @input="onShippingCostInput" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700" />
+                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @focus="onShippingCostFocus" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-7 border-orange-300 dark:border-orange-700" />
                                             </div>
                                             <div v-if="shippingCostIdr" class="rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 text-[11px] flex justify-between">
                                                 <span class="text-muted-foreground">≈ IDR</span>
@@ -659,12 +663,11 @@ const submit = () => {
                                     </div>
                                 </div>
 
-                                <!-- Invoice (read-only) -->
-                                <div v-if="koi.sale_invoice" class="grid gap-1.5">
+                                <!-- Invoice -->
+                                <div class="grid gap-1.5">
                                     <Label class="text-xs font-medium text-muted-foreground">No. Invoice</Label>
-                                    <div class="flex items-center h-9 rounded-md border border-input bg-muted px-3 text-sm font-mono text-muted-foreground">
-                                        {{ koi.sale_invoice }}
-                                    </div>
+                                    <Input v-model="form.sale_invoice" type="text" placeholder="Contoh: INV-2025-001" class="h-9 text-sm font-mono" />
+                                    <InputError :message="(form.errors as any).sale_invoice" />
                                 </div>
 
                                 <!-- Azukari period -->

@@ -267,7 +267,7 @@ const STATUS_CLASS: Record<string, string> = {
                             <!-- Shipping — tampil untuk semua jika ada -->
                             <div v-if="shippingPerEkor" class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">Biaya Shipping</dt>
-                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ ¥{{ Number(koi.shipping_cost).toLocaleString('ja-JP') }}</dd>
+                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ {{ fmtIDR(shippingPerEkor) }}</dd>
                                 <dd class="mt-0.5 text-[11px] text-muted-foreground">
                                     {{ fmtIDR(shippingCostIdr) }} ÷ {{ koi.shipping_qty }} ikan
                                     <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
