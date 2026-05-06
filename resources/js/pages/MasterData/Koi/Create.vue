@@ -193,7 +193,7 @@ const unitPriceDisplay    = ref('')
 
 function onStockPriceChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
 function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
-function onShippingCostInput(e: Event) { const r = parseInput(e); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
+function onShippingCostChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
 function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
 function onUnitPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
 function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
@@ -468,13 +468,13 @@ function submit() {
                                             <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
-                                                <Input type="text" inputmode="numeric" v-model="shippingCostDisplay" @input="onShippingCostInput" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
+                                                <Input type="text" inputmode="numeric" :modelValue="shippingCostDisplay" @update:modelValue="onShippingCostChange" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
                                             </div>
                                             <InputError :message="(form.errors as any).shipping_cost" />
                                         </div>
                                         <div class="space-y-1.5">
                                             <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
-                                            <Input v-model="form.shipping_qty" type="number" min="1" placeholder="1" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <Input v-model="form.shipping_qty" type="number" min="1" placeholder="0" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                             <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
                                             <InputError :message="(form.errors as any).shipping_qty" />
                                         </div>
@@ -567,7 +567,7 @@ function submit() {
                                             Qty Jual (ekor)
                                             <span v-if="modalQty" class="font-normal text-muted-foreground">maks. {{ modalQty }}</span>
                                         </Label>
-                                        <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="1" class="h-9 text-sm" />
+                                        <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="0" class="h-9 text-sm" />
                                         <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
                                         <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
                                         <InputError :message="form.errors.sale_qty" />

@@ -275,7 +275,7 @@ function onEditUnitPriceChange(val: string | number)     { const r = String(val)
 function onEditShippingCostChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); editForm.shipping_cost = r; editShippingCostDisplay2.value = addDots(r) }
 function onEditFeeSelect(val: unknown) {
     editFeePct.value = val !== null ? String(val) : null
-    editForm.fee = String(Math.round(Number(editForm.sell_idr) * (Number(val) / 100)))
+    editForm.fee = String(Math.round((editSalesPriceIdr.value ?? 0) * (Number(val) / 100)))
 }
 function handleEditImagesChange(e: Event) {
     const input = e.target as HTMLInputElement
@@ -481,7 +481,7 @@ function onKursBlur() { kursDisplay.value = addDots(kursInput.value) }
 function onBuyJpyInput(e: Event) { form.buy_jpy = parseInput(e) }
 function onFeeSelect(val: unknown) {
     feePct.value = val !== null ? String(val) : null
-    form.fee = String(Math.round(Number(form.sell_idr) * (Number(val) / 100)))
+    form.fee = String(Math.round((salesPriceIdr.value ?? 0) * (Number(val) / 100)))
 }
 
 // ─── Image handlers ───────────────────────────────────────
@@ -727,7 +727,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                             <div class="space-y-1.5">
                                                 <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty Modal (ekor)</Label>
                                                 <Input
-                                                    type="number" min="1" placeholder="1"
+                                                    type="number" min="1" placeholder="0"
                                                     v-model="modalQty"
                                                     class="h-9 text-sm border-blue-300 dark:border-blue-700"
                                                 />
@@ -777,7 +777,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
                                                 <Input
                                                     v-model="form.shipping_qty"
-                                                    type="number" min="1" placeholder="1"
+                                                    type="number" min="1" placeholder="0"
                                                     class="h-9 text-sm border-orange-300 dark:border-orange-700"
                                                 />
                                                 <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
@@ -977,7 +977,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 v-model="form.sale_qty"
                                                 type="number" min="1"
                                                 :max="modalQty || undefined"
-                                                placeholder="1"
+                                                placeholder="0"
                                                 class="h-9 text-sm"
                                             />
                                             <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
@@ -1415,7 +1415,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                     <div class="space-y-1.5">
                                         <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Qty Modal (ekor)</Label>
                                         <Input
-                                            type="number" min="1" placeholder="1"
+                                            type="number" min="1" placeholder="0"
                                             v-model="editModalQty"
                                             class="h-9 text-sm border-blue-300 dark:border-blue-700"
                                         />
@@ -1463,7 +1463,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
                                         <Input
                                             v-model="editForm.shipping_qty"
-                                            type="number" min="1" placeholder="1"
+                                            type="number" min="1" placeholder="0"
                                             class="h-9 text-sm border-orange-300 dark:border-orange-700"
                                         />
                                         <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
@@ -1634,7 +1634,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         v-model="editForm.sale_qty"
                                         type="number" min="1"
                                         :max="editModalQty || undefined"
-                                        placeholder="1"
+                                        placeholder="0"
                                         class="h-9 text-sm"
                                     />
                                     <p v-if="editModalQty && Number(editForm.sale_qty) > Number(editModalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ editModalQty }})</p>

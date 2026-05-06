@@ -244,12 +244,12 @@ const unitPriceDisplay    = ref(addDots(koi.unit_price))
 
 // Input: hanya update display (tidak trigger computed)
 // Blur: baru update form → computed hanya recompute sekali saat pindah field
-function onStockPriceInput(e: Event)   { stockPriceDisplay.value = parseInput(e) }
-function onStockPriceBlur()            { form.stock_price = stockPriceDisplay.value; stockPriceDisplay.value = addDots(stockPriceDisplay.value) }
+function onStockPriceChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
+function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
 function onShippingCostChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
 function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
-function onUnitPriceInput(e: Event)    { unitPriceDisplay.value = parseInput(e) }
-function onUnitPriceBlur()             { form.unit_price = unitPriceDisplay.value; unitPriceDisplay.value = addDots(unitPriceDisplay.value) }
+function onUnitPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
+function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
 const kursDisplay = ref(addDots(kursInput.value))
 watch(kursInput, v => { kursDisplay.value = addDots(v) })
 
@@ -536,7 +536,7 @@ const submit = () => {
                                             <Label class="text-xs font-semibold text-blue-700 dark:text-blue-400">Modal Price (JPY/ekor)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="stockPriceDisplay" @input="onStockPriceInput" @blur="onStockPriceBlur" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
+                                                <Input type="text" inputmode="numeric" :modelValue="stockPriceDisplay" @update:modelValue="onStockPriceChange" @blur="onStockPriceBlur" placeholder="0" class="h-9 text-sm pl-7 border-blue-300 dark:border-blue-700 focus:border-blue-500" />
                                             </div>
                                             <div v-if="modalPriceIdr" class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] flex justify-between">
                                                 <span class="text-muted-foreground">≈ IDR/ekor</span>
@@ -583,7 +583,7 @@ const submit = () => {
                                         <!-- Jumlah Ikan Sepaket -->
                                         <div class="space-y-1.5">
                                             <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
-                                            <Input v-model="form.shipping_qty" type="number" min="1" placeholder="1" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <Input v-model="form.shipping_qty" type="number" min="1" placeholder="0" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                             <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
                                             <InputError :message="(form.errors as any).shipping_qty" />
                                         </div>
@@ -685,7 +685,7 @@ const submit = () => {
                                             Qty Jual (ekor)
                                             <span v-if="modalQty" class="font-normal text-muted-foreground">maks. {{ modalQty }}</span>
                                         </Label>
-                                        <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="1" class="h-9 text-sm" />
+                                        <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="0" class="h-9 text-sm" />
                                         <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
                                         <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
                                         <InputError :message="form.errors.sale_qty" />
@@ -702,7 +702,7 @@ const submit = () => {
                                             <Label class="text-xs font-semibold text-amber-700 dark:text-amber-400">Sales Price (JPY)</Label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
-                                                <Input type="text" inputmode="numeric" v-model="unitPriceDisplay" @input="onUnitPriceInput" @blur="onUnitPriceBlur" placeholder="0" class="h-9 text-sm pl-7" />
+                                                <Input type="text" inputmode="numeric" :modelValue="unitPriceDisplay" @update:modelValue="onUnitPriceChange" @blur="onUnitPriceBlur" placeholder="0" class="h-9 text-sm pl-7" />
                                             </div>
                                             <div v-if="unitPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
                                                 <span class="text-muted-foreground">≈ IDR/unit</span>
