@@ -31,6 +31,9 @@ type KoiRow = {
     sale_shipped_date: string | null
     sale_status: string | null
     shipping_date: string | null
+    shipping_qty: number | null
+    shipping_batch: string | null
+    shipping_note: string | null
     sale_qty: number | null
     unit_price: string | null
     sell_idr: string | null
@@ -256,7 +259,7 @@ const pageLinks = computed(() => kois.value.links.slice(1, kois.value.links.leng
 // ─── Column visibility ────────────────────────────────────
 const STORAGE_KEY = 'rekap-transaksi-cols'
 
-type ColKey = 'foto' | 'invoice' | 'kuj_code' | 'sales_date' | 'status' | 'shipping_date' | 'customer' | 'breeder' | 'description' | 'age' | 'size' | 'koi_qty' | 'unit_price' | 'sales_price' | 'box_qty' | 'weight' | 'total_weight'
+type ColKey = 'foto' | 'invoice' | 'kuj_code' | 'sales_date' | 'status' | 'shipping_date' | 'shipping_batch' | 'shipping_note' | 'customer' | 'breeder' | 'description' | 'age' | 'size' | 'koi_qty' | 'unit_price' | 'sales_price' | 'box_qty' | 'weight' | 'total_weight'
 
 const allColumns: { key: ColKey; label: string; adminOnly?: boolean }[] = [
     { key: 'foto',          label: 'Foto' },
@@ -264,7 +267,9 @@ const allColumns: { key: ColKey; label: string; adminOnly?: boolean }[] = [
     { key: 'kuj_code',      label: 'KUJ Code' },
     { key: 'sales_date',    label: 'Sales Date' },
     { key: 'status',        label: 'Status' },
-    { key: 'shipping_date', label: 'Shipping Date' },
+    { key: 'shipping_date',  label: 'Shipping Date' },
+    { key: 'shipping_batch', label: 'Shipping Batch', adminOnly: true },
+    { key: 'shipping_note',  label: 'Shipping Note', adminOnly: true },
     { key: 'customer',      label: 'Customer', adminOnly: true },
     { key: 'breeder',       label: 'Breeder' },
     { key: 'description',   label: 'Description' },
@@ -307,6 +312,33 @@ const visibleColCount = computed(() => {
     })
     return n
 })
+
+// Color-group rows that share the same shipping_batch (same box)
+const SHIPPING_GROUP_COLORS = [
+    'bg-blue-50 dark:bg-blue-950/30',
+    'bg-amber-50 dark:bg-amber-950/30',
+    'bg-green-50 dark:bg-green-950/30',
+    'bg-purple-50 dark:bg-purple-950/30',
+    'bg-rose-50 dark:bg-rose-950/30',
+]
+
+const shippingGroupColorMap = computed(() => {
+    const map = new Map<string, string>()
+    let colorIndex = 0
+    for (const koi of kois.value.data) {
+        if (!koi.shipping_batch) continue
+        if (!map.has(koi.shipping_batch)) {
+            map.set(koi.shipping_batch, SHIPPING_GROUP_COLORS[colorIndex % SHIPPING_GROUP_COLORS.length])
+            colorIndex++
+        }
+    }
+    return map
+})
+
+function shippingGroupColor(koi: KoiRow): string {
+    if (!koi.shipping_batch) return ''
+    return shippingGroupColorMap.value.get(koi.shipping_batch) ?? ''
+}
 </script>
 
 <template>
@@ -477,7 +509,9 @@ const visibleColCount = computed(() => {
                                 <th v-if="col('kuj_code')"      class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
                                 <th v-if="col('sales_date')"    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
                                 <th v-if="col('status')"        class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
-                                <th v-if="col('shipping_date')" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</th>
+                                <th v-if="col('shipping_date')"               class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</th>
+                                <th v-if="isAdmin && col('shipping_batch')"   class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Batch</th>
+                                <th v-if="isAdmin && col('shipping_note')"    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Note</th>
                                 <th v-if="isAdmin && col('customer')"  class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
                                 <th v-if="col('breeder')"       class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
                                 <th v-if="col('description')"   class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</th>
@@ -498,7 +532,7 @@ const visibleColCount = computed(() => {
                                     Tidak ada data transaksi.
                                 </td>
                             </tr>
-                            <tr v-for="koi in kois.data" :key="koi.id" class="transition-colors hover:bg-muted/50">
+                            <tr v-for="koi in kois.data" :key="koi.id" :class="['transition-colors hover:bg-muted/50', shippingGroupColor(koi)]">
                                 <td class="w-12 px-4 py-3 text-center">
                                     <input type="checkbox" :checked="selectedIds.has(koi.id)" @change="toggleSelect(koi.id)" class="w-4 h-4 rounded border-border" />
                                 </td>
@@ -520,6 +554,17 @@ const visibleColCount = computed(() => {
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
                                 <td v-if="col('shipping_date')" class="px-4 py-3 text-sm whitespace-nowrap">{{ fmtDate(koi.shipping_date) }}</td>
+                                <td v-if="isAdmin && col('shipping_batch')" class="px-4 py-3 text-sm whitespace-nowrap">
+                                    <span v-if="koi.shipping_batch"
+                                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+                                        {{ koi.shipping_batch }}
+                                    </span>
+                                    <span v-else class="text-xs text-muted-foreground">-</span>
+                                </td>
+                                <td v-if="isAdmin && col('shipping_note')" class="px-4 py-3 text-sm max-w-[160px]">
+                                    <span v-if="koi.shipping_note" class="line-clamp-2 text-xs text-muted-foreground">{{ koi.shipping_note }}</span>
+                                    <span v-else class="text-xs text-muted-foreground">-</span>
+                                </td>
                                 <td v-if="isAdmin && col('customer')"  class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.customer?.name ?? '-' }}</td>
                                 <td v-if="col('breeder')"       class="px-4 py-3 text-sm whitespace-nowrap">{{ koi.breeder?.name_breeder ?? '-' }}</td>
                                 <td v-if="col('description')"   class="px-4 py-3 text-sm max-w-[180px]">

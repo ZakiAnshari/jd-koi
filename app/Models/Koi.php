@@ -43,6 +43,7 @@ class Koi extends Model
         'shipping_cost',
         'shipping_qty',
         'shipping_note',
+        'shipping_batch',
         'shipping_date',
         'azukari_period',
     ];

@@ -35,12 +35,20 @@ type Koi = {
     sale_status: string | null
     shipping_cost: string | null
     shipping_qty: number | null
+    shipping_batch: string | null
     shipping_note: string | null
     shipping_date: string | null
     created_at: string
 }
 
-const props = defineProps<{ koi: Koi; isAdmin: boolean }>()
+type BatchMate = {
+    id: number
+    code: string
+    sale_qty: number | null
+    customer: { id: number; name: string } | null
+}
+
+const props = defineProps<{ koi: Koi; isAdmin: boolean; batchMates: BatchMate[] }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Rekap Transaksi', href: '/rekap-transaksi' },
@@ -94,9 +102,14 @@ const shippingCostIdr = computed(() => {
     return c > 0 ? c : null
 })
 const shippingPerEkor = computed(() => {
-    const cIdr = shippingCostIdr.value       || 0
+    const cIdr = shippingCostIdr.value          || 0
     const q    = Number(props.koi.shipping_qty) || 0
     return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null
+})
+const shippingKena = computed(() => {
+    const p = shippingPerEkor.value          || 0
+    const q = Number(props.koi.sale_qty)    || 1
+    return p > 0 ? Math.round(p * q) : null
 })
 const profit        = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) + Number(props.koi.fee ?? 0))
 const feePct        = computed(() => {
@@ -270,13 +283,34 @@ const STATUS_CLASS: Record<string, string> = {
                                 </dd>
                             </div>
                             <!-- Shipping — tampil untuk semua jika ada -->
-                            <div v-if="shippingPerEkor" class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+                            <div v-if="shippingKena" class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">Biaya Shipping</dt>
-                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ {{ fmtIDR(shippingPerEkor) }}</dd>
+                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ {{ fmtIDR(shippingKena) }}</dd>
                                 <dd class="mt-0.5 text-[11px] text-muted-foreground">
-                                    {{ fmtIDR(shippingCostIdr) }} ÷ {{ koi.shipping_qty }} ikan
+                                    {{ fmtIDR(shippingPerEkor) }}/ekor × {{ koi.sale_qty || 1 }} ekor
                                     <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
                                 </dd>
+                            </div>
+
+                            <!-- Patungan shipping — admin only -->
+                            <div v-if="isAdmin && koi.shipping_batch" class="rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-100/60 dark:bg-orange-900/30 p-3 space-y-2">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">
+                                    Patungan Shipping · <span class="font-mono">{{ koi.shipping_batch }}</span>
+                                </dt>
+                                <dd class="text-[11px] text-orange-800 dark:text-orange-300">
+                                    Ikan ini satu box bersama:
+                                </dd>
+                                <div v-if="batchMates.length > 0" class="space-y-1">
+                                    <div v-for="mate in batchMates" :key="mate.id"
+                                        class="flex items-center justify-between rounded border border-orange-200 dark:border-orange-800 bg-white dark:bg-orange-950/40 px-2 py-1.5">
+                                        <div class="text-[11px]">
+                                            <span class="font-medium text-foreground">{{ mate.customer?.name ?? '—' }}</span>
+                                            <span class="ml-1.5 text-muted-foreground font-mono">{{ mate.code }}</span>
+                                        </div>
+                                        <span class="text-[11px] text-orange-700 dark:text-orange-300 font-medium">{{ mate.sale_qty ?? 1 }} ekor</span>
+                                    </div>
+                                </div>
+                                <dd v-else class="text-[11px] text-muted-foreground italic">Belum ada ikan lain dalam batch ini.</dd>
                             </div>
 
                             <!-- Fee — admin only -->
@@ -310,16 +344,16 @@ const STATUS_CLASS: Record<string, string> = {
                                     </div>
 
                                     <!-- Shipping -->
-                                    <div v-if="shippingPerEkor" class="flex justify-between items-center px-4 py-3">
+                                    <div v-if="shippingKena" class="flex justify-between items-center px-4 py-3">
                                         <div>
                                             <p class="font-medium text-foreground">Biaya Shipping</p>
                                             <p class="text-[11px] text-muted-foreground mt-0.5">
-                                                {{ fmtIDR(shippingCostIdr) }} ÷ {{ koi.shipping_qty }} ikan
+                                                {{ fmtIDR(shippingPerEkor) }}/ekor × {{ koi.sale_qty || 1 }} ekor
                                                 <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
                                             </p>
                                             <p v-if="koi.shipping_date" class="text-[11px] text-muted-foreground">Tgl. Shipping: {{ fmtDate(koi.shipping_date) }}</p>
                                         </div>
-                                        <span class="font-medium text-foreground">+ {{ fmtIDR(shippingPerEkor) }}</span>
+                                        <span class="font-medium text-foreground">+ {{ fmtIDR(shippingKena) }}</span>
                                     </div>
 
                                     <!-- Fee % — admin only -->
@@ -331,7 +365,7 @@ const STATUS_CLASS: Record<string, string> = {
                                     <!-- Total -->
                                     <div class="flex justify-between items-center px-4 py-3 bg-muted/40">
                                         <p class="font-semibold text-foreground">Total yang Dibayar</p>
-                                        <span class="font-semibold text-foreground">{{ fmtIDR(salesPriceIdr + (shippingPerEkor ?? 0)) }}</span>
+                                        <span class="font-semibold text-foreground">{{ fmtIDR(salesPriceIdr + (shippingKena ?? 0)) }}</span>
                                     </div>
                                 </div>
                             </div>

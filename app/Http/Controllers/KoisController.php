@@ -22,7 +22,7 @@ class KoisController extends Controller
                 'sale_status', 'customer_id', 'created_at',
                 'sale_invoice', 'sale_tanggal', 'sale_shipped_date', 'sale_qty',
                 'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee',
-                'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_date', 'azukari_period',
+                'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_batch', 'shipping_date', 'azukari_period',
             ])
             ->with([
                 'breeder:id,name_breeder',
@@ -44,12 +44,22 @@ class KoisController extends Controller
             ->orderByDesc('sale_invoice')
             ->get();
 
+        $shippingBatches = Koi::select('shipping_batch')
+            ->whereNotNull('shipping_batch')
+            ->groupBy('shipping_batch')
+            ->orderByDesc('shipping_batch')
+            ->pluck('shipping_batch');
+
+        $shippingBatchDetails = $this->getShippingBatchDetails($shippingBatches->toArray());
+
         return Inertia::render('MasterData/Koi/Index', [
-            'kois'      => $kois,
-            'breeders'  => $breeders,
-            'jenisKois' => $jenisKois,
-            'customers' => $customers,
-            'invoices'  => $invoices,
+            'kois'                 => $kois,
+            'breeders'             => $breeders,
+            'jenisKois'            => $jenisKois,
+            'customers'            => $customers,
+            'invoices'             => $invoices,
+            'shippingBatches'      => $shippingBatches,
+            'shippingBatchDetails' => $shippingBatchDetails,
         ]);
     }
 
@@ -58,11 +68,19 @@ class KoisController extends Controller
         $breeders  = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
         $jenisKois = JenisKoi::select(['id', 'nama_jenis'])->orderBy('nama_jenis')->get();
         $customers = User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get();
+        $shippingBatches = Koi::select('shipping_batch')
+            ->whereNotNull('shipping_batch')
+            ->groupBy('shipping_batch')
+            ->orderByDesc('shipping_batch')
+            ->pluck('shipping_batch');
+        $shippingBatchDetails = $this->getShippingBatchDetails($shippingBatches->toArray());
 
         return Inertia::render('MasterData/Koi/Create', [
-            'breeders'  => $breeders,
-            'jenisKois' => $jenisKois,
-            'customers' => $customers,
+            'breeders'             => $breeders,
+            'jenisKois'            => $jenisKois,
+            'customers'            => $customers,
+            'shippingBatches'      => $shippingBatches,
+            'shippingBatchDetails' => $shippingBatchDetails,
         ]);
     }
 
@@ -96,6 +114,7 @@ class KoisController extends Controller
             'shipping_cost'   => 'nullable|numeric|min:0',
             'shipping_qty'    => 'nullable|integer|min:1',
             'shipping_note'   => 'nullable|string|max:255',
+            'shipping_batch'  => 'nullable|string|max:50',
             'shipping_date'   => 'nullable|date',
         ]);
 
@@ -126,6 +145,7 @@ class KoisController extends Controller
             'shipping_cost'  => $validated['shipping_cost'] ?? null,
             'shipping_qty'   => $validated['shipping_qty'] ?? null,
             'shipping_note'  => $validated['shipping_note'] ?? null,
+            'shipping_batch' => $validated['shipping_batch'] ?? null,
             'shipping_date'  => $validated['shipping_date'] ?? null,
         ]);
 
@@ -152,12 +172,21 @@ class KoisController extends Controller
         $jenisKois = JenisKoi::select(['id', 'nama_jenis'])->orderBy('nama_jenis')->get();
         $customers = User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get();
         $koi->load('images');
+        $shippingBatches = Koi::select('shipping_batch')
+            ->whereNotNull('shipping_batch')
+            ->groupBy('shipping_batch')
+            ->orderByDesc('shipping_batch')
+            ->pluck('shipping_batch');
+
+        $shippingBatchDetails = $this->getShippingBatchDetails($shippingBatches->toArray(), $koi->id);
 
         return Inertia::render('MasterData/Koi/Edit', [
-            'koi'       => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'description', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_date']),
-            'breeders'  => $breeders,
-            'jenisKois' => $jenisKois,
-            'customers' => $customers,
+            'koi'                  => $koi->only(['id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'photo', 'description', 'age', 'size', 'box_qty', 'weight', 'total_weight', 'images', 'customer_id', 'sale_tanggal', 'sale_qty', 'sell_jpy', 'buy_jpy', 'kurs', 'sell_idr', 'unit_price', 'stock_price', 'fee', 'sale_status', 'sale_invoice', 'sale_shipped_date', 'azukari_period', 'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_batch', 'shipping_date']),
+            'breeders'             => $breeders,
+            'jenisKois'            => $jenisKois,
+            'customers'            => $customers,
+            'shippingBatches'      => $shippingBatches,
+            'shippingBatchDetails' => $shippingBatchDetails,
         ]);
     }
 
@@ -203,6 +232,7 @@ class KoisController extends Controller
             'shipping_cost'     => 'nullable|numeric|min:0',
             'shipping_qty'      => 'nullable|integer|min:1',
             'shipping_note'     => 'nullable|string|max:255',
+            'shipping_batch'    => 'nullable|string|max:50',
             'shipping_date'     => 'nullable|date',
         ]);
 
@@ -259,6 +289,50 @@ class KoisController extends Controller
         $image->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    private function getShippingBatchDetails(array $batches, ?int $excludeKoiId = null): array
+    {
+        if (empty($batches)) return [];
+
+        // Query batch meta (shipping_cost, shipping_qty) from DB directly — no exclusion
+        $batchMeta = Koi::whereIn('shipping_batch', $batches)
+            ->whereNotNull('shipping_batch')
+            ->selectRaw('shipping_batch, MAX(shipping_cost) as shipping_cost, MAX(shipping_qty) as shipping_qty')
+            ->groupBy('shipping_batch')
+            ->get()
+            ->keyBy('shipping_batch');
+
+        // Query kois excluding current koi — for koi_count & members
+        $memberQuery = Koi::whereIn('shipping_batch', $batches)
+            ->whereNotNull('shipping_batch')
+            ->with('customer:id,name')
+            ->select(['id', 'code', 'shipping_batch', 'sale_qty', 'customer_id']);
+
+        if ($excludeKoiId) {
+            $memberQuery->where('id', '!=', $excludeKoiId);
+        }
+
+        $memberKois = $memberQuery->get();
+
+        $details = [];
+        foreach ($batches as $batch) {
+            $batchMembers = $memberKois->where('shipping_batch', $batch)->values();
+            $meta = $batchMeta->get($batch);
+
+            $details[$batch] = [
+                'shipping_cost' => $meta && $meta->shipping_cost !== null ? (float) $meta->shipping_cost : null,
+                'shipping_qty'  => $meta && $meta->shipping_qty  !== null ? (int)   $meta->shipping_qty  : null,
+                'koi_count'     => $batchMembers->sum('sale_qty'),
+                'members'       => $batchMembers->map(fn($k) => [
+                    'code'     => $k->code,
+                    'customer' => $k->customer?->name,
+                    'sale_qty' => $k->sale_qty,
+                ])->values(),
+            ];
+        }
+
+        return $details;
     }
 
     private function generateInvoice(): string

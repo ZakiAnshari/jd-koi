@@ -43,17 +43,20 @@ type Koi = {
     sale_invoice?: string | null; sale_tanggal?: string | null; sale_shipped_date?: string | null
     sale_qty?: number | null; unit_price?: string | null; buy_jpy?: string | null
     kurs?: string | null; sell_idr?: string | null; stock_price?: string | null; fee?: string | null
-    shipping_cost?: string | null; shipping_qty?: number | null; shipping_note?: string | null; shipping_date?: string | null
+    shipping_cost?: string | null; shipping_qty?: number | null; shipping_batch?: string | null; shipping_note?: string | null; shipping_date?: string | null
     azukari_period?: string | null
 }
 
 // ─── Page props ───────────────────────────────────────────
 const page      = usePage()
-const kois      = computed(() => (page.props.kois      as Koi[]      | null) ?? [])
-const breeders  = computed(() => (page.props.breeders  as Breeder[]  | null) ?? [])
-const jenisKois = computed(() => (page.props.jenisKois as JenisKoi[] | null) ?? [])
-const customers = computed(() => (page.props.customers as Customer[] | null) ?? [])
-const invoices  = computed(() => (page.props.invoices  as Invoice[]  | null) ?? [])
+const kois            = computed(() => (page.props.kois            as Koi[]      | null) ?? [])
+const breeders        = computed(() => (page.props.breeders        as Breeder[]  | null) ?? [])
+const jenisKois       = computed(() => (page.props.jenisKois       as JenisKoi[] | null) ?? [])
+const customers       = computed(() => (page.props.customers       as Customer[] | null) ?? [])
+const invoices        = computed(() => (page.props.invoices        as Invoice[]  | null) ?? [])
+const shippingBatches = computed(() => (page.props.shippingBatches as string[]   | null) ?? [])
+const extraBatches    = ref<string[]>([])
+const allBatchOptions = computed(() => [...shippingBatches.value, ...extraBatches.value.filter(b => !shippingBatches.value.includes(b))])
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -193,7 +196,7 @@ const editForm = useForm({
     customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: '', sale_shipped_date: '',
-    shipping_cost: '', shipping_qty: '', shipping_note: '', shipping_date: '',
+    shipping_cost: '', shipping_qty: '', shipping_batch: '', shipping_note: '', shipping_date: '',
 })
 
 function openEditModal(koi: Koi) {
@@ -231,6 +234,7 @@ function openEditModal(koi: Koi) {
     editForm.azukari_period    = koi.azukari_period ?? ''
     editForm.shipping_cost     = koi.shipping_cost != null ? String(Number(koi.shipping_cost)) : ''
     editForm.shipping_qty      = koi.shipping_qty != null ? String(koi.shipping_qty) : ''
+    editForm.shipping_batch    = koi.shipping_batch ?? ''
     editForm.shipping_note     = koi.shipping_note ?? ''
     editForm.shipping_date     = koi.shipping_date ? String(koi.shipping_date).substring(0, 10) : ''
     editModalQty.value             = koi.sale_qty != null ? String(koi.sale_qty) : ''
@@ -267,6 +271,7 @@ const editSalesPriceJpy  = computed(() => { const p = Number(editForm.unit_price
 const editSalesPriceIdr  = computed(() => { const jpy = editSalesPriceJpy.value; const k = Number(editKursInput.value) || 0; return jpy && k > 0 ? Math.round(jpy * k) : null })
 const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; return c > 0 ? c : null })
 const editShippingPerEkor= computed(() => { const cIdr = editShippingCostIdr.value || 0; const q = Number(editForm.shipping_qty) || 0; return cIdr > 0 && q > 0 ? Math.round(cIdr / q) : null })
+const editShippingKena   = computed(() => { const p = editShippingPerEkor.value || 0; const q = Number(editForm.sale_qty) || 1; return p > 0 ? Math.round(p * q) : null })
 const editProfit         = computed(() => (editSalesPriceIdr.value ?? 0) - (editModalTerjualIdr.value ?? 0) + Number(editForm.fee || 0))
 const editProfitPositive = computed(() => editProfit.value >= 0)
 
@@ -344,7 +349,7 @@ const form = useForm({
     customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: 'shipped',
-    shipping_cost: '', shipping_qty: '', shipping_note: '', shipping_date: '',
+    shipping_cost: '', shipping_qty: '', shipping_batch: '', shipping_note: '', shipping_date: '',
 })
 
 const modalQty = ref('')
@@ -410,6 +415,11 @@ const shippingPerEkor = computed(() => {
     const qty     = Number(form.shipping_qty) || 0
     return costIdr > 0 && qty > 0 ? Math.round(costIdr / qty) : null
 })
+const shippingKena = computed(() => {
+    const p = shippingPerEkor.value    || 0
+    const q = Number(form.sale_qty)   || 1
+    return p > 0 ? Math.round(p * q) : null
+})
 
 // Profit = Sales − Modal + Fee (shipping ditanggung customer)
 const profit = computed(() =>
@@ -452,7 +462,7 @@ function parseInput(e: Event): string {
     return (e.target as HTMLInputElement).value.replace(/\D/g, '')
 }
 function addDots(val: string | number | null) {
-    const n = Number(String(val).replace(/\D/g, ''))
+    const n = Math.round(Number(val))
     return n > 0 ? n.toLocaleString('id-ID') : ''
 }
 
@@ -484,6 +494,51 @@ function onFeeSelect(val: unknown) {
     form.fee = String(Math.round((salesPriceIdr.value ?? 0) * (Number(val) / 100)))
 }
 
+function generateBatchCode() {
+    const d = new Date()
+    const ymd = d.getFullYear().toString()
+        + String(d.getMonth() + 1).padStart(2, '0')
+        + String(d.getDate()).padStart(2, '0')
+    const allBatches = [...shippingBatches.value, ...extraBatches.value]
+    const existing = allBatches.filter(b => b.startsWith(`SHP-${ymd}-`))
+    const nextNum = existing.length + 1
+    const newCode = `SHP-${ymd}-${String(nextNum).padStart(2, '0')}`
+    if (!allBatches.includes(newCode)) extraBatches.value.push(newCode)
+    form.shipping_batch = newCode
+}
+function generateEditBatchCode() {
+    const d = new Date()
+    const ymd = d.getFullYear().toString()
+        + String(d.getMonth() + 1).padStart(2, '0')
+        + String(d.getDate()).padStart(2, '0')
+    const allBatches = [...shippingBatches.value, ...extraBatches.value]
+    const existing = allBatches.filter(b => b.startsWith(`SHP-${ymd}-`))
+    const nextNum = existing.length + 1
+    const newCode = `SHP-${ymd}-${String(nextNum).padStart(2, '0')}`
+    if (!allBatches.includes(newCode)) extraBatches.value.push(newCode)
+    editForm.shipping_batch = newCode
+}
+
+// Auto-fill shipping_cost & shipping_qty dari batch details (create modal)
+watch(() => form.shipping_batch, (batch) => {
+    const details = (page.props.shippingBatchDetails as any)
+    if (batch && details?.[batch]) {
+        const d = details[batch]
+        if (d.shipping_cost != null) { form.shipping_cost = String(Math.round(d.shipping_cost)); shippingCostDisplay.value = addDots(d.shipping_cost) }
+        if (d.shipping_qty  != null)   form.shipping_qty = String(d.shipping_qty)
+    }
+})
+
+// Auto-fill shipping_cost & shipping_qty dari batch details (edit modal)
+watch(() => editForm.shipping_batch, (batch) => {
+    const details = (page.props.shippingBatchDetails as any)
+    if (batch && details?.[batch]) {
+        const d = details[batch]
+        if (d.shipping_cost != null) { editForm.shipping_cost = String(Math.round(d.shipping_cost)); editShippingCostDisplay2.value = addDots(d.shipping_cost) }
+        if (d.shipping_qty  != null)   editForm.shipping_qty = String(d.shipping_qty)
+    }
+})
+
 // ─── Image handlers ───────────────────────────────────────
 function handleImagesChange(e: Event) {
     const input = e.target as HTMLInputElement
@@ -512,7 +567,7 @@ function submit() {
 // ─── Delete ───────────────────────────────────────────────
 function confirmDeleteKoi(id: number, name: string) {
     useSwal().fire({ title: 'Hapus koi?', text: `Koi "${name}" akan dihapus permanen.`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal' })
-        .then(r => { if (r.isConfirmed) router.delete(`/master-data/koi/${id}`, { preserveScroll: true, onSuccess: () => useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Koi dihapus.', timer: 2000, showConfirmButton: false }) }) })
+        .then(r => { if (r.isConfirmed) router.delete(`/master-data/koi/${id}`, { preserveScroll: true, onSuccess: () => { router.reload({ only: ['shippingBatches', 'shippingBatchDetails'] }); useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Koi dihapus.', timer: 2000, showConfirmButton: false }) } }) })
 }
 </script>
 
@@ -755,61 +810,100 @@ function confirmDeleteKoi(id: number, name: string) {
 
                                 <div class="space-y-3 pl-3">
                                     <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <!-- Total Biaya Shipping -->
-                                            <div class="space-y-1.5">
-                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
-                                                <div class="relative">
-                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
-                                                    <Input
-                                                        type="text" inputmode="numeric"
-                                                        :modelValue="shippingCostDisplay"
-                                                        @update:modelValue="onShippingCostChange"
-                                                        @blur="onShippingCostBlur"
-                                                        placeholder="0"
-                                                        class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
-                                                    />
-                                                </div>
-                                                <InputError :message="(form.errors as any).shipping_cost" />
+                                        <!-- Batch selector — selalu di atas -->
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Batch <span class="font-normal opacity-60">(untuk ikan patungan 1 box)</span></Label>
+                                            <div class="flex gap-2">
+                                                <select v-model="form.shipping_batch" class="flex-1 h-9 rounded-md border border-orange-300 dark:border-orange-700 bg-background px-3 text-sm">
+                                                    <option value="">— Tanpa batch / isi manual —</option>
+                                                    <option v-for="b in allBatchOptions" :key="b" :value="b"
+                                                        :disabled="!!(page.props.shippingBatchDetails as any)?.[b] && (page.props.shippingBatchDetails as any)[b].shipping_qty != null && (page.props.shippingBatchDetails as any)[b].koi_count >= (page.props.shippingBatchDetails as any)[b].shipping_qty">
+                                                        {{ b }}{{ (page.props.shippingBatchDetails as any)?.[b]?.shipping_qty != null ? ` (${(page.props.shippingBatchDetails as any)[b].koi_count}/${(page.props.shippingBatchDetails as any)[b].shipping_qty}${(page.props.shippingBatchDetails as any)[b].koi_count >= (page.props.shippingBatchDetails as any)[b].shipping_qty ? ' Full' : ''})` : '' }}
+                                                    </option>
+                                                </select>
+                                                <button type="button" @click="generateBatchCode" :disabled="!!form.shipping_batch"
+                                                    class="h-9 px-3 rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950 text-xs text-orange-700 dark:text-orange-300 hover:bg-orange-100 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">
+                                                    + Buat Baru
+                                                </button>
                                             </div>
-                                            <!-- Jumlah Ikan Sepaket -->
-                                            <div class="space-y-1.5">
-                                                <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
-                                                <Input
-                                                    v-model="form.shipping_qty"
-                                                    type="number" min="1" placeholder="0"
-                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                                />
-                                                <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
-                                                <InputError :message="(form.errors as any).shipping_qty" />
-                                            </div>
+                                            <InputError :message="(form.errors as any).shipping_batch" />
                                         </div>
 
-                                        <!-- Shipping per ekor (auto) -->
-                                        <div v-if="shippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
-                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
-                                            <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
-                                        </div>
+                                        <!-- Batch lama dipilih: info + kalkulasi -->
+                                        <template v-if="form.shipping_batch && shippingBatches.includes(form.shipping_batch)">
+                                            <div class="rounded border border-orange-300 dark:border-orange-700 bg-white dark:bg-orange-950/40 p-2.5 space-y-1.5">
+                                                <p class="text-[10px] font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400">Info Patungan Shipping</p>
+                                                <div class="flex justify-between text-[11px]">
+                                                    <span class="text-muted-foreground">Total biaya box</span>
+                                                    <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[form.shipping_batch]?.shipping_cost != null ? 'Rp ' + Number((page.props.shippingBatchDetails as any)[form.shipping_batch].shipping_cost).toLocaleString('id-ID') : '—' }}</span>
+                                                </div>
+                                                <div class="flex justify-between text-[11px]">
+                                                    <span class="text-muted-foreground">Total ikan sepaket</span>
+                                                    <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[form.shipping_batch]?.shipping_qty ?? '—' }} ekor</span>
+                                                </div>
+                                                <div class="flex justify-between text-[11px]">
+                                                    <span class="text-muted-foreground">Sudah ada</span>
+                                                    <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[form.shipping_batch]?.koi_count ?? 0 }} ekor dari customer lain</span>
+                                                </div>
+                                                <div v-if="(page.props.shippingBatchDetails as any)?.[form.shipping_batch]?.members?.length" class="border-t border-orange-200 dark:border-orange-800 pt-1.5 space-y-1">
+                                                    <div v-for="m in (page.props.shippingBatchDetails as any)[form.shipping_batch].members" :key="m.code" class="flex justify-between text-[11px]">
+                                                        <span class="text-muted-foreground">{{ m.customer ?? '—' }} <span class="font-mono">{{ m.code }}</span></span>
+                                                        <span>{{ m.sale_qty ?? 1 }} ekor</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-if="shippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] space-y-1">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                                    <span class="font-semibold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
+                                                </div>
+                                                <div v-if="shippingKena" class="flex justify-between items-center border-t border-orange-200 dark:border-orange-800 pt-1">
+                                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Total Shipping ({{ form.sale_qty || 1 }} ekor)</span>
+                                                    <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingKena) }}</span>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Batch baru / tanpa batch: input manual -->
+                                        <template v-else>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="space-y-1.5">
+                                                    <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
+                                                    <div class="relative">
+                                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
+                                                        <Input type="text" inputmode="numeric" :modelValue="shippingCostDisplay" @update:modelValue="onShippingCostChange" @blur="onShippingCostBlur" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
+                                                    </div>
+                                                    <InputError :message="(form.errors as any).shipping_cost" />
+                                                </div>
+                                                <div class="space-y-1.5">
+                                                    <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
+                                                    <Input v-model="form.shipping_qty" type="number" min="1" placeholder="0" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                                    <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
+                                                    <InputError :message="(form.errors as any).shipping_qty" />
+                                                </div>
+                                            </div>
+                                            <div v-if="shippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] space-y-1">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                                    <span class="font-semibold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingPerEkor) }}</span>
+                                                </div>
+                                                <div v-if="shippingKena" class="flex justify-between items-center border-t border-orange-200 dark:border-orange-800 pt-1">
+                                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Total Shipping ({{ form.sale_qty || 1 }} ekor)</span>
+                                                    <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(shippingKena) }}</span>
+                                                </div>
+                                            </div>
+                                        </template>
 
                                         <!-- Keterangan & Tanggal Shipping -->
                                         <div class="grid grid-cols-2 gap-3">
                                             <div class="space-y-1.5">
                                                 <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
-                                                <Input
-                                                    v-model="form.shipping_note"
-                                                    type="text"
-                                                    placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
-                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                                />
+                                                <Input v-model="form.shipping_note" type="text" placeholder="Contoh: Sea freight Nov 2025, JNE Express..." class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                                 <InputError :message="(form.errors as any).shipping_note" />
                                             </div>
                                             <div class="space-y-1.5">
                                                 <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Date <span class="font-normal opacity-60">(opsional)</span></Label>
-                                                <Input
-                                                    v-model="form.shipping_date"
-                                                    type="date"
-                                                    class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                                />
+                                                <Input v-model="form.shipping_date" type="date" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                                 <InputError :message="(form.errors as any).shipping_date" />
                                             </div>
                                         </div>
@@ -1086,15 +1180,15 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 </span>
                                             </div>
                                             <!-- Shipping -->
-                                            <div v-if="shippingPerEkor" class="px-4 py-2.5 flex justify-between items-start">
+                                            <div v-if="shippingKena" class="px-4 py-2.5 flex justify-between items-start">
                                                 <div>
-                                                    <p class="font-medium text-foreground">Shipping/ekor</p>
+                                                    <p class="font-medium text-foreground">Shipping</p>
                                                     <p class="text-[10px] text-muted-foreground mt-0.5">
-                                                        {{ fmtIDR(Number(form.shipping_cost)) }} ÷ {{ form.shipping_qty }} ikan
+                                                        {{ fmtIDR(shippingPerEkor) }}/ekor × {{ form.sale_qty || 1 }} ekor
                                                         <span v-if="form.shipping_note" class="ml-1 italic">· {{ form.shipping_note }}</span>
                                                     </p>
                                                 </div>
-                                                <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(shippingPerEkor) }}</span>
+                                                <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(shippingKena) }}</span>
                                             </div>
                                             <!-- Fee -->
                                             <div v-if="Number(form.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
@@ -1442,58 +1536,100 @@ function confirmDeleteKoi(id: number, name: string) {
                         </div>
                         <div class="space-y-3 pl-3">
                             <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-3">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <!-- Total Biaya Shipping -->
-                                    <div class="space-y-1.5">
-                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
-                                        <div class="relative">
-                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
-                                            <Input
-                                                type="text" inputmode="numeric"
-                                                :modelValue="editShippingCostDisplay2"
-                                                @update:modelValue="onEditShippingCostChange"
-                                                placeholder="0"
-                                                class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700"
-                                            />
+                                <!-- Batch selector — selalu di atas -->
+                                <div class="space-y-1.5">
+                                    <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Batch <span class="font-normal opacity-60">(untuk ikan patungan 1 box)</span></Label>
+                                    <div class="flex gap-2">
+                                        <select v-model="editForm.shipping_batch" class="flex-1 h-9 rounded-md border border-orange-300 dark:border-orange-700 bg-background px-3 text-sm">
+                                            <option value="">— Tanpa batch / isi manual —</option>
+                                            <option v-for="b in allBatchOptions" :key="b" :value="b"
+                                                :disabled="!!(page.props.shippingBatchDetails as any)?.[b] && (page.props.shippingBatchDetails as any)[b].shipping_qty != null && (page.props.shippingBatchDetails as any)[b].koi_count >= (page.props.shippingBatchDetails as any)[b].shipping_qty">
+                                                {{ b }}{{ (page.props.shippingBatchDetails as any)?.[b]?.shipping_qty != null ? ` (${(page.props.shippingBatchDetails as any)[b].koi_count}/${(page.props.shippingBatchDetails as any)[b].shipping_qty}${(page.props.shippingBatchDetails as any)[b].koi_count >= (page.props.shippingBatchDetails as any)[b].shipping_qty ? ' Full' : ''})` : '' }}
+                                            </option>
+                                        </select>
+                                        <button type="button" @click="generateEditBatchCode" :disabled="!!editForm.shipping_batch"
+                                            class="h-9 px-3 rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950 text-xs text-orange-700 dark:text-orange-300 hover:bg-orange-100 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed">
+                                            + Buat Baru
+                                        </button>
+                                    </div>
+                                    <InputError :message="(editForm.errors as any).shipping_batch" />
+                                </div>
+
+                                <!-- Batch lama dipilih: info + kalkulasi -->
+                                <template v-if="editForm.shipping_batch && shippingBatches.includes(editForm.shipping_batch)">
+                                    <div class="rounded border border-orange-300 dark:border-orange-700 bg-white dark:bg-orange-950/40 p-2.5 space-y-1.5">
+                                        <p class="text-[10px] font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400">Info Patungan Shipping</p>
+                                        <div class="flex justify-between text-[11px]">
+                                            <span class="text-muted-foreground">Total biaya box</span>
+                                            <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[editForm.shipping_batch]?.shipping_cost != null ? 'Rp ' + Number((page.props.shippingBatchDetails as any)[editForm.shipping_batch].shipping_cost).toLocaleString('id-ID') : '—' }}</span>
                                         </div>
-                                        <InputError :message="(editForm.errors as any).shipping_cost" />
+                                        <div class="flex justify-between text-[11px]">
+                                            <span class="text-muted-foreground">Total ikan sepaket</span>
+                                            <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[editForm.shipping_batch]?.shipping_qty ?? '—' }} ekor</span>
+                                        </div>
+                                        <div class="flex justify-between text-[11px]">
+                                            <span class="text-muted-foreground">Sudah ada</span>
+                                            <span class="font-semibold">{{ (page.props.shippingBatchDetails as any)?.[editForm.shipping_batch]?.koi_count ?? 0 }} ekor dari customer lain</span>
+                                        </div>
+                                        <div v-if="(page.props.shippingBatchDetails as any)?.[editForm.shipping_batch]?.members?.length" class="border-t border-orange-200 dark:border-orange-800 pt-1.5 space-y-1">
+                                            <div v-for="m in (page.props.shippingBatchDetails as any)[editForm.shipping_batch].members" :key="m.code" class="flex justify-between text-[11px]">
+                                                <span class="text-muted-foreground">{{ m.customer ?? '—' }} <span class="font-mono">{{ m.code }}</span></span>
+                                                <span>{{ m.sale_qty ?? 1 }} ekor</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <!-- Jumlah Ikan Sepaket -->
-                                    <div class="space-y-1.5">
-                                        <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
-                                        <Input
-                                            v-model="editForm.shipping_qty"
-                                            type="number" min="1" placeholder="0"
-                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                        />
-                                        <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
-                                        <InputError :message="(editForm.errors as any).shipping_qty" />
+                                    <div v-if="editShippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] space-y-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                            <span class="font-semibold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingPerEkor) }}</span>
+                                        </div>
+                                        <div v-if="editShippingKena" class="flex justify-between items-center border-t border-orange-200 dark:border-orange-800 pt-1">
+                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Total Shipping ({{ editForm.sale_qty || 1 }} ekor)</span>
+                                            <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingKena) }}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <!-- Shipping per ekor (auto) -->
-                                <div v-if="editShippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] flex justify-between items-center">
-                                    <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
-                                    <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingPerEkor) }}</span>
-                                </div>
+                                </template>
+
+                                <!-- Batch baru / tanpa batch: input manual -->
+                                <template v-else>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Total Biaya Shipping (IDR)</Label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-orange-500">Rp</span>
+                                                <Input type="text" inputmode="numeric" :modelValue="editShippingCostDisplay2" @update:modelValue="onEditShippingCostChange" placeholder="0" class="h-9 text-sm pl-9 border-orange-300 dark:border-orange-700" />
+                                            </div>
+                                            <InputError :message="(editForm.errors as any).shipping_cost" />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <Label class="text-xs font-semibold text-orange-700 dark:text-orange-400">Jumlah Ikan Sepaket</Label>
+                                            <Input v-model="editForm.shipping_qty" type="number" min="1" placeholder="0" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
+                                            <p class="text-[10px] text-muted-foreground">Total ikan dalam 1 pengiriman</p>
+                                            <InputError :message="(editForm.errors as any).shipping_qty" />
+                                        </div>
+                                    </div>
+                                    <div v-if="editShippingPerEkor" class="rounded border border-orange-300 dark:border-orange-700 bg-orange-100 dark:bg-orange-900/40 px-3 py-2 text-[11px] space-y-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Shipping/ekor</span>
+                                            <span class="font-semibold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingPerEkor) }}</span>
+                                        </div>
+                                        <div v-if="editShippingKena" class="flex justify-between items-center border-t border-orange-200 dark:border-orange-800 pt-1">
+                                            <span class="text-orange-700 dark:text-orange-300 font-medium">Total Shipping ({{ editForm.sale_qty || 1 }} ekor)</span>
+                                            <span class="font-bold text-orange-800 dark:text-orange-200">{{ fmtIDR(editShippingKena) }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+
                                 <!-- Keterangan & Tanggal Shipping -->
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="space-y-1.5">
                                         <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Keterangan <span class="font-normal opacity-60">(opsional)</span></Label>
-                                        <Input
-                                            v-model="editForm.shipping_note"
-                                            type="text"
-                                            placeholder="Contoh: Sea freight Nov 2025, JNE Express..."
-                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                        />
+                                        <Input v-model="editForm.shipping_note" type="text" placeholder="Contoh: Sea freight Nov 2025, JNE Express..." class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                         <InputError :message="(editForm.errors as any).shipping_note" />
                                     </div>
                                     <div class="space-y-1.5">
                                         <Label class="text-xs font-medium text-orange-700 dark:text-orange-400">Shipping Date <span class="font-normal opacity-60">(opsional)</span></Label>
-                                        <Input
-                                            v-model="editForm.shipping_date"
-                                            type="date"
-                                            class="h-9 text-sm border-orange-300 dark:border-orange-700"
-                                        />
+                                        <Input v-model="editForm.shipping_date" type="date" class="h-9 text-sm border-orange-300 dark:border-orange-700" />
                                         <InputError :message="(editForm.errors as any).shipping_date" />
                                     </div>
                                 </div>
@@ -1727,15 +1863,15 @@ function confirmDeleteKoi(id: number, name: string) {
                                         </span>
                                     </div>
                                     <!-- Shipping -->
-                                    <div v-if="editShippingPerEkor" class="px-4 py-2.5 flex justify-between items-start">
+                                    <div v-if="editShippingKena" class="px-4 py-2.5 flex justify-between items-start">
                                         <div>
-                                            <p class="font-medium text-foreground">Shipping/ekor</p>
+                                            <p class="font-medium text-foreground">Shipping</p>
                                             <p class="text-[10px] text-muted-foreground mt-0.5">
-                                                {{ fmtIDR(Number(editShippingCostIdr)) }} ÷ {{ editForm.shipping_qty }} ikan
+                                                {{ fmtIDR(editShippingPerEkor) }}/ekor × {{ editForm.sale_qty || 1 }} ekor
                                                 <span v-if="editForm.shipping_note" class="ml-1 italic">· {{ editForm.shipping_note }}</span>
                                             </p>
                                         </div>
-                                        <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(editShippingPerEkor) }}</span>
+                                        <span class="font-semibold text-orange-600 dark:text-orange-400">− {{ fmtIDR(editShippingKena) }}</span>
                                     </div>
                                     <!-- Fee -->
                                     <div v-if="Number(editForm.fee) > 0" class="px-4 py-2.5 flex justify-between items-center">
