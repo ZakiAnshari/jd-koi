@@ -759,7 +759,8 @@ const submit = () => {
                                 <!-- Invoice -->
                                 <div class="grid gap-1.5">
                                     <Label class="text-xs font-medium text-muted-foreground">No. Invoice</Label>
-                                    <Input v-model="form.sale_invoice" type="text" placeholder="Contoh: INV-2025-001" class="h-9 text-sm font-mono" />
+                                    <Input v-model="form.sale_invoice" type="text" placeholder="Contoh: INV2025001" class="h-9 text-sm font-mono"
+                                        @input="(e: Event) => { const el = e.target as HTMLInputElement; const c = el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); el.value = c; form.sale_invoice = c }" />
                                     <InputError :message="(form.errors as any).sale_invoice" />
                                 </div>
 

@@ -294,6 +294,13 @@ function removeEditNewImage(i: number) { editFotoPreviews.value.splice(i, 1); ed
 function markDeleteEditExisting(id: number) { editForm.delete_images = [...editForm.delete_images, id]; editExistingImages.value = editExistingImages.value.filter(img => img.id !== id) }
 function selectEditInvoice(val: string | null) { editForm.sale_invoice = val ?? ''; editInvoiceDropdownOpen.value = false }
 function closeEditInvoiceDropdown(e: FocusEvent) { if (!(e.relatedTarget as HTMLElement)?.closest?.('.edit-invoice-panel')) editInvoiceDropdownOpen.value = false }
+
+function sanitizeInvoice(target: EventTarget | null, setter: (v: string) => void) {
+    const el = target as HTMLInputElement
+    const clean = el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    el.value = clean
+    setter(clean)
+}
 function submitEdit() {
     if (!editingKoi.value) return
     editForm.post(`/master-data/koi/${editingKoi.value.id}?_method=PUT`, {
@@ -981,7 +988,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                     class="flex h-9 w-full bg-transparent px-2 text-sm font-mono outline-none placeholder:font-sans placeholder:text-muted-foreground"
                                                     @focus="invoiceDropdownOpen = true"
                                                     @blur="closeInvoiceDropdown"
-                                                    @input="invoiceSearch = (form.sale_invoice as string); invoiceDropdownOpen = true"
+                                                    @input="(e) => { sanitizeInvoice(e.target, v => { form.sale_invoice = v; invoiceSearch = v }); invoiceDropdownOpen = true }"
                                                     @keydown.enter.prevent="invoiceDropdownOpen = false"
                                                     @keydown.escape="invoiceDropdownOpen = false"
                                                 />
@@ -1704,7 +1711,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                             class="flex h-9 w-full bg-transparent px-2 text-sm font-mono outline-none placeholder:font-sans placeholder:text-muted-foreground"
                                             @focus="editInvoiceDropdownOpen = true"
                                             @blur="closeEditInvoiceDropdown"
-                                            @input="editInvoiceDropdownOpen = true"
+                                            @input="(e) => { sanitizeInvoice(e.target, v => { editForm.sale_invoice = v }); editInvoiceDropdownOpen = true }"
                                             @keydown.enter.prevent="editInvoiceDropdownOpen = false"
                                             @keydown.escape="editInvoiceDropdownOpen = false"
                                         />
