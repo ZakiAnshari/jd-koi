@@ -32,8 +32,8 @@ class ActivityLogController extends Controller
             'module' => $request->query('module', 'all'),
             'action' => $request->query('action', 'all'),
             'user_id' => $request->query('user_id', 'all'),
-            'date_from' => $request->query('date_from', ''),
-            'date_to' => $request->query('date_to', ''),
+            'from' => $request->query('from', ''),
+            'to' => $request->query('to', ''),
         ];
 
         $query = ActivityLog::with('user')->orderByDesc('created_at');
@@ -50,12 +50,12 @@ class ActivityLogController extends Controller
             $query->where('user_id', $filters['user_id']);
         }
 
-        if ($filters['date_from']) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
+        if ($filters['from']) {
+            $query->whereDate('created_at', '>=', $filters['from']);
         }
 
-        if ($filters['date_to']) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
+        if ($filters['to']) {
+            $query->whereDate('created_at', '<=', $filters['to']);
         }
 
         $activityLogs = $query->paginate(25)->withQueryString();
