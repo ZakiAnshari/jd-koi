@@ -605,11 +605,11 @@ function shippingGroupColor(koi: KoiRow): string {
                         Showing {{ kois.from ?? 0 }} to {{ kois.to ?? 0 }} of {{ kois.total }} entries
                     </p>
                     <div class="flex items-center gap-1">
-                        <Button variant="outline" size="sm" :disabled="!kois.links[1]?.url" @click="goTo(kois.links[1]?.url ?? null)">Previous</Button>
+                        <Button variant="outline" size="sm" :disabled="!kois.links[0]?.url" @click="goTo(kois.links[0]?.url ?? null)">Previous</Button>
                         <template v-for="link in pageLinks" :key="link.label">
                             <Button size="sm" :variant="link.active ? 'default' : 'outline'" :disabled="!link.url" @click="goTo(link.url)" v-html="link.label" />
                         </template>
-                        <Button variant="outline" size="sm" :disabled="!kois.links[kois.links.length - 2]?.url" @click="goTo(kois.links[kois.links.length - 2]?.url ?? null)">Next</Button>
+                        <Button variant="outline" size="sm" :disabled="!kois.links[kois.links.length - 1]?.url" @click="goTo(kois.links[kois.links.length - 1]?.url ?? null)">Next</Button>
                     </div>
                 </div>
             </div>

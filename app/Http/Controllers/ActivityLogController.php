@@ -58,7 +58,7 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $filters['to']);
         }
 
-        $activityLogs = $query->paginate(25)->withQueryString();
+        $activityLogs = $query->paginate(5)->withQueryString();
 
         $users = User::select(['id', 'name'])->orderBy('name')->get();
 
@@ -71,7 +71,7 @@ class ActivityLogController extends Controller
         ]);
     }
 
-    public function show($id): JsonResponse
+    public function show(int $id): JsonResponse
     {
         $log = ActivityLog::with('user')->findOrFail($id);
 

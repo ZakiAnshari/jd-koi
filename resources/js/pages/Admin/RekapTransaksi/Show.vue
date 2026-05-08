@@ -156,8 +156,11 @@ const STATUS_CLASS: Record<string, string> = {
             </div>
 
             <div class="grid gap-6 lg:grid-cols-3 auto-rows-max items-start">
+                <!-- Kolom Kiri: Foto + Patungan -->
+                <div class="flex flex-col gap-6 lg:col-span-1">
+
                 <!-- Foto Koi -->
-                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-1">
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
                     <h2 class="mb-5 text-base font-semibold">Foto Koi</h2>
 
                     <div v-if="images.length === 0"
@@ -206,6 +209,27 @@ const STATUS_CLASS: Record<string, string> = {
                         </p>
                     </div>
                 </div>
+
+                <!-- Patungan Shipping — admin only -->
+                <div v-if="isAdmin && koi.shipping_batch" class="rounded-xl border border-orange-300 dark:border-orange-700 bg-orange-50/60 dark:bg-orange-950/30 p-6 space-y-3">
+                    <h2 class="text-base font-semibold text-orange-700 dark:text-orange-400">
+                        Patungan Shipping · <span class="font-mono">{{ koi.shipping_batch }}</span>
+                    </h2>
+                    <p class="text-[11px] text-orange-800 dark:text-orange-300">Ikan ini satu box bersama:</p>
+                    <div v-if="batchMates.length > 0" class="space-y-1.5">
+                        <div v-for="mate in batchMates" :key="mate.id"
+                            class="flex items-center justify-between rounded border border-orange-200 dark:border-orange-800 bg-white dark:bg-orange-950/40 px-2.5 py-2">
+                            <div class="text-[11px]">
+                                <span class="font-medium text-foreground">{{ mate.customer?.name ?? '—' }}</span>
+                                <span class="ml-1.5 text-muted-foreground font-mono">{{ mate.code }}</span>
+                            </div>
+                            <span class="text-[11px] text-orange-700 dark:text-orange-300 font-medium">{{ mate.sale_qty ?? 1 }} ekor</span>
+                        </div>
+                    </div>
+                    <p v-else class="text-[11px] text-muted-foreground italic">Belum ada ikan lain dalam batch ini.</p>
+                </div>
+
+                </div><!-- end kolom kiri -->
 
                 <!-- Detail -->
                 <div class="space-y-4 lg:col-span-2">
@@ -290,27 +314,6 @@ const STATUS_CLASS: Record<string, string> = {
                                     {{ fmtIDR(shippingPerEkor) }}/ekor × {{ koi.sale_qty || 1 }} ekor
                                     <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
                                 </dd>
-                            </div>
-
-                            <!-- Patungan shipping — admin only -->
-                            <div v-if="isAdmin && koi.shipping_batch" class="rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-100/60 dark:bg-orange-900/30 p-3 space-y-2">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">
-                                    Patungan Shipping · <span class="font-mono">{{ koi.shipping_batch }}</span>
-                                </dt>
-                                <dd class="text-[11px] text-orange-800 dark:text-orange-300">
-                                    Ikan ini satu box bersama:
-                                </dd>
-                                <div v-if="batchMates.length > 0" class="space-y-1">
-                                    <div v-for="mate in batchMates" :key="mate.id"
-                                        class="flex items-center justify-between rounded border border-orange-200 dark:border-orange-800 bg-white dark:bg-orange-950/40 px-2 py-1.5">
-                                        <div class="text-[11px]">
-                                            <span class="font-medium text-foreground">{{ mate.customer?.name ?? '—' }}</span>
-                                            <span class="ml-1.5 text-muted-foreground font-mono">{{ mate.code }}</span>
-                                        </div>
-                                        <span class="text-[11px] text-orange-700 dark:text-orange-300 font-medium">{{ mate.sale_qty ?? 1 }} ekor</span>
-                                    </div>
-                                </div>
-                                <dd v-else class="text-[11px] text-muted-foreground italic">Belum ada ikan lain dalam batch ini.</dd>
                             </div>
 
                             <!-- Fee — admin only -->

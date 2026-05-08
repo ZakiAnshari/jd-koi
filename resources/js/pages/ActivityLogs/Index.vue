@@ -192,19 +192,24 @@ function formatJsonValue(value: unknown) {
 }
 
 // ─── Server-side Pagination ───────────────────────────────
-function buildPageUrl(pageNumber: number) {
-    const params = new URLSearchParams({
-        module: filters.value.module || 'all',
-        action: filters.value.action || 'all',
-        user_id: filters.value.user_id || 'all',
-        from: filters.value.from || '',
-        to: filters.value.to || '',
-        page: String(pageNumber),
-    })
-    return `/log-aktivitas?${params.toString()}`
-}
+const pagination = computed(() => {
+    const p = page.props.activityLogs as any
+    return {
+        current_page: p.current_page ?? 1,
+        last_page:    p.last_page    ?? 1,
+        total:        p.total        ?? 0,
+        from:         p.from         ?? 0,
+        to:           p.to           ?? 0,
+        links:        p.links        ?? [],
+    }
+})
 
-const pagination = computed(() => (page.props.activityLogs as any).meta ?? { current_page: 1, last_page: 1, total: 0, from: 0, to: 0 })
+const pageLinks = computed(() => {
+    const links = pagination.value.links
+    return links.slice(1, links.length - 1)
+})
+
+function goTo(url: string | null) { if (url) router.visit(url, { preserveState: true, preserveScroll: true }) }
 </script>
 
 <template>
@@ -362,31 +367,11 @@ const pagination = computed(() => (page.props.activityLogs as any).meta ?? { cur
                     </p>
 
                     <div class="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            :disabled="pagination.current_page <= 1"
-                            @click.prevent="router.get(buildPageUrl(pagination.current_page - 1), {}, { preserveState: true, preserveScroll: true })"
-                        >
-                            Previous
-                        </Button>
-                        <template v-for="pageNumber in pagination.last_page" :key="pageNumber">
-                            <Button
-                                size="sm"
-                                :variant="pageNumber === pagination.current_page ? 'default' : 'outline'"
-                                @click.prevent="router.get(buildPageUrl(pageNumber), {}, { preserveState: true, preserveScroll: true })"
-                            >
-                                {{ pageNumber }}
-                            </Button>
+                        <Button variant="outline" size="sm" :disabled="!pagination.links[0]?.url" @click.prevent="goTo(pagination.links[0]?.url ?? null)">Previous</Button>
+                        <template v-for="link in pageLinks" :key="link.label">
+                            <Button size="sm" :variant="link.active ? 'default' : 'outline'" :disabled="!link.url" @click.prevent="goTo(link.url)" v-html="link.label" />
                         </template>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            :disabled="pagination.current_page >= pagination.last_page"
-                            @click.prevent="router.get(buildPageUrl(pagination.current_page + 1), {}, { preserveState: true, preserveScroll: true })"
-                        >
-                            Next
-                        </Button>
+                        <Button variant="outline" size="sm" :disabled="!pagination.links[pagination.links.length - 1]?.url" @click.prevent="goTo(pagination.links[pagination.links.length - 1]?.url ?? null)">Next</Button>
                     </div>
                 </div>
             </div>

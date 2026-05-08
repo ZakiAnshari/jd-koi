@@ -96,7 +96,7 @@ class RekapTransaksiController extends Controller
         }
 
         $perPage   = in_array((int) $request->per_page, [25, 50, 100]) ? (int) $request->per_page : 50;
-        $kois      = $query->orderByDesc('sale_tanggal')->paginate($perPage)->withQueryString();
+        $kois      = $query->orderByDesc('sale_tanggal')->orderByDesc('id')->paginate($perPage)->withQueryString();
         $breeders  = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
         $customers = $isAdmin
             ? User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get()
@@ -231,9 +231,11 @@ class RekapTransaksiController extends Controller
         });
         $grandTotal   += $totalShipping;
 
+        $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
+
         return Excel::download(
             new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee, (float) $totalShipping),
-            $customerName . '.xlsx'
+            $safeFilename . '.xlsx'
         );
     }
 }

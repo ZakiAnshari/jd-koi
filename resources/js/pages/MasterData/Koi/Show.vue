@@ -50,10 +50,21 @@ type Koi = {
     stock_price: string | null
     fee: string | null
     sale_status: string | null
+    shipping_cost: string | null
+    shipping_qty: number | null
+    shipping_batch: string | null
+    shipping_note: string | null
     created_at: string
 }
 
-const props = defineProps<{ koi: Koi }>()
+type BatchMate = {
+    id: number
+    code: string
+    sale_qty: number | null
+    customer: { id: number; name: string } | null
+}
+
+const props = defineProps<{ koi: Koi; batchMates: BatchMate[] }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -106,6 +117,17 @@ const totalModalIdr = computed(() => {
     return m > 0 && k > 0 ? Math.round(m * k * q) : null
 })
 const profit = computed(() => salesPriceIdr.value - (totalModalIdr.value ?? 0) + Number(props.koi.fee ?? 0))
+const shippingCostIdr = computed(() => { const c = Number(props.koi.shipping_cost) || 0; return c > 0 ? c : null })
+const shippingPerEkor = computed(() => {
+    const c = shippingCostIdr.value || 0
+    const q = Number(props.koi.shipping_qty) || 0
+    return c > 0 && q > 0 ? Math.round(c / q) : null
+})
+const shippingKena = computed(() => {
+    const p = shippingPerEkor.value || 0
+    const q = Number(props.koi.sale_qty) || 1
+    return p > 0 ? Math.round(p * q) : null
+})
 
 const STATUS_LABEL: Record<string, string> = {
     cancel: 'Cancel', dead_refund: 'Dead Refund', refund: 'Refund',
@@ -185,8 +207,11 @@ function submitEdit() {
 
             <!-- Content -->
             <div class="grid gap-6 lg:grid-cols-3 auto-rows-max items-start">
+                <!-- Kolom Kiri: Foto + Biaya Shipping + Patungan -->
+                <div class="flex flex-col gap-6 lg:col-span-1">
+
                 <!-- Foto Koi -->
-                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-1">
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
                     <h2 class="mb-5 text-base font-semibold">Foto Koi</h2>
 
                     <div v-if="images.length === 0"
@@ -236,6 +261,27 @@ function submitEdit() {
                         </p>
                     </div>
                 </div>
+
+                <!-- Patungan Shipping -->
+                <div v-if="koi.shipping_batch" class="rounded-xl border border-orange-300 dark:border-orange-700 bg-orange-50/60 dark:bg-orange-950/30 p-6 space-y-3">
+                    <h2 class="text-base font-semibold text-orange-700 dark:text-orange-400">
+                        Patungan Shipping · <span class="font-mono">{{ koi.shipping_batch }}</span>
+                    </h2>
+                    <p class="text-[11px] text-orange-800 dark:text-orange-300">Ikan ini satu box bersama:</p>
+                    <div v-if="batchMates.length > 0" class="space-y-1.5">
+                        <div v-for="mate in batchMates" :key="mate.id"
+                            class="flex items-center justify-between rounded border border-orange-200 dark:border-orange-800 bg-white dark:bg-orange-950/40 px-2.5 py-2">
+                            <div class="text-[11px]">
+                                <span class="font-medium text-foreground">{{ mate.customer?.name ?? '—' }}</span>
+                                <span class="ml-1.5 text-muted-foreground font-mono">{{ mate.code }}</span>
+                            </div>
+                            <span class="text-[11px] text-orange-700 dark:text-orange-300 font-medium">{{ mate.sale_qty ?? 1 }} ekor</span>
+                        </div>
+                    </div>
+                    <p v-else class="text-[11px] text-muted-foreground italic">Belum ada ikan lain dalam batch ini.</p>
+                </div>
+
+                </div><!-- end kolom kiri -->
 
                 <!-- Kanan: Informasi + Harga -->
                 <div class="space-y-4 lg:col-span-2">
@@ -311,6 +357,16 @@ function submitEdit() {
                                     {{ koi.kurs != null ? 'Rp ' + Number(koi.kurs).toLocaleString('id-ID') + ' / ¥1' : '-' }}
                                 </dd>
                             </div>
+                            <!-- Biaya Shipping -->
+                            <div v-if="shippingKena" class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">Biaya Shipping</dt>
+                                <dd class="mt-1 font-semibold text-orange-700 dark:text-orange-400">+ {{ fmtIDR(shippingKena) }}</dd>
+                                <dd class="mt-0.5 text-[11px] text-muted-foreground">
+                                    {{ fmtIDR(shippingPerEkor) }}/ekor × {{ koi.sale_qty || 1 }} ekor
+                                    <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
+                                </dd>
+                            </div>
+
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>

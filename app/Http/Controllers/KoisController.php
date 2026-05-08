@@ -194,8 +194,17 @@ class KoisController extends Controller
     {
         $koi->load(['breeder:id,name_breeder', 'jenisKoi:id,nama_jenis', 'images', 'customer:id,name']);
 
+        $batchMates = collect();
+        if ($koi->shipping_batch) {
+            $batchMates = Koi::where('shipping_batch', $koi->shipping_batch)
+                ->where('id', '!=', $koi->id)
+                ->with('customer:id,name')
+                ->get(['id', 'code', 'customer_id', 'sale_qty', 'shipping_batch']);
+        }
+
         return Inertia::render('MasterData/Koi/Show', [
-            'koi' => $koi,
+            'koi'        => $koi,
+            'batchMates' => $batchMates,
         ]);
     }
 
