@@ -250,7 +250,7 @@
                             </div>
                         <?php endif; ?>
                         <div class="desc-sub">
-                            <?php if($feePct > 0): ?>
+                            <?php if($isAdmin && $feePct > 0): ?>
                                 <span class="badge badge-fee">Fee <?php echo e($feePct); ?>%</span>
                             <?php endif; ?>
                             <?php if($shipped): ?>
@@ -271,7 +271,7 @@
             <td class="td-jpy">
                 <?php if($unitJpy > 0): ?>
                     <div class="price-main">¥<?php echo e(number_format($unitJpy)); ?></div>
-                    <?php if($feePct > 0): ?>
+                    <?php if($isAdmin && $feePct > 0): ?>
                         <div class="price-sub">Fee <?php echo e($feePct); ?>%</div>
                         <div class="price-fee">¥<?php echo e(number_format(round($unitJpy / $qty))); ?></div>
                     <?php endif; ?>
@@ -284,7 +284,7 @@
             <td class="td-idr">
                 <?php if($unitIdr > 0): ?>
                     <div class="price-main"><?php echo e(number_format($unitIdr, 0, ',', '.')); ?></div>
-                    <?php if($feePerUnit > 0): ?>
+                    <?php if($isAdmin && $feePerUnit > 0): ?>
                         <div class="price-sub"><?php echo e(number_format($feePerUnit, 0, ',', '.')); ?></div>
                         <div class="price-fee"><?php echo e(number_format($unitIdr - $feePerUnit, 0, ',', '.')); ?></div>
                     <?php endif; ?>
@@ -297,7 +297,7 @@
             <td class="td-total">
                 <?php if($totalIdr > 0): ?>
                     <div class="price-main"><?php echo e(number_format($totalIdr, 0, ',', '.')); ?></div>
-                    <?php if($feeAmt > 0): ?>
+                    <?php if($isAdmin && $feeAmt > 0): ?>
                         <div class="price-sub"><?php echo e(number_format($feeAmt, 0, ',', '.')); ?></div>
                         <div class="price-fee"><?php echo e(number_format($totalIdr - $feeAmt, 0, ',', '.')); ?></div>
                     <?php endif; ?>
@@ -361,7 +361,7 @@
                     <td class="sum-val">IDR <?php echo e(number_format($totalShipping, 0, ',', '.')); ?></td>
                 </tr>
                 <?php endif; ?>
-                <?php if($totalFee > 0): ?>
+                <?php if($isAdmin && $totalFee > 0): ?>
                 <tr>
                     <td class="sum-label">Total Fee</td>
                     <td class="sum-val">IDR <?php echo e(number_format($totalFee, 0, ',', '.')); ?></td>

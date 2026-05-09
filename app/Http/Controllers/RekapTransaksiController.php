@@ -194,6 +194,7 @@ class RekapTransaksiController extends Controller
             'grandTotal'     => $grandTotal,
             'totalFee'       => $totalFee,
             'totalShipping'  => $totalShipping,
+            'isAdmin'        => $isAdmin,
             'paymentName'    => 'Kurniadi Prakasa Pieth',
             'paymentBank'    => 'BCA / Mandiri / GoPay / OVO',
             'paymentAccount' => 'BCA: 2533 2222 34 | Mandiri: 1690009 44789',
@@ -234,7 +235,7 @@ class RekapTransaksiController extends Controller
         $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
 
         return Excel::download(
-            new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee, (float) $totalShipping),
+            new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee, (float) $totalShipping, $isAdmin),
             $safeFilename . '.xlsx'
         );
     }

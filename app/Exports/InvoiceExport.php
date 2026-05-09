@@ -20,6 +20,7 @@ class InvoiceExport implements WithTitle, WithEvents
     private string $customerName;
     private float $grandTotal;
     private float $totalFee;
+    private bool $isAdmin;
 
     // A=margin, B=No, C=Foto, D=Nama Ikan, E=Kode/Tgl, F=Qty, G=JPY, H=IDR, I=Total
     private const COL_WIDTHS = [
@@ -38,13 +39,14 @@ class InvoiceExport implements WithTitle, WithEvents
     private const IMG_PX     = 90;
     private const ROW_HEIGHT = 68; // pt ≈ 90px
 
-    public function __construct(string $invoiceNumber, \Illuminate\Support\Collection $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0)
+    public function __construct(string $invoiceNumber, \Illuminate\Support\Collection $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0, bool $isAdmin = true)
     {
         $this->invoiceNumber = $invoiceNumber;
         $this->kois          = $kois;
         $this->customerName  = $customerName;
         $this->grandTotal    = $grandTotal;
         $this->totalFee      = $totalFee;
+        $this->isAdmin       = $isAdmin;
     }
 
     public function title(): string
@@ -182,7 +184,7 @@ class InvoiceExport implements WithTitle, WithEvents
             // ── Main koi row ──────────────────────────────────
             $ws->getRowDimension($row)->setRowHeight(self::ROW_HEIGHT);
             $ws->setCellValue('B' . $row, $index + 1);
-            $ws->setCellValue('D' . $row, $koi->name . ($feePct > 0 ? "\n(Fee {$feePct}%)" : ''));
+            $ws->setCellValue('D' . $row, $koi->name . ($this->isAdmin && $feePct > 0 ? "\n(Fee {$feePct}%)" : ''));
             $ws->setCellValue('E' . $row, $koi->code . ($tanggal ? "\n" . $tanggal : ''));
             $ws->setCellValue('F' . $row, $qty);
             $ws->setCellValue('G' . $row, $unitJpy > 0 ? '¥' . number_format($unitJpy, 0) : '-');
@@ -274,27 +276,27 @@ class InvoiceExport implements WithTitle, WithEvents
         $ws->getRowDimension($row)->setRowHeight(8);
         $row++;
 
-        // ── Subtotal ───────────────────────────────────────────────────
-        $ws->getRowDimension($row)->setRowHeight(20);
-        $ws->mergeCells('B' . $row . ':F' . $row);
-        $ws->mergeCells('G' . $row . ':H' . $row);
-        $ws->setCellValue('B' . $row, 'Thank you for your purchase!');
-        $ws->setCellValue('G' . $row, 'Subtotal');
-        $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->grandTotal - $this->totalFee, 0, ',', '.'));
-        $this->style($ws, 'B' . $row . ':F' . $row, [
-            'font'      => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
-            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-        ]);
-        $this->style($ws, 'G' . $row . ':I' . $row, [
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
-            'font'      => ['bold' => true, 'size' => 10],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
-        ]);
-        $row++;
+        // ── Subtotal (disabled) ────────────────────────────────────────
+        // $ws->getRowDimension($row)->setRowHeight(20);
+        // $ws->mergeCells('B' . $row . ':F' . $row);
+        // $ws->mergeCells('G' . $row . ':H' . $row);
+        // $ws->setCellValue('B' . $row, 'Thank you for your purchase!');
+        // $ws->setCellValue('G' . $row, 'Subtotal');
+        // $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->grandTotal - $this->totalFee, 0, ',', '.'));
+        // $this->style($ws, 'B' . $row . ':F' . $row, [
+        //     'font'      => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
+        //     'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        // ]);
+        // $this->style($ws, 'G' . $row . ':I' . $row, [
+        //     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
+        //     'font'      => ['bold' => true, 'size' => 10],
+        //     'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+        //     'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+        // ]);
+        // $row++;
 
-        // ── Total Fee ─────────────────────────────────────────────────
-        if ($this->totalFee > 0) {
+        // ── Total Fee (admin only) ────────────────────────────────────
+        if ($this->isAdmin && $this->totalFee > 0) {
             $ws->getRowDimension($row)->setRowHeight(20);
             $ws->mergeCells('G' . $row . ':H' . $row);
             $ws->setCellValue('G' . $row, 'Total Fee');

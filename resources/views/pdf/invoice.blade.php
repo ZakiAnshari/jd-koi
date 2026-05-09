@@ -250,7 +250,7 @@
                             </div>
                         @endif
                         <div class="desc-sub">
-                            @if($feePct > 0)
+                            @if($isAdmin && $feePct > 0)
                                 <span class="badge badge-fee">Fee {{ $feePct }}%</span>
                             @endif
                             @if($shipped)
@@ -271,7 +271,7 @@
             <td class="td-jpy">
                 @if($unitJpy > 0)
                     <div class="price-main">¥{{ number_format($unitJpy) }}</div>
-                    @if($feePct > 0)
+                    @if($isAdmin && $feePct > 0)
                         <div class="price-sub">Fee {{ $feePct }}%</div>
                         <div class="price-fee">¥{{ number_format(round($unitJpy / $qty)) }}</div>
                     @endif
@@ -284,7 +284,7 @@
             <td class="td-idr">
                 @if($unitIdr > 0)
                     <div class="price-main">{{ number_format($unitIdr, 0, ',', '.') }}</div>
-                    @if($feePerUnit > 0)
+                    @if($isAdmin && $feePerUnit > 0)
                         <div class="price-sub">{{ number_format($feePerUnit, 0, ',', '.') }}</div>
                         <div class="price-fee">{{ number_format($unitIdr - $feePerUnit, 0, ',', '.') }}</div>
                     @endif
@@ -297,7 +297,7 @@
             <td class="td-total">
                 @if($totalIdr > 0)
                     <div class="price-main">{{ number_format($totalIdr, 0, ',', '.') }}</div>
-                    @if($feeAmt > 0)
+                    @if($isAdmin && $feeAmt > 0)
                         <div class="price-sub">{{ number_format($feeAmt, 0, ',', '.') }}</div>
                         <div class="price-fee">{{ number_format($totalIdr - $feeAmt, 0, ',', '.') }}</div>
                     @endif
@@ -361,7 +361,7 @@
                     <td class="sum-val">IDR {{ number_format($totalShipping, 0, ',', '.') }}</td>
                 </tr>
                 @endif
-                @if($totalFee > 0)
+                @if($isAdmin && $totalFee > 0)
                 <tr>
                     <td class="sum-label">Total Fee</td>
                     <td class="sum-val">IDR {{ number_format($totalFee, 0, ',', '.') }}</td>
