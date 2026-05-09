@@ -225,6 +225,10 @@
 
             $tanggal     = $koi->sale_tanggal     ? \Carbon\Carbon::parse($koi->sale_tanggal)->format('d M Y') : null;
             $shipped     = $koi->sale_shipped_date ? \Carbon\Carbon::parse($koi->sale_shipped_date)->format('d M Y') : null;
+
+            $hasShip     = $koi->shipping_cost && $koi->shipping_qty;
+            $shipPerEkor = $hasShip ? round(floatval($koi->shipping_cost) / intval($koi->shipping_qty)) : 0;
+            $shipTotal   = $shipPerEkor * $qty;
         ?>
         <tr>
             <td class="td-no"><?php echo e($index + 1); ?></td>
@@ -249,14 +253,7 @@
                                 <?php echo e($tanggal ?? ''); ?><?php if($tanggal && $shipped): ?> – <?php echo e($shipped); ?><?php elseif($shipped): ?><?php echo e($shipped); ?><?php endif; ?>
                             </div>
                         <?php endif; ?>
-                        <div class="desc-sub">
-                            <?php if($isAdmin && $feePct > 0): ?>
-                                <span class="badge badge-fee">Fee <?php echo e($feePct); ?>%</span>
-                            <?php endif; ?>
-                            <?php if($shipped): ?>
-                                <span class="badge badge-ship">Shipping</span>
-                            <?php endif; ?>
-                        </div>
+                        <div class="desc-sub"></div>
                         <?php if($shipped): ?>
                             <div class="sub-row"><span class="lbl">Purchased Date: </span><?php echo e($tanggal ?? '-'); ?></div>
                         <?php endif; ?>
@@ -271,10 +268,6 @@
             <td class="td-jpy">
                 <?php if($unitJpy > 0): ?>
                     <div class="price-main">¥<?php echo e(number_format($unitJpy)); ?></div>
-                    <?php if($isAdmin && $feePct > 0): ?>
-                        <div class="price-sub">Fee <?php echo e($feePct); ?>%</div>
-                        <div class="price-fee">¥<?php echo e(number_format(round($unitJpy / $qty))); ?></div>
-                    <?php endif; ?>
                 <?php else: ?>
                     <span style="color:#bbb">–</span>
                 <?php endif; ?>
@@ -284,10 +277,6 @@
             <td class="td-idr">
                 <?php if($unitIdr > 0): ?>
                     <div class="price-main"><?php echo e(number_format($unitIdr, 0, ',', '.')); ?></div>
-                    <?php if($isAdmin && $feePerUnit > 0): ?>
-                        <div class="price-sub"><?php echo e(number_format($feePerUnit, 0, ',', '.')); ?></div>
-                        <div class="price-fee"><?php echo e(number_format($unitIdr - $feePerUnit, 0, ',', '.')); ?></div>
-                    <?php endif; ?>
                 <?php else: ?>
                     <span style="color:#bbb">–</span>
                 <?php endif; ?>
@@ -297,15 +286,46 @@
             <td class="td-total">
                 <?php if($totalIdr > 0): ?>
                     <div class="price-main"><?php echo e(number_format($totalIdr, 0, ',', '.')); ?></div>
-                    <?php if($isAdmin && $feeAmt > 0): ?>
-                        <div class="price-sub"><?php echo e(number_format($feeAmt, 0, ',', '.')); ?></div>
-                        <div class="price-fee"><?php echo e(number_format($totalIdr - $feeAmt, 0, ',', '.')); ?></div>
-                    <?php endif; ?>
                 <?php else: ?>
                     <span style="color:#bbb">–</span>
                 <?php endif; ?>
             </td>
         </tr>
+        <?php if($hasShip): ?>
+        <tr style="background:#f0f6ff;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#1e40af; font-style:italic;">
+                Biaya Shipping<?php echo e($koi->shipping_note ? ' · ' . $koi->shipping_note : ''); ?>
+
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#1e40af; font-style:italic;"><?php echo e($qty); ?></td>
+            <td class="td-jpy" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-idr" style="font-size:8px; color:#1e40af; font-style:italic; text-align:right;">
+                <?php echo e(number_format($shipPerEkor, 0, ',', '.')); ?>/ekor
+            </td>
+            <td class="td-total" style="font-size:8px; font-weight:bold; color:#1e40af; text-align:right;">
+                <?php echo e(number_format($shipTotal, 0, ',', '.')); ?>
+
+            </td>
+        </tr>
+        <?php endif; ?>
+        <?php if($isAdmin && $feeAmt > 0): ?>
+        <tr style="background:#fffdf0;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#7d6008; font-style:italic;">
+                Fee <?php echo e($feePct); ?>%
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#7d6008; font-style:italic;"><?php echo e($qty); ?></td>
+            <td class="td-jpy" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-idr" style="font-size:8px; color:#7d6008; font-style:italic; text-align:right;">
+                <?php echo e(number_format($feePerUnit, 0, ',', '.')); ?>/ekor
+            </td>
+            <td class="td-total" style="font-size:8px; font-weight:bold; color:#7d6008; text-align:right;">
+                <?php echo e(number_format($feeAmt, 0, ',', '.')); ?>
+
+            </td>
+        </tr>
+        <?php endif; ?>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
     </table>
@@ -332,41 +352,10 @@
         </div>
         <div class="total-right">
             <table class="sum-table">
-                <?php $koiSubtotal = $grandTotal - ($totalShipping ?? 0); ?>
-                <tr>
-                    <td class="sum-label">Subtotal</td>
-                    <td class="sum-val">IDR <?php echo e(number_format($koiSubtotal, 0, ',', '.')); ?></td>
-                </tr>
-                <?php if(!empty($totalShipping) && $totalShipping > 0): ?>
-                <?php
-                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty)
-                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty);
-                ?>
-                <tr>
-                    <td class="sum-label" style="vertical-align:top;">
-                        Biaya Shipping
-                        <?php $__currentLoopData = $shippingGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $group): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <?php
-                            [$sc, $sq] = explode('|', $key);
-                            $perEkor = round(floatval($sc) / intval($sq));
-                            $groupQty = $group->sum(fn($k) => intval($k->sale_qty ?? 1));
-                            $note = $group->first()->shipping_note;
-                        ?>
-                        <div style="font-size:7px; color:#999; margin-top:2px;">
-                            Rp <?php echo e(number_format($sc)); ?> ÷ <?php echo e($sq); ?> ikan × <?php echo e($groupQty); ?> terjual
-                            <?php if($note): ?> · <?php echo e($note); ?><?php endif; ?>
-                        </div>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                    </td>
-                    <td class="sum-val">IDR <?php echo e(number_format($totalShipping, 0, ',', '.')); ?></td>
-                </tr>
-                <?php endif; ?>
-                <?php if($isAdmin && $totalFee > 0): ?>
-                <tr>
-                    <td class="sum-label">Total Fee</td>
-                    <td class="sum-val">IDR <?php echo e(number_format($totalFee, 0, ',', '.')); ?></td>
-                </tr>
-                <?php endif; ?>
+                
+                
+                
+                
                 <tr class="sum-grand">
                     <td class="sum-label">Total</td>
                     <td class="sum-val">IDR <?php echo e(number_format($grandTotal, 0, ',', '.')); ?></td>

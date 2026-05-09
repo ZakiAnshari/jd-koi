@@ -178,13 +178,14 @@ class InvoiceExport implements WithTitle, WithEvents
 
             $bg        = $index % 2 === 0 ? 'FFFFFF' : 'F8F9FA';
             $hasShip   = $koi->shipping_cost && $koi->shipping_qty;
+            $hasFeeRow = $this->isAdmin && $fee > 0;
             $mainRow   = $row;
-            $lastRow   = $row + ($hasShip ? 1 : 0);
+            $lastRow   = $row + ($hasShip ? 1 : 0) + ($hasFeeRow ? 1 : 0);
 
             // ── Main koi row ──────────────────────────────────
             $ws->getRowDimension($row)->setRowHeight(self::ROW_HEIGHT);
             $ws->setCellValue('B' . $row, $index + 1);
-            $ws->setCellValue('D' . $row, $koi->name . ($this->isAdmin && $feePct > 0 ? "\n(Fee {$feePct}%)" : ''));
+            $ws->setCellValue('D' . $row, $koi->name);
             $ws->setCellValue('E' . $row, $koi->code . ($tanggal ? "\n" . $tanggal : ''));
             $ws->setCellValue('F' . $row, $qty);
             $ws->setCellValue('G' . $row, $unitJpy > 0 ? '¥' . number_format($unitJpy, 0) : '-');
@@ -257,8 +258,34 @@ class InvoiceExport implements WithTitle, WithEvents
                 $row++;
             }
 
+            // ── Sub-row: Fee (admin only, di dalam kotak koi) ────
+            if ($hasFeeRow) {
+                $feePerUnit = $qty > 0 ? round($fee / $qty) : 0;
+
+                $ws->getRowDimension($row)->setRowHeight(16);
+                $ws->setCellValue('D' . $row, 'Fee ' . $feePct . '%');
+                $ws->setCellValue('F' . $row, $qty . ' ekor');
+                $ws->setCellValue('H' . $row, 'Rp ' . number_format($feePerUnit, 0, ',', '.') . '/ekor');
+                $ws->setCellValue('I' . $row, 'Rp ' . number_format($fee, 0, ',', '.'));
+
+                $this->style($ws, 'B' . $row . ':I' . $row, [
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFDF0']],
+                    'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => 'B7950B']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+                ]);
+                $this->style($ws, 'D' . $row, [
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+                $this->style($ws, 'I' . $row, [
+                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => 'B7950B']],
+                ]);
+
+                $row++;
+            }
+
             // ── Merge No & Foto vertikal jika ada sub-row ─────
-            if ($hasShip) {
+            if ($lastRow > $mainRow) {
                 $ws->mergeCells('B' . $mainRow . ':B' . $lastRow);
                 $ws->mergeCells('C' . $mainRow . ':C' . $lastRow);
                 $this->style($ws, 'B' . $mainRow . ':B' . $lastRow, [
@@ -295,20 +322,20 @@ class InvoiceExport implements WithTitle, WithEvents
         // ]);
         // $row++;
 
-        // ── Total Fee (admin only) ────────────────────────────────────
-        if ($this->isAdmin && $this->totalFee > 0) {
-            $ws->getRowDimension($row)->setRowHeight(20);
-            $ws->mergeCells('G' . $row . ':H' . $row);
-            $ws->setCellValue('G' . $row, 'Total Fee');
-            $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->totalFee, 0, ',', '.'));
-            $this->style($ws, 'G' . $row . ':I' . $row, [
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
-                'font'      => ['bold' => true, 'size' => 10],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
-            ]);
-            $row++;
-        }
+        // ── Total Fee (disabled) ──────────────────────────────────────
+        // if ($this->isAdmin && $this->totalFee > 0) {
+        //     $ws->getRowDimension($row)->setRowHeight(20);
+        //     $ws->mergeCells('G' . $row . ':H' . $row);
+        //     $ws->setCellValue('G' . $row, 'Total Fee');
+        //     $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->totalFee, 0, ',', '.'));
+        //     $this->style($ws, 'G' . $row . ':I' . $row, [
+        //         'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
+        //         'font'      => ['bold' => true, 'size' => 10],
+        //         'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+        //         'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+        //     ]);
+        //     $row++;
+        // }
 
         // ── Grand Total ───────────────────────────────────────────────
         $ws->getRowDimension($row)->setRowHeight(24);

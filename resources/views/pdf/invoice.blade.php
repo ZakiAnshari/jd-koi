@@ -225,6 +225,10 @@
 
             $tanggal     = $koi->sale_tanggal     ? \Carbon\Carbon::parse($koi->sale_tanggal)->format('d M Y') : null;
             $shipped     = $koi->sale_shipped_date ? \Carbon\Carbon::parse($koi->sale_shipped_date)->format('d M Y') : null;
+
+            $hasShip     = $koi->shipping_cost && $koi->shipping_qty;
+            $shipPerEkor = $hasShip ? round(floatval($koi->shipping_cost) / intval($koi->shipping_qty)) : 0;
+            $shipTotal   = $shipPerEkor * $qty;
         @endphp
         <tr>
             <td class="td-no">{{ $index + 1 }}</td>
@@ -249,14 +253,7 @@
                                 {{ $tanggal ?? '' }}@if($tanggal && $shipped) – {{ $shipped }}@elseif($shipped){{ $shipped }}@endif
                             </div>
                         @endif
-                        <div class="desc-sub">
-                            @if($isAdmin && $feePct > 0)
-                                <span class="badge badge-fee">Fee {{ $feePct }}%</span>
-                            @endif
-                            @if($shipped)
-                                <span class="badge badge-ship">Shipping</span>
-                            @endif
-                        </div>
+                        <div class="desc-sub"></div>
                         @if($shipped)
                             <div class="sub-row"><span class="lbl">Purchased Date: </span>{{ $tanggal ?? '-' }}</div>
                         @endif
@@ -271,10 +268,6 @@
             <td class="td-jpy">
                 @if($unitJpy > 0)
                     <div class="price-main">¥{{ number_format($unitJpy) }}</div>
-                    @if($isAdmin && $feePct > 0)
-                        <div class="price-sub">Fee {{ $feePct }}%</div>
-                        <div class="price-fee">¥{{ number_format(round($unitJpy / $qty)) }}</div>
-                    @endif
                 @else
                     <span style="color:#bbb">–</span>
                 @endif
@@ -284,10 +277,6 @@
             <td class="td-idr">
                 @if($unitIdr > 0)
                     <div class="price-main">{{ number_format($unitIdr, 0, ',', '.') }}</div>
-                    @if($isAdmin && $feePerUnit > 0)
-                        <div class="price-sub">{{ number_format($feePerUnit, 0, ',', '.') }}</div>
-                        <div class="price-fee">{{ number_format($unitIdr - $feePerUnit, 0, ',', '.') }}</div>
-                    @endif
                 @else
                     <span style="color:#bbb">–</span>
                 @endif
@@ -297,15 +286,43 @@
             <td class="td-total">
                 @if($totalIdr > 0)
                     <div class="price-main">{{ number_format($totalIdr, 0, ',', '.') }}</div>
-                    @if($isAdmin && $feeAmt > 0)
-                        <div class="price-sub">{{ number_format($feeAmt, 0, ',', '.') }}</div>
-                        <div class="price-fee">{{ number_format($totalIdr - $feeAmt, 0, ',', '.') }}</div>
-                    @endif
                 @else
                     <span style="color:#bbb">–</span>
                 @endif
             </td>
         </tr>
+        @if($hasShip)
+        <tr style="background:#f0f6ff;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#1e40af; font-style:italic;">
+                Biaya Shipping{{ $koi->shipping_note ? ' · ' . $koi->shipping_note : '' }}
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#1e40af; font-style:italic;">{{ $qty }}</td>
+            <td class="td-jpy" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-idr" style="font-size:8px; color:#1e40af; font-style:italic; text-align:right;">
+                {{ number_format($shipPerEkor, 0, ',', '.') }}/ekor
+            </td>
+            <td class="td-total" style="font-size:8px; font-weight:bold; color:#1e40af; text-align:right;">
+                {{ number_format($shipTotal, 0, ',', '.') }}
+            </td>
+        </tr>
+        @endif
+        @if($isAdmin && $feeAmt > 0)
+        <tr style="background:#fffdf0;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#7d6008; font-style:italic;">
+                Fee {{ $feePct }}%
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#7d6008; font-style:italic;">{{ $qty }}</td>
+            <td class="td-jpy" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-idr" style="font-size:8px; color:#7d6008; font-style:italic; text-align:right;">
+                {{ number_format($feePerUnit, 0, ',', '.') }}/ekor
+            </td>
+            <td class="td-total" style="font-size:8px; font-weight:bold; color:#7d6008; text-align:right;">
+                {{ number_format($feeAmt, 0, ',', '.') }}
+            </td>
+        </tr>
+        @endif
         @endforeach
         </tbody>
     </table>
@@ -332,41 +349,19 @@
         </div>
         <div class="total-right">
             <table class="sum-table">
-                @php $koiSubtotal = $grandTotal - ($totalShipping ?? 0); @endphp
+                {{-- @php $koiSubtotal = $grandTotal - ($totalShipping ?? 0); @endphp
                 <tr>
                     <td class="sum-label">Subtotal</td>
                     <td class="sum-val">IDR {{ number_format($koiSubtotal, 0, ',', '.') }}</td>
-                </tr>
-                @if(!empty($totalShipping) && $totalShipping > 0)
-                @php
-                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty)
-                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty);
-                @endphp
-                <tr>
-                    <td class="sum-label" style="vertical-align:top;">
-                        Biaya Shipping
-                        @foreach($shippingGroups as $key => $group)
-                        @php
-                            [$sc, $sq] = explode('|', $key);
-                            $perEkor = round(floatval($sc) / intval($sq));
-                            $groupQty = $group->sum(fn($k) => intval($k->sale_qty ?? 1));
-                            $note = $group->first()->shipping_note;
-                        @endphp
-                        <div style="font-size:7px; color:#999; margin-top:2px;">
-                            Rp {{ number_format($sc) }} ÷ {{ $sq }} ikan × {{ $groupQty }} terjual
-                            @if($note) · {{ $note }}@endif
-                        </div>
-                        @endforeach
-                    </td>
-                    <td class="sum-val">IDR {{ number_format($totalShipping, 0, ',', '.') }}</td>
-                </tr>
-                @endif
-                @if($isAdmin && $totalFee > 0)
+                </tr> --}}
+                {{-- Biaya Shipping sudah ditampilkan per ikan di tabel --}}
+                {{-- @if(!empty($totalShipping) && $totalShipping > 0) ... @endif --}}
+                {{-- @if($isAdmin && $totalFee > 0)
                 <tr>
                     <td class="sum-label">Total Fee</td>
                     <td class="sum-val">IDR {{ number_format($totalFee, 0, ',', '.') }}</td>
                 </tr>
-                @endif
+                @endif --}}
                 <tr class="sum-grand">
                     <td class="sum-label">Total</td>
                     <td class="sum-val">IDR {{ number_format($grandTotal, 0, ',', '.') }}</td>
