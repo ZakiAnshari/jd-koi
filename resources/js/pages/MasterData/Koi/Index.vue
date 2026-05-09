@@ -45,6 +45,8 @@ type Koi = {
     kurs?: string | null; sell_idr?: string | null; stock_price?: string | null; fee?: string | null
     shipping_cost?: string | null; shipping_qty?: number | null; shipping_batch?: string | null; shipping_note?: string | null; shipping_date?: string | null
     azukari_period?: string | null
+    azukari_qty?: number | null
+    azukari_price_jpy?: number | null
 }
 
 // ─── Page props ───────────────────────────────────────────
@@ -188,12 +190,13 @@ const editModalQty             = ref('')
 const editStockPriceDisplay    = ref('')
 const editUnitPriceDisplay     = ref('')
 const editShippingCostDisplay2 = ref('')
+const editAzukariPriceDisplay  = ref('')
 
 const editForm = useForm({
     breeder_id: '', jenis_koi_id: '', code: '', name: '', description: '',
     age: '', size: '', box_qty: '', weight: '', total_weight: '',
     images: [] as File[], delete_images: [] as number[],
-    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
+    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '', azukari_qty: '', azukari_price_jpy: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: '', sale_shipped_date: '',
     shipping_cost: '', shipping_qty: '', shipping_batch: '', shipping_note: '', shipping_date: '',
@@ -232,6 +235,8 @@ function openEditModal(koi: Koi) {
     editForm.sale_status       = koi.sale_status ?? ''
     editForm.sale_invoice      = koi.sale_invoice ?? ''
     editForm.azukari_period    = koi.azukari_period ?? ''
+    editForm.azukari_qty       = koi.azukari_qty != null ? String(koi.azukari_qty) : ''
+    editForm.azukari_price_jpy = koi.azukari_price_jpy != null ? String(koi.azukari_price_jpy) : ''
     editForm.shipping_cost     = koi.shipping_cost != null ? String(Number(koi.shipping_cost)) : ''
     editForm.shipping_qty      = koi.shipping_qty != null ? String(koi.shipping_qty) : ''
     editForm.shipping_batch    = koi.shipping_batch ?? ''
@@ -241,6 +246,7 @@ function openEditModal(koi: Koi) {
     editStockPriceDisplay.value    = addDots(koi.stock_price)
     editUnitPriceDisplay.value     = addDots(koi.unit_price)
     editShippingCostDisplay2.value = addDots(koi.shipping_cost)
+    editAzukariPriceDisplay.value  = addDots(koi.azukari_price_jpy)
 
     const existingKurs = koi.kurs ? Number(koi.kurs) : 0
     editKursIsManual.value = existingKurs > 0
@@ -267,6 +273,7 @@ const editModalPriceIdr  = computed(() => { const m = Number(editForm.stock_pric
 const editTotalModalIdr  = computed(() => { const m = editModalPriceIdr.value || 0; const q = Number(editModalQty.value) || 0; return m > 0 && q > 0 ? Math.round(m * q) : null })
 const editModalTerjualIdr= computed(() => { const m = editModalPriceIdr.value || 0; const q = Number(editForm.sale_qty) || 1; return m > 0 ? Math.round(m * q) : null })
 const editUnitPriceIdr   = computed(() => { const p = Number(editForm.unit_price) || 0; const k = Number(editKursInput.value) || 0; return p > 0 && k > 0 ? Math.round(p * k) : null })
+const editAzukariPriceIdr = computed(() => { const p = Number(editForm.azukari_price_jpy) || 0; const k = Number(editKursInput.value) || 0; return p > 0 && k > 0 ? Math.round(p * k) : null })
 const editSalesPriceJpy  = computed(() => { const p = Number(editForm.unit_price) || 0; const q = Number(editForm.sale_qty) || 1; return p > 0 ? p * q : null })
 const editSalesPriceIdr  = computed(() => { const jpy = editSalesPriceJpy.value; const k = Number(editKursInput.value) || 0; return jpy && k > 0 ? Math.round(jpy * k) : null })
 const editShippingCostIdr= computed(() => { const c = Number(editForm.shipping_cost) || 0; return c > 0 ? c : null })
@@ -278,6 +285,7 @@ const editProfitPositive = computed(() => editProfit.value >= 0)
 function onEditStockPriceChange(val: string | number)    { const r = String(val).replace(/\D/g, ''); editForm.stock_price = r; editStockPriceDisplay.value = addDots(r) }
 function onEditUnitPriceChange(val: string | number)     { const r = String(val).replace(/\D/g, ''); editForm.unit_price = r; editUnitPriceDisplay.value = addDots(r) }
 function onEditShippingCostChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); editForm.shipping_cost = r; editShippingCostDisplay2.value = addDots(r) }
+function onEditAzukariPriceChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); editForm.azukari_price_jpy = r; editAzukariPriceDisplay.value = addDots(r) }
 function onEditFeeSelect(val: unknown) {
     editFeePct.value = val !== null ? String(val) : null
     editForm.fee = String(Math.round((editSalesPriceIdr.value ?? 0) * (Number(val) / 100)))
@@ -353,7 +361,7 @@ const form = useForm({
     breeder_id: '', jenis_koi_id: '', code: '', name: '', description: '',
     age: '', size: '', box_qty: '', weight: '', total_weight: '',
     images: [] as File[],
-    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '',
+    customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '', azukari_qty: '0', azukari_price_jpy: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
     sale_status: 'shipped',
     shipping_cost: '', shipping_qty: '', shipping_batch: '', shipping_note: '', shipping_date: '',
@@ -397,6 +405,12 @@ const modalTerjualIdr = computed(() => {
 // Unit price IDR preview
 const unitPriceIdr = computed(() => {
     const p = Number(form.unit_price) || 0
+    const k = Number(kursInput.value) || 0
+    return p > 0 && k > 0 ? Math.round(p * k) : null
+})
+// Azukari price IDR preview (add form)
+const azukariPriceIdr = computed(() => {
+    const p = Number(form.azukari_price_jpy) || 0
     const k = Number(kursInput.value) || 0
     return p > 0 && k > 0 ? Math.round(p * k) : null
 })
@@ -474,16 +488,18 @@ function addDots(val: string | number | null) {
 }
 
 // Display refs — format hanya saat blur, bukan tiap ketukan
-const stockPriceDisplay   = ref('')
-const shippingCostDisplay = ref('')
-const unitPriceDisplay    = ref('')
+const stockPriceDisplay    = ref('')
+const shippingCostDisplay  = ref('')
+const unitPriceDisplay     = ref('')
+const azukariPriceDisplay  = ref('')
 
-function onStockPriceChange(val: string | number)  { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
-function onStockPriceBlur()            { stockPriceDisplay.value = addDots(form.stock_price) }
+function onStockPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.stock_price = r; stockPriceDisplay.value = addDots(r) }
+function onStockPriceBlur()             { stockPriceDisplay.value = addDots(form.stock_price) }
 function onShippingCostChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.shipping_cost = r; shippingCostDisplay.value = addDots(r) }
-function onShippingCostBlur()          { shippingCostDisplay.value = addDots(form.shipping_cost) }
-function onUnitPriceChange(val: string | number)   { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
-function onUnitPriceBlur()             { unitPriceDisplay.value = addDots(form.unit_price) }
+function onShippingCostBlur()           { shippingCostDisplay.value = addDots(form.shipping_cost) }
+function onUnitPriceChange(val: string | number)    { const r = String(val).replace(/\D/g, ''); form.unit_price = r; unitPriceDisplay.value = addDots(r) }
+function onUnitPriceBlur()              { unitPriceDisplay.value = addDots(form.unit_price) }
+function onAzukariPriceChange(val: string | number) { const r = String(val).replace(/\D/g, ''); form.azukari_price_jpy = r; azukariPriceDisplay.value = addDots(r) }
 
 const kursDisplay = ref(addDots(kursInput.value))
 watch(kursInput, v => { kursDisplay.value = addDots(v) })
@@ -1054,13 +1070,34 @@ function confirmDeleteKoi(id: number, name: string) {
 <InputError :message="(form.errors as any).sale_invoice" />
                                     </div>
 
-                                    <!-- Periode Azukari (hanya tampil jika status = azukari) -->
-                                    <div v-if="form.sale_status === 'azukari'" class="grid gap-1.5">
-                                        <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
-                                        <Input v-model="form.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
-                                        <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
-                                        <InputError :message="(form.errors as any).azukari_period" />
-                                    </div>
+                                    <!-- Azukari fields -->
+                                    <template v-if="form.sale_status === 'azukari'">
+                                        <div class="grid gap-1.5">
+                                            <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
+                                            <Input v-model="form.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
+                                            <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
+                                            <InputError :message="(form.errors as any).azukari_period" />
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="grid gap-1.5">
+                                                <Label class="text-xs font-medium text-muted-foreground">Qty Azukari</Label>
+                                                <Input v-model="form.azukari_qty" type="number" min="1" placeholder="Qty" class="h-9 text-sm" />
+                                                <InputError :message="(form.errors as any).azukari_qty" />
+                                            </div>
+                                            <div class="grid gap-1.5">
+                                                <Label class="text-xs font-medium text-muted-foreground">Total Harga Azukari (JPY)</Label>
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                                    <Input type="text" inputmode="numeric" :modelValue="azukariPriceDisplay" @update:modelValue="onAzukariPriceChange" @blur="() => { azukariPriceDisplay = addDots(form.azukari_price_jpy) }" placeholder="0" class="h-9 text-sm pl-7" />
+                                                </div>
+                                                <div v-if="azukariPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                                    <span class="text-muted-foreground">≈ IDR</span>
+                                                    <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(azukariPriceIdr) }}</span>
+                                                </div>
+                                                <InputError :message="(form.errors as any).azukari_price_jpy" />
+                                            </div>
+                                        </div>
+                                    </template>
 
                                     <!-- Tanggal & Qty -->
                                     <div class="grid grid-cols-2 gap-3">
@@ -1753,13 +1790,34 @@ function confirmDeleteKoi(id: number, name: string) {
                                 <InputError :message="(editForm.errors as any).sale_invoice" />
                             </div>
 
-                            <!-- Periode Azukari (hanya tampil jika status = azukari) -->
-                            <div v-if="editForm.sale_status === 'azukari'" class="grid gap-1.5">
-                                <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
-                                <Input v-model="editForm.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
-                                <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
-                                <InputError :message="(editForm.errors as any).azukari_period" />
-                            </div>
+                            <!-- Azukari fields -->
+                            <template v-if="editForm.sale_status === 'azukari'">
+                                <div class="grid gap-1.5">
+                                    <Label class="text-xs font-medium text-muted-foreground">Periode Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
+                                    <Input v-model="editForm.azukari_period" type="text" placeholder="Contoh: Nov 2024 – Nov 2025" class="h-9 text-sm" />
+                                    <p class="text-[10px] text-muted-foreground">Teks bebas · akan tampil di invoice PDF</p>
+                                    <InputError :message="(editForm.errors as any).azukari_period" />
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Qty Azukari</Label>
+                                        <Input v-model="editForm.azukari_qty" type="number" min="1" placeholder="Qty" class="h-9 text-sm" />
+                                        <InputError :message="(editForm.errors as any).azukari_qty" />
+                                    </div>
+                                    <div class="grid gap-1.5">
+                                        <Label class="text-xs font-medium text-muted-foreground">Total Harga Azukari (JPY)</Label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500">¥</span>
+                                            <Input type="text" inputmode="numeric" :modelValue="editAzukariPriceDisplay" @update:modelValue="onEditAzukariPriceChange" @blur="() => { editAzukariPriceDisplay = addDots(editForm.azukari_price_jpy) }" placeholder="0" class="h-9 text-sm pl-7" />
+                                        </div>
+                                        <div v-if="editAzukariPriceIdr" class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 text-[11px] flex justify-between">
+                                            <span class="text-muted-foreground">≈ IDR</span>
+                                            <span class="font-semibold text-amber-700 dark:text-amber-400">{{ fmtIDR(editAzukariPriceIdr) }}</span>
+                                        </div>
+                                        <InputError :message="(editForm.errors as any).azukari_price_jpy" />
+                                    </div>
+                                </div>
+                            </template>
 
                             <!-- Tanggal & Qty -->
                             <div class="grid grid-cols-2 gap-3">

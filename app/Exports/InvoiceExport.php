@@ -176,11 +176,12 @@ class InvoiceExport implements WithTitle, WithEvents
                 $tanggal = \Carbon\Carbon::parse($koi->sale_tanggal)->format('d M Y');
             }
 
-            $bg        = $index % 2 === 0 ? 'FFFFFF' : 'F8F9FA';
-            $hasShip   = $koi->shipping_cost && $koi->shipping_qty;
-            $hasFeeRow = $this->isAdmin && $fee > 0;
-            $mainRow   = $row;
-            $lastRow   = $row + ($hasShip ? 1 : 0) + ($hasFeeRow ? 1 : 0);
+            $bg           = $index % 2 === 0 ? 'FFFFFF' : 'F8F9FA';
+            $hasShip      = $koi->shipping_cost && $koi->shipping_qty;
+            $hasFeeRow    = $this->isAdmin && $fee > 0;
+            $hasAzukari   = $koi->azukari_period || $koi->azukari_qty || $koi->azukari_price_jpy;
+            $mainRow      = $row;
+            $lastRow      = $row + ($hasShip ? 1 : 0) + ($hasFeeRow ? 1 : 0) + ($hasAzukari ? 1 : 0);
 
             // ── Main koi row ──────────────────────────────────
             $ws->getRowDimension($row)->setRowHeight(self::ROW_HEIGHT);
@@ -279,6 +280,35 @@ class InvoiceExport implements WithTitle, WithEvents
                 ]);
                 $this->style($ws, 'I' . $row, [
                     'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => 'B7950B']],
+                ]);
+
+                $row++;
+            }
+
+            // ── Sub-row: Azukari ──────────────────────────────
+            if ($hasAzukari) {
+                $azuQty   = $koi->azukari_qty ?? '-';
+                $azuJpy   = $koi->azukari_price_jpy ? '¥' . number_format((float) $koi->azukari_price_jpy, 0) : '-';
+                $azuLabel = 'Azukari' . ($koi->azukari_period ? ' · ' . $koi->azukari_period : '');
+
+                $ws->getRowDimension($row)->setRowHeight(16);
+                $ws->setCellValue('D' . $row, $azuLabel);
+                $ws->setCellValue('F' . $row, $azuQty);
+                $ws->setCellValue('G' . $row, $azuJpy);
+                $ws->setCellValue('H' . $row, '-');
+                $ws->setCellValue('I' . $row, '-');
+
+                $this->style($ws, 'B' . $row . ':I' . $row, [
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F0FDF4']],
+                    'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => '166534']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+                ]);
+                $this->style($ws, 'D' . $row, [
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+                $this->style($ws, 'G' . $row, [
+                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => '166534']],
                 ]);
 
                 $row++;

@@ -46,6 +46,8 @@ class Koi extends Model
         'shipping_batch',
         'shipping_date',
         'azukari_period',
+        'azukari_qty',
+        'azukari_price_jpy',
     ];
 
     protected $casts = [

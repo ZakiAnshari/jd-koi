@@ -323,6 +323,25 @@
             </td>
         </tr>
         @endif
+        @php
+            $hasAzukari = $koi->azukari_period || $koi->azukari_qty || $koi->azukari_price_jpy;
+        @endphp
+        @if($hasAzukari)
+        <tr style="background:#f0fdf4;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#166534; font-style:italic;">
+                Azukari{{ $koi->azukari_period ? ' · ' . $koi->azukari_period : '' }}
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#166534; font-style:italic;">
+                {{ $koi->azukari_qty ?? '-' }}
+            </td>
+            <td class="td-jpy" style="font-size:8px; color:#166534; font-style:italic; text-align:right;">
+                @if($koi->azukari_price_jpy) ¥{{ number_format($koi->azukari_price_jpy) }} @else – @endif
+            </td>
+            <td class="td-idr" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-total" style="font-size:8px; color:#aaa;">–</td>
+        </tr>
+        @endif
         @endforeach
         </tbody>
     </table>
