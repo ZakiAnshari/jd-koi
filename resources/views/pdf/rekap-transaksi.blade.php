@@ -340,8 +340,8 @@
                             $modalIdr      = ($stockJpy && $kursVal) ? round($stockJpy * $kursVal * $qty) : null;
                             $salesPriceIdr = $koi->sell_idr ? (float) $koi->sell_idr : null;
                             $fee           = $koi->fee ? (float) $koi->fee : 0;
-                            $shippingIdr   = ($koi->shipping_cost && $koi->shipping_qty && $kursVal)
-                                             ? round((float)$koi->shipping_cost * $kursVal / (int)$koi->shipping_qty)
+                            $shippingIdr   = ($koi->shipping_cost && $koi->shipping_qty)
+                                             ? round((float)$koi->shipping_cost / (int)$koi->shipping_qty * (int)($koi->sale_qty ?? 1))
                                              : null;
                             $profit        = $salesPriceIdr !== null && $modalIdr !== null
                                              ? $salesPriceIdr - $modalIdr + $fee

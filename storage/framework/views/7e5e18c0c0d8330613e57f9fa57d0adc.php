@@ -339,21 +339,21 @@
                 </tr>
                 <?php if(!empty($totalShipping) && $totalShipping > 0): ?>
                 <?php
-                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty && $k->kurs)
-                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty . '|' . $k->kurs);
+                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty)
+                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty);
                 ?>
                 <tr>
                     <td class="sum-label" style="vertical-align:top;">
                         Biaya Shipping
                         <?php $__currentLoopData = $shippingGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $group): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <?php
-                            [$sc, $sq, $kr] = explode('|', $key);
-                            $perEkor = round(floatval($sc) * floatval($kr) / intval($sq));
+                            [$sc, $sq] = explode('|', $key);
+                            $perEkor = round(floatval($sc) / intval($sq));
                             $groupQty = $group->sum(fn($k) => intval($k->sale_qty ?? 1));
                             $note = $group->first()->shipping_note;
                         ?>
                         <div style="font-size:7px; color:#999; margin-top:2px;">
-                            ¥<?php echo e(number_format($sc)); ?> ÷ <?php echo e($sq); ?> ikan × <?php echo e($groupQty); ?> terjual
+                            Rp <?php echo e(number_format($sc)); ?> ÷ <?php echo e($sq); ?> ikan × <?php echo e($groupQty); ?> terjual
                             <?php if($note): ?> · <?php echo e($note); ?><?php endif; ?>
                         </div>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>

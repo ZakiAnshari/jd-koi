@@ -234,20 +234,47 @@ class InvoiceExport implements WithTitle, WithEvents
             }
 
             $row++;
+
+            // ── Sub-row: Biaya Shipping (per koi) ─────────────
+            if ($koi->shipping_cost && $koi->shipping_qty) {
+                $shippingTotal = round(floatval($koi->shipping_cost) / intval($koi->shipping_qty) * $qty);
+                $perEkor       = round(floatval($koi->shipping_cost) / intval($koi->shipping_qty));
+                $note          = $koi->shipping_note ? ' · ' . $koi->shipping_note : '';
+
+                $ws->getRowDimension($row)->setRowHeight(16);
+                $ws->setCellValue('D' . $row, 'Biaya Shipping' . $note);
+                $ws->setCellValue('F' . $row, $qty);
+                $ws->setCellValue('H' . $row, 'Rp ' . number_format($perEkor, 0, ',', '.') . '/ekor');
+                $ws->setCellValue('I' . $row, 'Rp ' . number_format($shippingTotal, 0, ',', '.'));
+
+                $this->style($ws, 'B' . $row . ':I' . $row, [
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF3E0']],
+                    'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => 'C0392B']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFDDC1']]],
+                ]);
+                $this->style($ws, 'D' . $row, [
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+                $this->style($ws, 'I' . $row, [
+                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => 'C0392B']],
+                ]);
+
+                $row++;
+            }
         }
 
         // ── Spacer ─────────────────────────────────────────────────────
         $ws->getRowDimension($row)->setRowHeight(8);
         $row++;
 
-        // ── Subtotal (harga koi saja) ──────────────────────────────────
-        $koiSubtotal = $this->grandTotal - $this->totalShipping;
+        // ── Subtotal ───────────────────────────────────────────────────
         $ws->getRowDimension($row)->setRowHeight(20);
         $ws->mergeCells('B' . $row . ':F' . $row);
         $ws->mergeCells('G' . $row . ':H' . $row);
         $ws->setCellValue('B' . $row, 'Thank you for your purchase!');
         $ws->setCellValue('G' . $row, 'Subtotal');
-        $ws->setCellValue('I' . $row, 'Rp ' . number_format($koiSubtotal, 0, ',', '.'));
+        $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->grandTotal - $this->totalFee, 0, ',', '.'));
         $this->style($ws, 'B' . $row . ':F' . $row, [
             'font'      => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
@@ -259,21 +286,6 @@ class InvoiceExport implements WithTitle, WithEvents
             'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
         ]);
         $row++;
-
-        // ── Shipping ──────────────────────────────────────────────────
-        if ($this->totalShipping > 0) {
-            $ws->getRowDimension($row)->setRowHeight(20);
-            $ws->mergeCells('G' . $row . ':H' . $row);
-            $ws->setCellValue('G' . $row, 'Biaya Shipping');
-            $ws->setCellValue('I' . $row, 'Rp ' . number_format($this->totalShipping, 0, ',', '.'));
-            $this->style($ws, 'G' . $row . ':I' . $row, [
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
-                'font'      => ['bold' => true, 'size' => 10],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
-            ]);
-            $row++;
-        }
 
         // ── Total Fee ─────────────────────────────────────────────────
         if ($this->totalFee > 0) {

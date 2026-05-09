@@ -339,21 +339,21 @@
                 </tr>
                 @if(!empty($totalShipping) && $totalShipping > 0)
                 @php
-                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty && $k->kurs)
-                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty . '|' . $k->kurs);
+                    $shippingGroups = $kois->filter(fn($k) => $k->shipping_cost && $k->shipping_qty)
+                        ->groupBy(fn($k) => $k->shipping_cost . '|' . $k->shipping_qty);
                 @endphp
                 <tr>
                     <td class="sum-label" style="vertical-align:top;">
                         Biaya Shipping
                         @foreach($shippingGroups as $key => $group)
                         @php
-                            [$sc, $sq, $kr] = explode('|', $key);
-                            $perEkor = round(floatval($sc) * floatval($kr) / intval($sq));
+                            [$sc, $sq] = explode('|', $key);
+                            $perEkor = round(floatval($sc) / intval($sq));
                             $groupQty = $group->sum(fn($k) => intval($k->sale_qty ?? 1));
                             $note = $group->first()->shipping_note;
                         @endphp
                         <div style="font-size:7px; color:#999; margin-top:2px;">
-                            ¥{{ number_format($sc) }} ÷ {{ $sq }} ikan × {{ $groupQty }} terjual
+                            Rp {{ number_format($sc) }} ÷ {{ $sq }} ikan × {{ $groupQty }} terjual
                             @if($note) · {{ $note }}@endif
                         </div>
                         @endforeach

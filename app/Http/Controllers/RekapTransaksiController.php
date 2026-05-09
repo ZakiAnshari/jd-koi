@@ -182,8 +182,8 @@ class RekapTransaksiController extends Controller
         $grandTotal    = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
         $totalFee      = $kois->sum(fn($k) => $k->fee ?? 0);
         $totalShipping = $kois->sum(function ($k) {
-            if (!$k->shipping_cost || !$k->shipping_qty || !$k->kurs) return 0;
-            return round(floatval($k->shipping_cost) * floatval($k->kurs) / intval($k->shipping_qty));
+            if (!$k->shipping_cost || !$k->shipping_qty) return 0;
+            return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
         $grandTotal   += $totalShipping;
 
@@ -226,8 +226,8 @@ class RekapTransaksiController extends Controller
         $grandTotal    = $kois->sum(fn($k) => ($k->unit_price ?? 0) * ($k->sale_qty ?? 1) * ($k->kurs ?? 0) ?: ($k->sell_idr ?? 0));
         $totalFee      = $kois->sum(fn($k) => $k->fee ?? 0);
         $totalShipping = $kois->sum(function ($k) {
-            if (!$k->shipping_cost || !$k->shipping_qty || !$k->kurs) return 0;
-            return round(floatval($k->shipping_cost) * floatval($k->kurs) / intval($k->shipping_qty));
+            if (!$k->shipping_cost || !$k->shipping_qty) return 0;
+            return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
         $grandTotal   += $totalShipping;
 

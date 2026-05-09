@@ -3,12 +3,12 @@ import { Head, Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { Fish, Banknote, CheckCircle, Clock, XCircle, Eye } from 'lucide-vue-next'
+import { Fish, CheckCircle, Clock, XCircle, Eye } from 'lucide-vue-next'
 
 type CustomerStats = {
     nama: string
     total_koi: number
-    total_belanja: string | number
+    total_pending: number
     status_breakdown: Record<string, number>
 }
 
@@ -94,12 +94,12 @@ const activeStatuses = computed(() =>
             <!-- Stat Cards -->
             <div class="grid gap-4 grid-cols-2 md:grid-cols-3">
                 <div class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-background p-5 flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-                        <Banknote class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div class="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-950/40 flex items-center justify-center flex-shrink-0">
+                        <Clock class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                     </div>
                     <div class="min-w-0">
-                        <p class="text-xs text-muted-foreground">Total Belanja</p>
-                        <p class="text-sm font-bold text-foreground leading-tight">{{ fmtIDR(customerStats.total_belanja) }}</p>
+                        <p class="text-xs text-muted-foreground">Koi Pending</p>
+                        <p class="text-2xl font-bold text-foreground">{{ customerStats.total_pending }}</p>
                     </div>
                 </div>
 

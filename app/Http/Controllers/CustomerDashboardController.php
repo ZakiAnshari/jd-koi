@@ -18,8 +18,8 @@ class CustomerDashboardController extends Controller
         // ── Stats customer ───────────────────────────────────
         $baseQuery = Koi::whereNotNull('sale_status')->where('customer_id', $user->id);
 
-        $totalKoi       = (clone $baseQuery)->count();
-        $totalBelanjaIdr= (clone $baseQuery)->sum('sell_idr');
+        $totalKoi   = (clone $baseQuery)->count();
+        $totalPending = (clone $baseQuery)->where('sale_status', 'pending')->count();
 
         $statusBreakdown = (clone $baseQuery)
             ->selectRaw('sale_status, count(*) as total')
@@ -49,7 +49,7 @@ class CustomerDashboardController extends Controller
             'customerStats' => [
                 'nama'            => $user->name,
                 'total_koi'       => $totalKoi,
-                'total_belanja'   => $totalBelanjaIdr,
+                'total_pending'   => $totalPending,
                 'status_breakdown'=> $statusBreakdown,
             ],
             'recentTransactions' => $recentTransactions,
