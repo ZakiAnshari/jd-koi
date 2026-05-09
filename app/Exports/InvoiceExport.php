@@ -16,11 +16,10 @@ class InvoiceExport implements WithTitle, WithEvents
     use RegistersEventListeners;
 
     private string $invoiceNumber;
-    private $kois;
+    private \Illuminate\Support\Collection $kois;
     private string $customerName;
     private float $grandTotal;
     private float $totalFee;
-    private float $totalShipping;
 
     // A=margin, B=No, C=Foto, D=Nama Ikan, E=Kode/Tgl, F=Qty, G=JPY, H=IDR, I=Total
     private const COL_WIDTHS = [
@@ -39,14 +38,13 @@ class InvoiceExport implements WithTitle, WithEvents
     private const IMG_PX     = 90;
     private const ROW_HEIGHT = 68; // pt ≈ 90px
 
-    public function __construct(string $invoiceNumber, $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0)
+    public function __construct(string $invoiceNumber, \Illuminate\Support\Collection $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0)
     {
-        $this->invoiceNumber  = $invoiceNumber;
-        $this->kois           = $kois;
-        $this->customerName   = $customerName;
-        $this->grandTotal     = $grandTotal;
-        $this->totalFee       = $totalFee;
-        $this->totalShipping  = $totalShipping;
+        $this->invoiceNumber = $invoiceNumber;
+        $this->kois          = $kois;
+        $this->customerName  = $customerName;
+        $this->grandTotal    = $grandTotal;
+        $this->totalFee      = $totalFee;
     }
 
     public function title(): string
@@ -176,10 +174,13 @@ class InvoiceExport implements WithTitle, WithEvents
                 $tanggal = \Carbon\Carbon::parse($koi->sale_tanggal)->format('d M Y');
             }
 
-            $bg = $index % 2 === 0 ? 'FFFFFF' : 'F8F9FA';
+            $bg        = $index % 2 === 0 ? 'FFFFFF' : 'F8F9FA';
+            $hasShip   = $koi->shipping_cost && $koi->shipping_qty;
+            $mainRow   = $row;
+            $lastRow   = $row + ($hasShip ? 1 : 0);
 
+            // ── Main koi row ──────────────────────────────────
             $ws->getRowDimension($row)->setRowHeight(self::ROW_HEIGHT);
-
             $ws->setCellValue('B' . $row, $index + 1);
             $ws->setCellValue('D' . $row, $koi->name . ($feePct > 0 ? "\n(Fee {$feePct}%)" : ''));
             $ws->setCellValue('E' . $row, $koi->code . ($tanggal ? "\n" . $tanggal : ''));
@@ -188,40 +189,31 @@ class InvoiceExport implements WithTitle, WithEvents
             $ws->setCellValue('H' . $row, $unitIdr > 0 ? 'Rp ' . number_format($unitIdr, 0, ',', '.') : '-');
             $ws->setCellValue('I' . $row, $totalIdr > 0 ? 'Rp ' . number_format($totalIdr, 0, ',', '.') : '-');
 
-            // Base row style
             $this->style($ws, 'B' . $row . ':I' . $row, [
                 'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'font'      => ['size' => 10],
-                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DDDDDD']]],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            ]);
-            // Outer border
-            $this->style($ws, 'B' . $row . ':I' . $row, [
-                'borders' => ['outline' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'BBBBBB']]],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
             $this->style($ws, 'B' . $row, [
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 'font'      => ['color' => ['rgb' => '888888'], 'size' => 9],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
             $this->style($ws, 'D' . $row, [
                 'font'      => ['bold' => true, 'size' => 10],
-                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
             ]);
             $this->style($ws, 'E' . $row, [
                 'font'      => ['size' => 9, 'color' => ['rgb' => '555555']],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
             ]);
             $this->style($ws, 'F' . $row, [
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 'font'      => ['bold' => true],
-            ]);
-            $this->style($ws, 'G' . $row . ':H' . $row, [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                'font'      => ['size' => 10],
             ]);
             $this->style($ws, 'I' . $row, [
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 'font'      => ['bold' => true, 'size' => 10],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
 
             // Foto koi
@@ -235,33 +227,47 @@ class InvoiceExport implements WithTitle, WithEvents
 
             $row++;
 
-            // ── Sub-row: Biaya Shipping (per koi) ─────────────
-            if ($koi->shipping_cost && $koi->shipping_qty) {
+            // ── Sub-row: Biaya Shipping (di dalam kotak koi) ──
+            if ($hasShip) {
                 $shippingTotal = round(floatval($koi->shipping_cost) / intval($koi->shipping_qty) * $qty);
                 $perEkor       = round(floatval($koi->shipping_cost) / intval($koi->shipping_qty));
-                $note          = $koi->shipping_note ? ' · ' . $koi->shipping_note : '';
+                $label         = 'Biaya Shipping' . ($koi->shipping_note ? ' · ' . $koi->shipping_note : '');
 
                 $ws->getRowDimension($row)->setRowHeight(16);
-                $ws->setCellValue('D' . $row, 'Biaya Shipping' . $note);
-                $ws->setCellValue('F' . $row, $qty);
+                $ws->setCellValue('D' . $row, $label);
+                $ws->setCellValue('F' . $row, $qty . ' ekor');
                 $ws->setCellValue('H' . $row, 'Rp ' . number_format($perEkor, 0, ',', '.') . '/ekor');
                 $ws->setCellValue('I' . $row, 'Rp ' . number_format($shippingTotal, 0, ',', '.'));
 
                 $this->style($ws, 'B' . $row . ':I' . $row, [
-                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF3E0']],
-                    'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => 'C0392B']],
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF8F0']],
+                    'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => 'E67E22']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFDDC1']]],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
                 ]);
                 $this->style($ws, 'D' . $row, [
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
                 $this->style($ws, 'I' . $row, [
-                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => 'C0392B']],
+                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => 'E67E22']],
                 ]);
 
                 $row++;
             }
+
+            // ── Merge No & Foto vertikal jika ada sub-row ─────
+            if ($hasShip) {
+                $ws->mergeCells('B' . $mainRow . ':B' . $lastRow);
+                $ws->mergeCells('C' . $mainRow . ':C' . $lastRow);
+                $this->style($ws, 'B' . $mainRow . ':B' . $lastRow, [
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+            }
+
+            // ── Outer border mengelilingi seluruh blok koi ────
+            $this->style($ws, 'B' . $mainRow . ':I' . $lastRow, [
+                'borders' => ['outline' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+            ]);
         }
 
         // ── Spacer ─────────────────────────────────────────────────────
@@ -283,7 +289,7 @@ class InvoiceExport implements WithTitle, WithEvents
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
             'font'      => ['bold' => true, 'size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
         ]);
         $row++;
 
@@ -297,7 +303,7 @@ class InvoiceExport implements WithTitle, WithEvents
                 'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEEEEE']],
                 'font'      => ['bold' => true, 'size' => 10],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
             $row++;
         }
