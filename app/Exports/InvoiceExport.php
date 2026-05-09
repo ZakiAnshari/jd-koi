@@ -384,36 +384,83 @@ class InvoiceExport implements WithTitle, WithEvents
         $ws->getRowDimension($row)->setRowHeight(12);
         $row++;
 
-        // ── Payment Info ───────────────────────────────────────────────
-        $ws->getRowDimension($row)->setRowHeight(18);
+        // ── Thank you message ──────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(16);
         $ws->mergeCells('C' . $row . ':I' . $row);
-        $ws->setCellValue('C' . $row, 'Payment Information');
+        $ws->setCellValue('C' . $row, 'Thank you for your purchased');
         $this->style($ws, 'C' . $row, [
-            'font'      => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '2C3E50']],
+            'font'      => ['size' => 9, 'color' => ['rgb' => '2C3E50']],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-            'borders'   => ['bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DDDDDD']]],
         ]);
         $row++;
 
-        foreach ([
-            'Name'    => 'Kurniadi Prakasa Pieth',
-            'Bank'    => 'BCA / Mandiri / GoPay / OVO',
-            'No. Rek' => 'BCA: 2533 2222 34  |  Mandiri: 1690009 44789',
-        ] as $label => $value) {
-            $ws->getRowDimension($row)->setRowHeight(16);
-            $ws->setCellValue('C' . $row, $label);
-            $ws->mergeCells('D' . $row . ':I' . $row);
-            $ws->setCellValue('D' . $row, $value);
-            $this->style($ws, 'C' . $row, [
-                'font'      => ['size' => 9, 'color' => ['rgb' => '888888']],
-                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-            ]);
-            $this->style($ws, 'D' . $row . ':I' . $row, [
-                'font'      => ['bold' => true, 'size' => 9],
-                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-            ]);
-            $row++;
-        }
+        // ── Spacer ─────────────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(8);
+        $row++;
+
+        // ── Payment Info Header ────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(18);
+        $ws->mergeCells('C' . $row . ':I' . $row);
+        $ws->setCellValue('C' . $row, 'Payment info:');
+        $this->style($ws, 'C' . $row, [
+            'font'      => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '2C3E50']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $row++;
+
+        // ── Name ───────────────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(14);
+        $ws->setCellValue('C' . $row, 'Name');
+        $ws->mergeCells('D' . $row . ':I' . $row);
+        $ws->setCellValue('D' . $row, 'Kurniadi Prakasa Pieth');
+        $this->style($ws, 'C' . $row, [
+            'font'      => ['size' => 9, 'color' => ['rgb' => '888888']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $this->style($ws, 'D' . $row . ':I' . $row, [
+            'font'      => ['bold' => true, 'size' => 9],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $row++;
+
+        // ── Spacer ─────────────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(6);
+        $row++;
+
+        // ── Account Header ─────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(14);
+        $ws->setCellValue('C' . $row, 'Account');
+        $ws->mergeCells('D' . $row . ':I' . $row);
+        $ws->setCellValue('D' . $row, 'BCA 2533 2222 34');
+        $this->style($ws, 'C' . $row, [
+            'font'      => ['size' => 9, 'color' => ['rgb' => '888888']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $this->style($ws, 'D' . $row . ':I' . $row, [
+            'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '2C3E50']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $row++;
+
+        // ── Mandiri Account ────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(13);
+        $ws->mergeCells('D' . $row . ':I' . $row);
+        $ws->setCellValue('D' . $row, 'Mandiri 16500 999 48789');
+        $this->style($ws, 'D' . $row . ':I' . $row, [
+            'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '2C3E50']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $row++;
+
+        // ── Panin Account ──────────────────────────────────────────────
+        $ws->getRowDimension($row)->setRowHeight(13);
+        $ws->mergeCells('D' . $row . ':I' . $row);
+        $ws->setCellValue('D' . $row, 'Panin 151213 7001');
+        $this->style($ws, 'D' . $row . ':I' . $row, [
+            'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '2C3E50']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $row++;
 
         // ── Print settings ─────────────────────────────────────────────
         $ws->getPageSetup()

@@ -19,17 +19,40 @@ class DashboardController extends Controller
             return redirect()->route('customer.dashboard');
         }
 
-        $currentMonth = $request->filled('month') ? (int) $request->month : now()->month;
-        $currentYear  = $request->filled('year')  ? (int) $request->year  : now()->year;
+        // Check if date range filter is used
+        $useDateRange = $request->filled('start_date') || $request->filled('end_date');
+        $startDate = $request->filled('start_date') ? \Carbon\Carbon::parse($request->start_date) : null;
+        $endDate = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : null;
 
-        // Clamp to valid ranges
-        $currentMonth = max(1, min(12, $currentMonth));
-        $currentYear  = max(2020, min((int) now()->year, $currentYear));
+        if ($useDateRange) {
+            // Use date range filter
+            $baseQuery = Koi::whereNotNull('sale_status');
+            
+            if ($startDate) {
+                $baseQuery->whereDate('sale_tanggal', '>=', $startDate);
+            }
+            if ($endDate) {
+                $baseQuery->whereDate('sale_tanggal', '<=', $endDate);
+            }
 
-        // ── Stats bulan ini ──────────────────────────────────
-        $baseQuery = Koi::whereNotNull('sale_status')
-            ->whereMonth('sale_tanggal', $currentMonth)
-            ->whereYear('sale_tanggal', $currentYear);
+            $currentMonth = now()->month;
+            $currentYear = now()->year;
+            $currentMonthLabel = "Rentang: " . ($startDate?->format('d M Y') ?? 'Awal') . " - " . ($endDate?->format('d M Y') ?? 'Akhir');
+        } else {
+            // Use month/year filter
+            $currentMonth = $request->filled('month') ? (int) $request->month : now()->month;
+            $currentYear  = $request->filled('year')  ? (int) $request->year  : now()->year;
+
+            // Clamp to valid ranges
+            $currentMonth = max(1, min(12, $currentMonth));
+            $currentYear  = max(2020, min((int) now()->year, $currentYear));
+
+            $baseQuery = Koi::whereNotNull('sale_status')
+                ->whereMonth('sale_tanggal', $currentMonth)
+                ->whereYear('sale_tanggal', $currentYear);
+            
+            $currentMonthLabel = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->translatedFormat('F Y');
+        }
 
         $totalSalesIdr  = (clone $baseQuery)->sum('sell_idr');
         $totalKoiSold   = (clone $baseQuery)->count();
@@ -55,17 +78,14 @@ class DashboardController extends Controller
         $totalCustomer = User::where('role_id', 2)->count();
         $totalBreeder  = Breeder::count();
 
-        // ── Breakdown status bulan ini ───────────────────────
-        $statusBreakdown = Koi::whereNotNull('sale_status')
-            ->whereMonth('sale_tanggal', (int) $currentMonth)
-            ->whereYear('sale_tanggal', (int) $currentYear)
+        // ── Breakdown status ─────────────────────────────────
+        $statusBreakdown = (clone $baseQuery)
             ->selectRaw('sale_status, count(*) as total')
             ->groupBy('sale_status')
             ->pluck('total', 'sale_status');
 
         // ── Transaksi terbaru ────────────────────────────────
-        $recentTransactions = Koi::with(['breeder:id,name_breeder', 'customer:id,name'])
-            ->whereNotNull('sale_status')
+        $recentTransactions = (clone $baseQuery)->with(['breeder:id,name_breeder', 'customer:id,name'])
             ->orderByDesc('sale_tanggal')
             ->limit(8)
             ->get(['id', 'code', 'name', 'sale_invoice', 'sale_tanggal', 'sale_status', 'sell_idr', 'breeder_id', 'customer_id'])
@@ -81,37 +101,65 @@ class DashboardController extends Controller
                 'customer'     => $k->customer?->name,
             ]);
 
-        // ── Trend 6 bulan terakhir ───────────────────────────
-        $trendMonths = collect();
-        for ($i = 5; $i >= 0; $i--) {
-            $date = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->subMonths($i);
-            $trendMonths->push([
-                'month' => $date->month,
-                'year'  => $date->year,
-                'label' => $date->translatedFormat('M Y'),
-            ]);
+        // ── Trend (jika tidak menggunakan date range, tampilkan 6 bulan; jika date range, tampilkan per hari) ───
+        if ($useDateRange && $startDate && $endDate) {
+            // Show daily trend
+            $trendData = collect();
+            $currentDate = $startDate->copy();
+            while ($currentDate <= $endDate) {
+                $q = Koi::whereNotNull('sale_status')
+                    ->whereDate('sale_tanggal', $currentDate->toDateString());
+
+                $sales  = (clone $q)->sum('sell_idr');
+                $profit = (clone $q)
+                    ->selectRaw('SUM((COALESCE(sell_idr,0) - (COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) + COALESCE(fee,0)) as profit')
+                    ->value('profit') ?? 0;
+                $count  = (clone $q)->count();
+                $fee    = (clone $q)->sum('fee');
+
+                $trendData->push([
+                    'label'  => $currentDate->format('d M'),
+                    'sales'  => (float) $sales,
+                    'profit' => (float) $profit,
+                    'count'  => (int) $count,
+                    'fee'    => (float) $fee,
+                ]);
+
+                $currentDate->addDay();
+            }
+        } else {
+            // Show 6 months trend
+            $trendMonths = collect();
+            for ($i = 5; $i >= 0; $i--) {
+                $date = \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->subMonths($i);
+                $trendMonths->push([
+                    'month' => $date->month,
+                    'year'  => $date->year,
+                    'label' => $date->translatedFormat('M Y'),
+                ]);
+            }
+
+            $trendData = $trendMonths->map(function ($m) {
+                $q = Koi::whereNotNull('sale_status')
+                    ->whereMonth('sale_tanggal', $m['month'])
+                    ->whereYear('sale_tanggal', $m['year']);
+
+                $sales  = (clone $q)->sum('sell_idr');
+                $profit = (clone $q)
+                    ->selectRaw('SUM((COALESCE(sell_idr,0) - (COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) + COALESCE(fee,0)) as profit')
+                    ->value('profit') ?? 0;
+                $count  = (clone $q)->count();
+                $fee    = (clone $q)->sum('fee');
+
+                return [
+                    'label'  => $m['label'],
+                    'sales'  => (float) $sales,
+                    'profit' => (float) $profit,
+                    'count'  => (int) $count,
+                    'fee'    => (float) $fee,
+                ];
+            });
         }
-
-        $trendData = $trendMonths->map(function ($m) {
-            $q = Koi::whereNotNull('sale_status')
-                ->whereMonth('sale_tanggal', $m['month'])
-                ->whereYear('sale_tanggal', $m['year']);
-
-            $sales  = (clone $q)->sum('sell_idr');
-            $profit = (clone $q)
-                ->selectRaw('SUM((COALESCE(sell_idr,0) - (COALESCE(stock_price,0) * COALESCE(kurs,0) * COALESCE(sale_qty,1))) + COALESCE(fee,0)) as profit')
-                ->value('profit') ?? 0;
-            $count  = (clone $q)->count();
-            $fee    = (clone $q)->sum('fee');
-
-            return [
-                'label'  => $m['label'],
-                'sales'  => (float) $sales,
-                'profit' => (float) $profit,
-                'count'  => (int) $count,
-                'fee'    => (float) $fee,
-            ];
-        });
 
         // ── Activity log ─────────────────────────────────────
         $latestActivityLogs = ActivityLog::with('user:id,name')
@@ -136,9 +184,11 @@ class DashboardController extends Controller
                 'total_customer'    => $totalCustomer,
                 'total_breeder'     => $totalBreeder,
                 'status_breakdown'  => $statusBreakdown,
-                'current_month'     => \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->translatedFormat('F Y'),
+                'current_month'     => $currentMonthLabel,
                 'selected_month'    => $currentMonth,
                 'selected_year'     => $currentYear,
+                'selected_start_date' => $startDate?->format('Y-m-d'),
+                'selected_end_date'   => $endDate?->format('Y-m-d'),
             ],
             'trendData'          => $trendData,
             'recentTransactions' => $recentTransactions,

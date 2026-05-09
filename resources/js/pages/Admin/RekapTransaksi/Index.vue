@@ -571,7 +571,7 @@ function shippingGroupColor(koi: KoiRow): string {
                                     <span v-if="koi.description" class="line-clamp-2 text-xs text-muted-foreground">{{ koi.description }}</span>
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>
-                                <td v-if="col('age')"           class="px-4 py-3 text-center text-sm">{{ koi.age != null ? koi.age + ' bln' : '-' }}</td>
+                                <td v-if="col('age')"           class="px-4 py-3 text-center text-sm">{{ koi.age != null ? koi.age + ' th' : '-' }}</td>
                                 <td v-if="col('size')"          class="px-4 py-3 text-center text-sm">{{ koi.size != null ? Number(koi.size).toFixed(0) + ' cm' : '-' }}</td>
                                 <td v-if="col('koi_qty')"       class="px-4 py-3 text-center text-sm">{{ koi.sale_qty ?? '-' }}</td>
                                 <td v-if="col('unit_price')"    class="px-4 py-3 text-right text-sm whitespace-nowrap">{{ fmtJpy(koi.unit_price) }}</td>

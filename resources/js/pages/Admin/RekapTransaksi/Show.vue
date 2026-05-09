@@ -397,8 +397,8 @@ const STATUS_CLASS: Record<string, string> = {
                                 <dd class="mt-1 font-medium text-foreground">{{ koi.jenis_koi?.nama_jenis ?? '-' }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</dt>
-                                <dd class="mt-1 font-medium text-foreground">{{ koi.age != null ? koi.age + ' bulan' : '-' }}</dd>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Year</dt>
+                                <dd class="mt-1 font-medium text-foreground">{{ koi.age != null ? koi.age + ' tahun' : '-' }}</dd>
                             </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</dt>

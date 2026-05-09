@@ -104,6 +104,8 @@ const chartOptions = computed(() => ({
 const now = new Date()
 const selectedMonth = ref<number>(stats.value.selected_month ?? now.getMonth() + 1)
 const selectedYear  = ref<number>(stats.value.selected_year  ?? now.getFullYear())
+const selectedStartDate = ref<string>(stats.value.selected_start_date ?? '')
+const selectedEndDate = ref<string>(stats.value.selected_end_date ?? '')
 
 function navigate(delta: number) {
     let m = selectedMonth.value + delta
@@ -114,6 +116,21 @@ function navigate(delta: number) {
     selectedMonth.value = m
     selectedYear.value  = y
     router.get('/dashboard', { month: m, year: y }, { preserveScroll: true, preserveState: false })
+}
+
+function applyDateFilter() {
+    if (selectedStartDate.value || selectedEndDate.value) {
+        router.get('/dashboard', { 
+            start_date: selectedStartDate.value, 
+            end_date: selectedEndDate.value 
+        }, { preserveScroll: true, preserveState: false })
+    }
+}
+
+function clearDateFilter() {
+    selectedStartDate.value = ''
+    selectedEndDate.value = ''
+    router.get('/dashboard', {}, { preserveScroll: true, preserveState: false })
 }
 
 const isCurrentMonth = computed(() =>
@@ -186,20 +203,63 @@ const STATUS_COLOR: Record<string, string> = {
 
             <!-- ── Stat Cards Bulan Ini ── -->
             <div>
-                <!-- Month/Year Navigator -->
-                <div class="flex items-center gap-2 mb-3">
-                    <button @click="navigate(-1)" class="inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted w-7 h-7 transition-colors">
-                        <ChevronLeft class="w-4 h-4" />
-                    </button>
-                    <span class="text-sm font-semibold min-w-[140px] text-center">{{ stats.current_month }}</span>
-                    <button @click="navigate(1)" :disabled="!canGoNext" class="inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted w-7 h-7 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                        <ChevronRight class="w-4 h-4" />
-                    </button>
-                    <span v-if="!isCurrentMonth" class="text-[11px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">bukan bulan ini</span>
-                    <button v-if="!isCurrentMonth" @click="goToCurrentMonth"
-                        class="text-[11px] underline text-primary hover:text-primary/80">
-                        Kembali ke bulan ini
-                    </button>
+                <!-- Month/Year Navigator & Date Range Filter -->
+                <div class="flex flex-col lg:flex-row gap-3 mb-4 items-start lg:items-center">
+                    <!-- Month Navigator (left) -->
+                    <div class="flex items-center gap-2">
+                        <button @click="navigate(-1)" class="inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted w-7 h-7 transition-colors">
+                            <ChevronLeft class="w-4 h-4" />
+                        </button>
+                        <span class="text-sm font-semibold min-w-[140px] text-center">{{ stats.current_month }}</span>
+                        <button @click="navigate(1)" :disabled="!canGoNext" class="inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted w-7 h-7 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                            <ChevronRight class="w-4 h-4" />
+                        </button>
+                        <span v-if="!isCurrentMonth" class="text-[11px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">bukan bulan ini</span>
+                        <button v-if="!isCurrentMonth" @click="goToCurrentMonth"
+                            class="text-[11px] underline text-primary hover:text-primary/80">
+                            Kembali ke bulan ini
+                        </button>
+                    </div>
+
+                    <!-- Divider (optional, only on desktop) -->
+                    <div class="hidden lg:block w-px h-6 bg-border"></div>
+
+                    <!-- Date Range Filter (right) -->
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                        <div class="flex items-center gap-1.5 min-w-fit">
+                            <label class="text-xs font-medium text-muted-foreground whitespace-nowrap">Dari:</label>
+                            <input 
+                                v-model="selectedStartDate" 
+                                type="date" 
+                                class="h-8 px-2 text-sm rounded-md border border-input bg-background"
+                                :max="selectedEndDate || undefined"
+                            />
+                        </div>
+                        <div class="flex items-center gap-1.5 min-w-fit">
+                            <label class="text-xs font-medium text-muted-foreground whitespace-nowrap">Sampai:</label>
+                            <input 
+                                v-model="selectedEndDate" 
+                                type="date" 
+                                class="h-8 px-2 text-sm rounded-md border border-input bg-background"
+                                :min="selectedStartDate || undefined"
+                            />
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button 
+                                @click="applyDateFilter"
+                                class="h-8 px-3 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                Terapkan
+                            </button>
+                            <button 
+                                v-if="selectedStartDate || selectedEndDate"
+                                @click="clearDateFilter"
+                                class="h-8 px-3 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors"
+                            >
+                                Hapus
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
 

@@ -406,8 +406,8 @@ function submitEdit() {
                             <dd class="mt-1 font-medium text-foreground">{{ koi.jenis_koi?.nama_jenis ?? '-' }}</dd>
                         </div>
                         <div class="rounded-lg border border-border p-3">
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</dt>
-                            <dd class="mt-1 font-medium text-foreground">{{ koi.age != null ? koi.age + ' bulan' : '-' }}</dd>
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Year</dt>
+                            <dd class="mt-1 font-medium text-foreground">{{ koi.age != null ? koi.age + ' tahun' : '-' }}</dd>
                         </div>
                         <div class="rounded-lg border border-border p-3">
                             <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</dt>
@@ -495,7 +495,7 @@ function submitEdit() {
                     <!-- Age & Size -->
                     <div class="grid grid-cols-2 gap-3">
                         <div class="grid gap-1.5">
-                            <Label class="text-xs font-medium">Age (bulan)</Label>
+                            <Label class="text-xs font-medium">Year (Tahun)</Label>
                             <Input v-model="editForm.age" type="number" class="h-9 text-sm" />
                             <InputError :message="editForm.errors.age" />
                         </div>

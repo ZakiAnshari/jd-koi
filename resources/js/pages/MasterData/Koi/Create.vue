@@ -380,7 +380,7 @@ function submit() {
                             <h3 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                                 <div class="grid gap-2">
-                                    <Label for="age" class="text-xs">Age (bulan)</Label>
+                                    <Label for="age" class="text-xs">Year (Tahun)</Label>
                                     <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" />
                                     <InputError :message="form.errors.age" />
                                 </div>
@@ -667,7 +667,7 @@ function submit() {
                                     </div>
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="grid gap-1.5">
-                                            <Label class="text-xs font-medium text-muted-foreground">Qty Azukari</Label>
+                                            <Label class="text-xs font-medium text-muted-foreground">Qty Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
                                             <Input v-model="form.azukari_qty" type="number" min="1" placeholder="Qty" class="h-9 text-sm" />
                                             <InputError :message="(form.errors as any).azukari_qty" />
                                         </div>

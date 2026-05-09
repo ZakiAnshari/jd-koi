@@ -683,7 +683,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Data Fisik</p>
                                         <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
                                             <div class="grid gap-1">
-                                                <Label class="text-[11px] text-muted-foreground">Age (bln)</Label>
+                                                <Label class="text-[11px] text-muted-foreground">Year (Tahun)</Label>
                                                 <Input v-model="form.age" type="number" min="0" placeholder="0" class="h-8 text-sm" />
                                                 <InputError :message="form.errors.age" />
                                             </div>
@@ -1080,7 +1080,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         </div>
                                         <div class="grid grid-cols-2 gap-3">
                                             <div class="grid gap-1.5">
-                                                <Label class="text-xs font-medium text-muted-foreground">Qty Azukari</Label>
+                                                <Label class="text-xs font-medium text-muted-foreground">Qty Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
                                                 <Input v-model="form.azukari_qty" type="number" min="1" placeholder="Qty" class="h-9 text-sm" />
                                                 <InputError :message="(form.errors as any).azukari_qty" />
                                             </div>
@@ -1428,7 +1428,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Data Fisik</p>
                                 <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
                                     <div class="grid gap-1">
-                                        <Label class="text-[11px] text-muted-foreground">Age (bln)</Label>
+                                        <Label class="text-[11px] text-muted-foreground">Year (Tahun)</Label>
                                         <Input v-model="editForm.age" type="number" min="0" placeholder="0" class="h-8 text-sm" />
                                     </div>
                                     <div class="grid gap-1">
@@ -1800,7 +1800,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="grid gap-1.5">
-                                        <Label class="text-xs font-medium text-muted-foreground">Qty Azukari</Label>
+                                        <Label class="text-xs font-medium text-muted-foreground">Qty Azukari <span class="font-normal opacity-60">(opsional)</span></Label>
                                         <Input v-model="editForm.azukari_qty" type="number" min="1" placeholder="Qty" class="h-9 text-sm" />
                                         <InputError :message="(editForm.errors as any).azukari_qty" />
                                     </div>
