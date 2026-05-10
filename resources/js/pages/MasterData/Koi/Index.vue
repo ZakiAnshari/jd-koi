@@ -363,7 +363,7 @@ const form = useForm({
     images: [] as File[],
     customer_id: '', sale_tanggal: '', sale_qty: '', sale_invoice: '', azukari_period: '', azukari_qty: '0', azukari_price_jpy: '',
     buy_jpy: '', unit_price: '', kurs: '', sell_idr: '', stock_price: '', fee: '0',
-    sale_status: 'shipped',
+    sale_status: 'pending',
     shipping_cost: '', shipping_qty: '', shipping_batch: '', shipping_note: '', shipping_date: '',
 })
 

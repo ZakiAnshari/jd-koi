@@ -326,6 +326,37 @@
             </td>
         </tr>
         <?php endif; ?>
+        <?php
+            $hasAzukari = $koi->azukari_period || $koi->azukari_qty || $koi->azukari_price_jpy;
+        ?>
+        <?php if($hasAzukari): ?>
+        <?php
+            $azuQty = intval($koi->azukari_qty ?? 0);
+            $azuJpy = floatval($koi->azukari_price_jpy ?? 0);
+            $azuIdr = $kurs > 0 && $azuJpy > 0 ? round($azuJpy * $kurs) : 0;
+            $azuTotal = $azuIdr * $azuQty;
+        ?>
+        <tr style="background:#f0fdf4;">
+            <td class="td-no"></td>
+            <td style="padding:4px 6px; font-size:8px; color:#166534; font-style:italic;">
+                Azukari<?php echo e($koi->azukari_period ? ' · ' . $koi->azukari_period : ''); ?>
+
+            </td>
+            <td class="td-qty" style="font-size:8px; color:#166534; font-style:italic;">
+                <?php echo e($azuQty > 0 ? $azuQty : '-'); ?>
+
+            </td>
+            <td class="td-jpy" style="font-size:8px; color:#166534; font-style:italic; text-align:right;">
+                <?php if($azuJpy > 0): ?> ¥<?php echo e(number_format($azuJpy)); ?> <?php else: ?> – <?php endif; ?>
+            </td>
+            <td class="td-idr" style="font-size:8px; color:#166534; font-style:italic; text-align:right;">
+                <?php if($azuIdr > 0): ?> IDR <?php echo e(number_format($azuIdr, 0, ',', '.')); ?> <?php else: ?> – <?php endif; ?>
+            </td>
+            <td class="td-total" style="font-size:8px; color:#166534; font-weight:bold; text-align:right;">
+                <?php if($azuTotal > 0): ?> IDR <?php echo e(number_format($azuTotal, 0, ',', '.')); ?> <?php else: ?> – <?php endif; ?>
+            </td>
+        </tr>
+        <?php endif; ?>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
     </table>
@@ -338,15 +369,19 @@
                 <div class="pay-title">Payment info:</div>
                 <div class="pay-row">
                     <div class="pay-key">Name</div>
-                    <div class="pay-val">: <?php echo e($paymentName ?? '-'); ?></div>
+                    <div class="pay-val">: Kurniadi Prakasa Pieth</div>
                 </div>
                 <div class="pay-row">
                     <div class="pay-key">Account</div>
-                    <div class="pay-val">: <?php echo e($paymentBank ?? '-'); ?></div>
+                    <div class="pay-val">: BCA 2533 2222 34</div>
                 </div>
                 <div class="pay-row">
-                    <div class="pay-key">No. Rek</div>
-                    <div class="pay-val">: <?php echo e($paymentAccount ?? '-'); ?></div>
+                    <div class="pay-key"></div>
+                    <div class="pay-val">: Mandiri 16500 999 48789</div>
+                </div>
+                <div class="pay-row">
+                    <div class="pay-key"></div>
+                    <div class="pay-val">: Panin 151213 7001</div>
                 </div>
             </div>
         </div>
@@ -357,8 +392,8 @@
                 
                 
                 <tr class="sum-grand">
-                    <td class="sum-label">Total</td>
-                    <td class="sum-val">IDR <?php echo e(number_format($grandTotal, 0, ',', '.')); ?></td>
+                    <td class="sum-label">TOTAL</td>
+                    <td class="sum-val">Rp <?php echo e(number_format($grandTotal, 0, ',', '.')); ?></td>
                 </tr>
             </table>
         </div>

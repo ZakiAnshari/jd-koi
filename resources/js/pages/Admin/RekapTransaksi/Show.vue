@@ -38,6 +38,9 @@ type Koi = {
     shipping_batch: string | null
     shipping_note: string | null
     shipping_date: string | null
+    azukari_period: string | null
+    azukari_qty: number | null
+    azukari_price_jpy: number | null
     created_at: string
 }
 
@@ -320,6 +323,29 @@ const STATUS_CLASS: Record<string, string> = {
                             <div v-if="isAdmin" class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>
+                            </div>
+
+                            <!-- Azukari Info -->
+                            <div v-if="koi.azukari_qty || koi.azukari_period || koi.azukari_price_jpy"
+                                class="col-span-2 lg:col-span-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400 mb-2">Info Azukari</dt>
+                                <div class="grid grid-cols-3 gap-3 text-sm">
+                                    <div v-if="koi.azukari_period">
+                                        <p class="text-[11px] text-muted-foreground">Periode</p>
+                                        <p class="font-medium text-foreground">{{ koi.azukari_period }}</p>
+                                    </div>
+                                    <div v-if="koi.azukari_qty">
+                                        <p class="text-[11px] text-muted-foreground">Qty Azukari</p>
+                                        <p class="font-medium text-foreground">{{ koi.azukari_qty }} ekor</p>
+                                    </div>
+                                    <div v-if="koi.azukari_price_jpy">
+                                        <p class="text-[11px] text-muted-foreground">Harga Azukari (JPY)</p>
+                                        <p class="font-medium text-foreground">¥{{ Number(koi.azukari_price_jpy).toLocaleString('ja-JP') }}</p>
+                                        <p v-if="koi.kurs" class="text-[11px] text-green-600 dark:text-green-400">
+                                            ≈ {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(koi.azukari_price_jpy) * Number(koi.kurs)) }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Profit — admin only -->

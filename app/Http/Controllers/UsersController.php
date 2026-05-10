@@ -107,6 +107,31 @@ class UsersController extends Controller
         return to_route('admin.hak-akses.admin');
     }
 
+    public function updateCustomer(\Illuminate\Http\Request $request, User $user): RedirectResponse
+    {
+        $rules = [
+            'name'       => ['required', 'string', 'max:255'],
+            'email'      => ['required', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->ignore($user->id)],
+            'no_telepon' => ['nullable', 'string', 'max:20'],
+            'alamat'     => ['nullable', 'string', 'max:500'],
+        ];
+
+        if ($request->filled('password')) {
+            $rules['password'] = ['string', 'min:8', 'confirmed'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if (!$request->filled('password')) {
+            unset($validated['password']);
+        }
+
+        $user->fill($validated)->save();
+        ActivityLog::log('update', "Mengubah data Customer \"{$user->name}\" (ID: {$user->id})", 'users');
+
+        return to_route('admin.hak-akses.customer');
+    }
+
     public function showCustomer(User $user): Response
     {
         return Inertia::render('Users/CustomerShow', [

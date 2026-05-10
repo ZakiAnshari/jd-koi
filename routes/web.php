@@ -110,6 +110,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])->group(function () {
         Route::post('hak-akses/customer', [UsersController::class, 'storeCustomer'])->name('hak-akses.customer.store');
         Route::get('hak-akses/customer/export/excel', [UsersController::class, 'exportCustomerExcel'])->name('hak-akses.customer.export-excel');
         Route::get('hak-akses/customer/{user}', [UsersController::class, 'showCustomer'])->name('hak-akses.customer.show');
+        Route::put('hak-akses/customer/{user}', [UsersController::class, 'updateCustomer'])->name('hak-akses.customer.update');
     });
 });
 

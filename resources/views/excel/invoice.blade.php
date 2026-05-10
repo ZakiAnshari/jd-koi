@@ -98,18 +98,63 @@
         {{-- Price IDR --}}
         <td style="background-color:{{ $bg }}; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; padding:6px;">
             @if($unitIdr > 0)
-                {{ number_format($unitIdr, 0, ',', '.') }}
+                IDR {{ number_format($unitIdr, 0, ',', '.') }}
                 @if($fee > 0)<br/><span style="font-size:8pt;color:#888;">{{ number_format($fee / $qty, 0, ',', '.') }}</span>@endif
             @else –@endif
         </td>
         {{-- Total --}}
         <td style="background-color:{{ $bg }}; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; font-weight:bold; padding:6px;">
             @if($totalIdr > 0)
-                {{ number_format($totalIdr, 0, ',', '.') }}
+                IDR {{ number_format($totalIdr, 0, ',', '.') }}
                 @if($fee > 0)<br/><span style="font-size:8pt;color:#888;">{{ number_format($fee, 0, ',', '.') }}</span>@endif
             @else –@endif
         </td>
     </tr>
+    @php
+        $hasAzukari = $koi->azukari_period || $koi->azukari_qty || $koi->azukari_price_jpy;
+    @endphp
+    @if($hasAzukari)
+        @php
+            $azuQty = intval($koi->azukari_qty ?? 0);
+            $azuJpy = floatval($koi->azukari_price_jpy ?? 0);
+            $azuKurs = floatval($koi->kurs ?? 0);
+            $azuIdr = $azuKurs > 0 && $azuJpy > 0 ? round($azuJpy * $azuKurs) : 0;
+            $azuTotal = $azuQty > 0 && $azuIdr > 0 ? $azuIdr * $azuQty : 0;
+        @endphp
+    <tr>
+        {{-- No --}}
+        <td style="background-color:#d4edda; text-align:center; vertical-align:middle; border:1px solid #ddd; font-size:10pt; color:#666;"></td>
+        {{-- Item Description (Azukari) --}}
+        <td style="background-color:#d4edda; vertical-align:top; border:1px solid #ddd; padding:6px;" colspan="2">
+            <span style="font-weight:bold; font-size:10pt; color:#155724;">Azukari</span>
+            @if($koi->azukari_period)
+                <br/><span style="font-size:9pt; color:#155724;">{{ $koi->azukari_period }}</span>
+            @endif
+        </td>
+        {{-- Qty --}}
+        <td style="background-color:#d4edda; text-align:center; vertical-align:middle; border:1px solid #ddd; font-size:10pt; color:#155724;">{{ $azuQty > 0 ? $azuQty : '-' }}</td>
+        {{-- Shipping --}}
+        <td style="background-color:#d4edda; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; padding:6px; color:#ccc;">-</td>
+        {{-- Price JPY --}}
+        <td style="background-color:#d4edda; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; padding:6px;">
+            @if($azuJpy > 0)
+                ¥{{ number_format($azuJpy) }}
+            @else –@endif
+        </td>
+        {{-- Price IDR --}}
+        <td style="background-color:#d4edda; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; padding:6px;">
+            @if($azuIdr > 0)
+                IDR {{ number_format($azuIdr, 0, ',', '.') }}
+            @else –@endif
+        </td>
+        {{-- Total --}}
+        <td style="background-color:#d4edda; text-align:right; vertical-align:top; border:1px solid #ddd; font-size:10pt; font-weight:bold; padding:6px; color:#155724;">
+            @if($azuTotal > 0)
+                IDR {{ number_format($azuTotal, 0, ',', '.') }}
+            @else –@endif
+        </td>
+    </tr>
+    @endif
     @endforeach
     {{-- ── Spacer ── --}}
     <tr><td colspan="8"></td></tr>

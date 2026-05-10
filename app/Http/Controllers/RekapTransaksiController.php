@@ -151,7 +151,12 @@ class RekapTransaksiController extends Controller
         ->setOption('margin-bottom', 20)
         ->setOption('margin-left', 20);
 
-        return $pdf->download('rekap-transaksi-' . now()->format('Ymd-His') . '.pdf');
+        $firstKoi     = $kois->first();
+        $customerName = $firstKoi->customer?->name ?? 'Pelanggan';
+        $invoiceNo    = $firstKoi->sale_invoice ?? now()->format('Ymd-His');
+        $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
+
+        return $pdf->download($safeFilename . ' - ' . $invoiceNo . '.pdf');
     }
 
     public function exportInvoicePdf(Request $request)
@@ -185,8 +190,7 @@ class RekapTransaksiController extends Controller
             if (!$k->shipping_cost || !$k->shipping_qty) return 0;
             return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
-        $grandTotal   += $totalShipping;
-
+        // Shipping ditampilkan per sub-row, tidak ditambah ke grand total
         $pdf = Pdf::loadView('pdf.invoice', [
             'kois'           => $kois,
             'invoiceNumber'  => $invoiceNumber,
@@ -202,7 +206,8 @@ class RekapTransaksiController extends Controller
           ->setOption('enable_php', true)
           ->setOption('dpi', 150);
 
-        return $pdf->download('invoice-' . $invoiceNumber . '.pdf');
+        $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
+        return $pdf->download($safeFilename . ' - ' . $invoiceNumber . '.pdf');
     }
 
     public function exportInvoiceExcel(Request $request)
@@ -230,13 +235,13 @@ class RekapTransaksiController extends Controller
             if (!$k->shipping_cost || !$k->shipping_qty) return 0;
             return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
-        $grandTotal   += $totalShipping;
+        // Shipping sudah ditampilkan per sub-row, tidak ditambah ke grand total Excel
 
         $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
 
         return Excel::download(
             new InvoiceExport($invoiceNumber, $kois, $customerName, (float) $grandTotal, (float) $totalFee, (float) $totalShipping, $isAdmin),
-            $safeFilename . '.xlsx'
+            $safeFilename . ' - ' . $invoiceNumber . '.xlsx'
         );
     }
 }

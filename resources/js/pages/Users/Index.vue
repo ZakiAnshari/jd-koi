@@ -160,6 +160,53 @@ const submit = () => {
 
 // ─── Modal + Form (Customer) ─────────────────────────────
 const showCustomerModal = ref(false)
+const showEditCustomerModal = ref(false)
+const editingCustomerId = ref<number | null>(null)
+
+const editCustomerForm = useForm({
+    name: '',
+    email: '',
+    no_telepon: '',
+    alamat: '',
+    password: '',
+    password_confirmation: '',
+})
+
+function openEditCustomer(user: User) {
+    editingCustomerId.value = user.id
+    editCustomerForm.name                = user.name
+    editCustomerForm.email               = user.email
+    editCustomerForm.no_telepon          = user.no_telepon ?? ''
+    editCustomerForm.alamat              = user.alamat ?? ''
+    editCustomerForm.password            = ''
+    editCustomerForm.password_confirmation = ''
+    showEditCustomerModal.value = true
+}
+
+const submitEditCustomer = () => {
+    editCustomerForm.put(`/admin/hak-akses/customer/${editingCustomerId.value}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            useSwal().fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data customer berhasil diubah.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+            showEditCustomerModal.value = false
+        },
+        onError: () => {
+            useSwal().fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Terjadi kesalahan saat menyimpan data.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+        },
+    })
+}
 
 const customerForm = useForm({
     name: '',
@@ -314,6 +361,59 @@ function confirmDelete(userId: number, userName: string) {
                     </Dialog>
                 </div>
 
+                <!-- Modal Edit Customer -->
+                <Dialog v-model:open="showEditCustomerModal">
+                    <DialogContent class="sm:max-w-[480px]">
+                        <DialogHeader>
+                            <DialogTitle>Edit Customer</DialogTitle>
+                            <DialogDescription>Ubah data akun customer.</DialogDescription>
+                        </DialogHeader>
+                        <form @submit.prevent="submitEditCustomer" class="space-y-3">
+                            <div class="grid gap-1.5">
+                                <Label>Nama Lengkap <span class="text-red-500">*</span></Label>
+                                <Input v-model="editCustomerForm.name" placeholder="Nama lengkap" />
+                                <InputError :message="editCustomerForm.errors.name" />
+                            </div>
+                            <div class="grid gap-1.5">
+                                <Label>Email <span class="text-red-500">*</span></Label>
+                                <Input v-model="editCustomerForm.email" type="email" placeholder="email@example.com" />
+                                <InputError :message="editCustomerForm.errors.email" />
+                            </div>
+                            <div class="grid gap-1.5">
+                                <Label>No. Telepon</Label>
+                                <Input v-model="editCustomerForm.no_telepon" placeholder="08xxxxxxxxxx" />
+                                <InputError :message="editCustomerForm.errors.no_telepon" />
+                            </div>
+                            <div class="grid gap-1.5">
+                                <Label>Alamat</Label>
+                                <textarea
+                                    v-model="editCustomerForm.alamat"
+                                    rows="2"
+                                    placeholder="Alamat lengkap..."
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
+                                <InputError :message="editCustomerForm.errors.alamat" />
+                            </div>
+                            <div class="grid gap-1.5">
+                                <Label>Password Baru <span class="font-normal text-muted-foreground">(kosongkan jika tidak diubah)</span></Label>
+                                <Input v-model="editCustomerForm.password" type="password" placeholder="Min. 8 karakter" />
+                                <InputError :message="editCustomerForm.errors.password" />
+                            </div>
+                            <div class="grid gap-1.5">
+                                <Label>Konfirmasi Password</Label>
+                                <Input v-model="editCustomerForm.password_confirmation" type="password" placeholder="Ulangi password baru" />
+                                <InputError :message="editCustomerForm.errors.password_confirmation" />
+                            </div>
+                            <DialogFooter class="pt-2">
+                                <Button type="button" variant="outline" @click="showEditCustomerModal = false">Batal</Button>
+                                <Button type="submit" :disabled="editCustomerForm.processing">
+                                    {{ editCustomerForm.processing ? 'Menyimpan...' : 'Simpan' }}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
                 <!-- Tombol New User (Admin) -->
                 <Dialog v-if="activeRole !== 'customer'" v-model:open="showModal">
                     <DialogTrigger as-child>
@@ -434,13 +534,19 @@ function confirmDelete(userId: number, userName: string) {
                                             title="Detail">
                                             <Eye :size="16" />
                                         </Link>
-                                        <!-- Tombol Edit disembunyikan di halaman customer, tetap tampil di halaman admin -->
-                                        <Link v-if="activeRole !== 'customer'"
+                                        <!-- Tombol Edit admin → halaman edit, customer → modal inline -->
+                                        <Link v-if="activeRole === 'admin'"
                                             :href="`/admin/hak-akses/admin/${user.id}/edit`"
                                             class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
                                             title="Edit">
                                             <Pencil :size="16" />
                                         </Link>
+                                        <button v-if="activeRole === 'customer'" type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Edit"
+                                            @click="openEditCustomer(user)">
+                                            <Pencil :size="16" />
+                                        </button>
                                         <button type="button"
                                             class="inline-flex items-center justify-center rounded-md border border-red-300 bg-red-50 p-2 text-red-700 shadow-sm hover:bg-red-100 dark:border-red-700 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
                                             title="Hapus"

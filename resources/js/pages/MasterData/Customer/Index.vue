@@ -46,8 +46,16 @@ const sortOrder = ref<'asc' | 'desc'>('desc')
 const currentPage = ref(1)
 const perPage = ref(10)
 const showModal = ref(false)
+const showEditModal = ref(false)
+const editingCustomer = ref<Customer | null>(null)
 
 const form = useForm({
+    name: '',
+    phone: '',
+    address: '',
+})
+
+const editForm = useForm({
     name: '',
     phone: '',
     address: '',
@@ -111,6 +119,45 @@ function toggleSort(key: keyof Customer) {
 function sortIcon(key: keyof Customer) {
     if (sortKey.value !== key) return '↕'
     return sortOrder.value === 'asc' ? '↑' : '↓'
+}
+
+function openEditModal(customer: Customer) {
+    editingCustomer.value = customer
+    editForm.name = customer.name
+    editForm.phone = customer.phone ?? ''
+    editForm.address = customer.address ?? ''
+    showEditModal.value = true
+}
+
+function submitEdit() {
+    const swal = useSwal()
+    if (!editingCustomer.value) return
+    
+    editForm.put(`/master-data/customer/${editingCustomer.value.id}`, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Customer berhasil diperbarui.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+            editForm.reset()
+            editingCustomer.value = null
+            showEditModal.value = false
+        },
+        onError: () => {
+            swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Terjadi kesalahan saat memperbarui data.',
+                timer: 3000,
+                showConfirmButton: false,
+            })
+        },
+    })
 }
 
 const submit = () => {
@@ -223,6 +270,37 @@ function confirmDelete(customerId: number, customerName: string) {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <!-- Edit Modal -->
+                <Dialog v-model:open="showEditModal">
+                    <DialogContent class="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Edit Customer</DialogTitle>
+                            <DialogDescription>Perbarui data customer.</DialogDescription>
+                        </DialogHeader>
+                        <form @submit.prevent="submitEdit" class="space-y-4">
+                            <div class="grid gap-2">
+                                <Label for="edit-name">Nama</Label>
+                                <Input id="edit-name" v-model="editForm.name" placeholder="Nama customer" />
+                                <InputError :message="editForm.errors.name" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="edit-phone">Telepon</Label>
+                                <Input id="edit-phone" type="number" v-model="editForm.phone" placeholder="Nomor telepon" />
+                                <InputError :message="editForm.errors.phone" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="edit-address">Alamat</Label>
+                                <textarea id="edit-address" v-model="editForm.address" placeholder="Alamat customer"
+                                    class="min-h-[120px] w-full rounded-md border px-3 py-2" />
+                                <InputError :message="editForm.errors.address" />
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" :disabled="editForm.processing">Simpan Perubahan</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div class="overflow-hidden rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
@@ -285,9 +363,9 @@ function confirmDelete(customerId: number, customerName: string) {
                                     <Link :href="`/master-data/customer/${customer.id}`"
                                         class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">
                                         Lihat</Link>
-                                    <Link :href="`/master-data/customer/${customer.id}/edit`"
-                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted">
-                                        Edit</Link>
+                                    <button type="button"
+                                        class="mr-2 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                                        @click="openEditModal(customer)">Edit</button>
                                     <button type="button"
                                         class="rounded-md border border-red-500 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-500/20"
                                         @click="confirmDelete(customer.id, customer.name)">Hapus</button>

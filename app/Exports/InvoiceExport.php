@@ -19,7 +19,6 @@ class InvoiceExport implements WithTitle, WithEvents
     private \Illuminate\Support\Collection $kois;
     private string $customerName;
     private float $grandTotal;
-    private float $totalFee;
     private bool $isAdmin;
 
     // A=margin, B=No, C=Foto, D=Nama Ikan, E=Kode/Tgl, F=Qty, G=JPY, H=IDR, I=Total
@@ -39,13 +38,12 @@ class InvoiceExport implements WithTitle, WithEvents
     private const IMG_PX     = 90;
     private const ROW_HEIGHT = 68; // pt ≈ 90px
 
-    public function __construct(string $invoiceNumber, \Illuminate\Support\Collection $kois, string $customerName, float $grandTotal, float $totalFee, float $totalShipping = 0, bool $isAdmin = true)
+    public function __construct(string $invoiceNumber, \Illuminate\Support\Collection $kois, string $customerName, float $grandTotal, float $totalFee = 0, float $totalShipping = 0, bool $isAdmin = true)
     {
         $this->invoiceNumber = $invoiceNumber;
         $this->kois          = $kois;
         $this->customerName  = $customerName;
         $this->grandTotal    = $grandTotal;
-        $this->totalFee      = $totalFee;
         $this->isAdmin       = $isAdmin;
     }
 
@@ -287,16 +285,18 @@ class InvoiceExport implements WithTitle, WithEvents
 
             // ── Sub-row: Azukari ──────────────────────────────
             if ($hasAzukari) {
-                $azuQty   = $koi->azukari_qty ?? '-';
-                $azuJpy   = $koi->azukari_price_jpy ? '¥' . number_format((float) $koi->azukari_price_jpy, 0) : '-';
-                $azuLabel = 'Azukari' . ($koi->azukari_period ? ' · ' . $koi->azukari_period : '');
+                $azuQty      = $koi->azukari_qty ? intval($koi->azukari_qty) : null;
+                $azuJpy      = $koi->azukari_price_jpy ? floatval($koi->azukari_price_jpy) : null;
+                $azuIdrPerEkor = ($azuJpy && $kurs > 0) ? round($azuJpy * $kurs) : null;
+                $azuTotalIdr   = ($azuIdrPerEkor && $azuQty) ? $azuIdrPerEkor * $azuQty : null;
+                $azuLabel    = 'Azukari' . ($koi->azukari_period ? ' · ' . $koi->azukari_period : '');
 
                 $ws->getRowDimension($row)->setRowHeight(16);
                 $ws->setCellValue('D' . $row, $azuLabel);
-                $ws->setCellValue('F' . $row, $azuQty);
-                $ws->setCellValue('G' . $row, $azuJpy);
-                $ws->setCellValue('H' . $row, '-');
-                $ws->setCellValue('I' . $row, '-');
+                $ws->setCellValue('F' . $row, $azuQty ?? '-');
+                $ws->setCellValue('G' . $row, $azuJpy ? '¥' . number_format($azuJpy, 0) : '-');
+                $ws->setCellValue('H' . $row, $azuIdrPerEkor ? 'Rp ' . number_format($azuIdrPerEkor, 0, ',', '.') . '/ekor' : '-');
+                $ws->setCellValue('I' . $row, $azuTotalIdr ? 'Rp ' . number_format($azuTotalIdr, 0, ',', '.') : '–');
 
                 $this->style($ws, 'B' . $row . ':I' . $row, [
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F0FDF4']],
@@ -308,6 +308,9 @@ class InvoiceExport implements WithTitle, WithEvents
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
                 $this->style($ws, 'G' . $row, [
+                    'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => '166534']],
+                ]);
+                $this->style($ws, 'I' . $row, [
                     'font' => ['bold' => true, 'italic' => false, 'size' => 9, 'color' => ['rgb' => '166534']],
                 ]);
 

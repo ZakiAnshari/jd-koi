@@ -327,19 +327,29 @@
             $hasAzukari = $koi->azukari_period || $koi->azukari_qty || $koi->azukari_price_jpy;
         @endphp
         @if($hasAzukari)
+        @php
+            $azuQty = intval($koi->azukari_qty ?? 0);
+            $azuJpy = floatval($koi->azukari_price_jpy ?? 0);
+            $azuIdr = $kurs > 0 && $azuJpy > 0 ? round($azuJpy * $kurs) : 0;
+            $azuTotal = $azuIdr * $azuQty;
+        @endphp
         <tr style="background:#f0fdf4;">
             <td class="td-no"></td>
             <td style="padding:4px 6px; font-size:8px; color:#166534; font-style:italic;">
                 Azukari{{ $koi->azukari_period ? ' · ' . $koi->azukari_period : '' }}
             </td>
             <td class="td-qty" style="font-size:8px; color:#166534; font-style:italic;">
-                {{ $koi->azukari_qty ?? '-' }}
+                {{ $azuQty > 0 ? $azuQty : '-' }}
             </td>
             <td class="td-jpy" style="font-size:8px; color:#166534; font-style:italic; text-align:right;">
-                @if($koi->azukari_price_jpy) ¥{{ number_format($koi->azukari_price_jpy) }} @else – @endif
+                @if($azuJpy > 0) ¥{{ number_format($azuJpy) }} @else – @endif
             </td>
-            <td class="td-idr" style="font-size:8px; color:#aaa;">–</td>
-            <td class="td-total" style="font-size:8px; color:#aaa;">–</td>
+            <td class="td-idr" style="font-size:8px; color:#166534; font-style:italic; text-align:right;">
+                @if($azuIdr > 0) IDR {{ number_format($azuIdr, 0, ',', '.') }} @else – @endif
+            </td>
+            <td class="td-total" style="font-size:8px; color:#166534; font-weight:bold; text-align:right;">
+                @if($azuTotal > 0) IDR {{ number_format($azuTotal, 0, ',', '.') }} @else – @endif
+            </td>
         </tr>
         @endif
         @endforeach
@@ -354,15 +364,19 @@
                 <div class="pay-title">Payment info:</div>
                 <div class="pay-row">
                     <div class="pay-key">Name</div>
-                    <div class="pay-val">: {{ $paymentName ?? '-' }}</div>
+                    <div class="pay-val">: Kurniadi Prakasa Pieth</div>
                 </div>
                 <div class="pay-row">
                     <div class="pay-key">Account</div>
-                    <div class="pay-val">: {{ $paymentBank ?? '-' }}</div>
+                    <div class="pay-val">: BCA 2533 2222 34</div>
                 </div>
                 <div class="pay-row">
-                    <div class="pay-key">No. Rek</div>
-                    <div class="pay-val">: {{ $paymentAccount ?? '-' }}</div>
+                    <div class="pay-key"></div>
+                    <div class="pay-val">: Mandiri 16500 999 48789</div>
+                </div>
+                <div class="pay-row">
+                    <div class="pay-key"></div>
+                    <div class="pay-val">: Panin 151213 7001</div>
                 </div>
             </div>
         </div>
@@ -382,8 +396,8 @@
                 </tr>
                 @endif --}}
                 <tr class="sum-grand">
-                    <td class="sum-label">Total</td>
-                    <td class="sum-val">IDR {{ number_format($grandTotal, 0, ',', '.') }}</td>
+                    <td class="sum-label">TOTAL</td>
+                    <td class="sum-val">Rp {{ number_format($grandTotal, 0, ',', '.') }}</td>
                 </tr>
             </table>
         </div>
