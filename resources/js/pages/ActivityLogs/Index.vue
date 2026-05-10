@@ -44,6 +44,7 @@ const initialFilters = page.props.filters as {
     user_id: string
     from: string
     to: string
+    per_page: string
 }
 
 const moduleFilter = ref(initialFilters.module || 'all')
@@ -51,13 +52,23 @@ const actionFilter = ref(initialFilters.action || 'all')
 const userFilter = ref(initialFilters.user_id || 'all')
 const fromDate = ref(initialFilters.from || '')
 const toDate = ref(initialFilters.to || '')
+const perPage = ref(initialFilters.per_page || '25')
+
+const perPageOptions = [
+    { value: '5',   label: '5' },
+    { value: '10',  label: '10' },
+    { value: '25',  label: '25' },
+    { value: '50',  label: '50' },
+    { value: '100', label: '100' },
+]
 
 const filters = computed(() => ({
-    module: moduleFilter.value,
-    action: actionFilter.value,
-    user_id: userFilter.value,
-    from: fromDate.value,
-    to: toDate.value,
+    module:   moduleFilter.value,
+    action:   actionFilter.value,
+    user_id:  userFilter.value,
+    from:     fromDate.value,
+    to:       toDate.value,
+    per_page: perPage.value,
 }))
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -260,14 +271,14 @@ function goTo(url: string | null) { if (url) router.visit(url, { preserveState: 
                 </div>
 
                 <div class="mt-4 flex flex-wrap items-center gap-2">
-                    <Button @click.prevent="router.get('/log-aktivitas', { module: filters.module, action: filters.action, user_id: filters.user_id, from: filters.from, to: filters.to }, { preserveState: true, preserveScroll: true })">Filter</Button>
-                    <Button variant="outline" @click.prevent="router.get('/log-aktivitas', { module: 'all', action: 'all', user_id: 'all', from: '', to: '' }, { preserveState: true, preserveScroll: true })">Reset</Button>
+                    <Button @click.prevent="router.get('/log-aktivitas', filters, { preserveState: true, preserveScroll: true })">Filter</Button>
+                    <Button variant="outline" @click.prevent="() => { moduleFilter='all'; actionFilter='all'; userFilter='all'; fromDate=''; toDate=''; perPage='25'; router.get('/log-aktivitas', { module:'all', action:'all', user_id:'all', from:'', to:'', per_page:'25' }, { preserveState: true, preserveScroll: true }) }">Reset</Button>
                 </div>
             </div>
 
             <!-- DataTable -->
             <div class="overflow-hidden rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
-                <!-- Toolbar: Search -->
+                <!-- Toolbar: Search + Per Page -->
                 <div class="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <Input
                         :model-value="search"
@@ -275,6 +286,17 @@ function goTo(url: string | null) { if (url) router.visit(url, { preserveState: 
                         placeholder="Cari user, modul, aksi, atau deskripsi..."
                         class="max-w-sm"
                     />
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Show</span>
+                        <select
+                            v-model="perPage"
+                            class="rounded-md border border-input bg-background px-2 py-1 text-sm"
+                            @change="router.get('/log-aktivitas', filters, { preserveState: true, preserveScroll: true })"
+                        >
+                            <option v-for="opt in perPageOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        </select>
+                        <span>entries</span>
+                    </div>
                 </div>
 
                 <!-- Table -->

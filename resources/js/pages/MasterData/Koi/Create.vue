@@ -376,27 +376,27 @@ function submit() {
                         </div>
 
                         <!-- Data Fisik -->
-                        <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
-                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                                <div class="grid gap-2">
-                                    <Label for="age" class="text-xs">Year (Tahun)</Label>
-                                    <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" />
+                        <div class="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Data Fisik</h3>
+                            <div class="grid grid-cols-4 gap-2">
+                                <div class="grid gap-1">
+                                    <Label for="age" class="text-xs text-muted-foreground">Year (Tahun)</Label>
+                                    <Input id="age" v-model="form.age" type="number" min="0" placeholder="0" class="h-8 text-xs" />
                                     <InputError :message="form.errors.age" />
                                 </div>
-                                <div class="grid gap-2">
-                                    <Label for="size" class="text-xs">Size (cm)</Label>
-                                    <Input id="size" v-model="form.size" type="number" min="0" step="0.01" placeholder="0.00" />
+                                <div class="grid gap-1">
+                                    <Label for="size" class="text-xs text-muted-foreground">Size (cm)</Label>
+                                    <Input id="size" v-model="form.size" type="number" min="0" step="0.01" placeholder="0.00" class="h-8 text-xs" />
                                     <InputError :message="form.errors.size" />
                                 </div>
-                                <div class="grid gap-2">
-                                    <Label for="box_qty" class="text-xs">Box QTY</Label>
-                                    <Input id="box_qty" v-model="form.box_qty" type="number" min="0" placeholder="0" />
+                                <div class="grid gap-1">
+                                    <Label for="box_qty" class="text-xs text-muted-foreground">Box QTY</Label>
+                                    <Input id="box_qty" v-model="form.box_qty" type="number" min="0" placeholder="0" class="h-8 text-xs" />
                                     <InputError :message="form.errors.box_qty" />
                                 </div>
-                                <div class="grid gap-2">
-                                    <Label for="weight" class="text-xs">Weight (kg)</Label>
-                                    <Input id="weight" v-model="form.weight" type="number" min="0" step="0.001" placeholder="0.000" />
+                                <div class="grid gap-1">
+                                    <Label for="weight" class="text-xs text-muted-foreground">Weight (kg)</Label>
+                                    <Input id="weight" v-model="form.weight" type="number" min="0" step="0.001" placeholder="0.000" class="h-8 text-xs" />
                                     <InputError :message="form.errors.weight" />
                                 </div>
                             </div>
@@ -700,7 +700,7 @@ function submit() {
                                         </Label>
                                         <Input v-model="form.sale_qty" type="number" min="1" :max="modalQty || undefined" placeholder="0" class="h-9 text-sm" />
                                         <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
-                                        <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
+                                        <!-- <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p> -->
                                         <InputError :message="form.errors.sale_qty" />
                                     </div>
                                 </div>

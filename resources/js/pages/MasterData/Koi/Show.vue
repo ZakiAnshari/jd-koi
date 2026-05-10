@@ -54,6 +54,9 @@ type Koi = {
     shipping_qty: number | null
     shipping_batch: string | null
     shipping_note: string | null
+    azukari_period: string | null
+    azukari_qty: number | null
+    azukari_price_jpy: number | null
     created_at: string
 }
 
@@ -127,6 +130,16 @@ const shippingKena = computed(() => {
     const p = shippingPerEkor.value || 0
     const q = Number(props.koi.sale_qty) || 1
     return p > 0 ? Math.round(p * q) : null
+})
+const azukariIdrPerEkor = computed(() => {
+    const jpy = Number(props.koi.azukari_price_jpy) || 0
+    const k   = Number(props.koi.kurs) || 0
+    return jpy > 0 && k > 0 ? Math.round(jpy * k) : null
+})
+const azukariTotalIdr = computed(() => {
+    const perEkor = azukariIdrPerEkor.value || 0
+    const qty     = Number(props.koi.azukari_qty) || 0
+    return perEkor > 0 && qty > 0 ? perEkor * qty : null
 })
 
 const STATUS_LABEL: Record<string, string> = {
@@ -211,19 +224,18 @@ function submitEdit() {
                 <div class="flex flex-col gap-6 lg:col-span-1">
 
                 <!-- Foto Koi -->
-                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6">
-                    <h2 class="mb-5 text-base font-semibold">Foto Koi</h2>
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-4">
+                    <h2 class="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Foto Koi</h2>
 
                     <div v-if="images.length === 0"
-                        class="flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/40 py-16 text-muted-foreground">
-                        <ImageOff class="h-10 w-10 opacity-40" />
-                        <p class="text-sm">Belum ada foto untuk koi ini.</p>
-                        <p class="text-xs opacity-70">Upload foto melalui menu Edit Data Koi</p>
+                        class="flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/40 py-10 text-muted-foreground">
+                        <ImageOff class="h-8 w-8 opacity-40" />
+                        <p class="text-xs">Belum ada foto</p>
                     </div>
 
                     <div v-else>
                         <div class="relative overflow-hidden rounded-lg bg-muted">
-                            <div class="h-78 w-full">
+                            <div class="h-52 w-full">
                                 <button type="button" @click="openLightbox(current)" class="block h-full w-full">
                                     <img :src="images[current].url" :alt="`Foto koi ${koi.name} ${current + 1}`"
                                         class="h-full w-full object-cover transition-opacity duration-200" />
@@ -231,33 +243,28 @@ function submitEdit() {
                             </div>
                             <template v-if="images.length > 1">
                                 <button @click="prev"
-                                    class="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
-                                    <ChevronLeft class="h-5 w-5" />
+                                    class="absolute left-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
+                                    <ChevronLeft class="h-4 w-4" />
                                 </button>
                                 <button @click="next"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
-                                    <ChevronRight class="h-5 w-5" />
+                                    class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70 transition-colors">
+                                    <ChevronRight class="h-4 w-4" />
                                 </button>
-                                <div class="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                                <div class="absolute bottom-1.5 right-2 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
                                     {{ current + 1 }} / {{ images.length }}
                                 </div>
                             </template>
                         </div>
 
-                        <div v-if="images.length > 1" class="mt-3 flex items-center justify-center gap-1.5">
-                            <button v-for="(_, i) in images" :key="i" @click="current = i"
-                                :class="['h-2 rounded-full transition-all duration-200', i === current ? 'w-5 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60']" />
-                        </div>
-
-                        <div v-if="images.length > 1" class="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        <div v-if="images.length > 1" class="mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
                             <button v-for="(img, i) in images" :key="img.id" @click="current = i"
-                                :class="['flex-shrink-0 h-10 w-10 overflow-hidden rounded-md border-2 transition-all', i === current ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-90']">
+                                :class="['flex-shrink-0 h-9 w-9 overflow-hidden rounded border-2 transition-all', i === current ? 'border-primary opacity-100' : 'border-transparent opacity-50 hover:opacity-80']">
                                 <img :src="img.url" class="h-full w-full object-cover" />
                             </button>
                         </div>
 
-                        <p class="mt-2 text-xs text-muted-foreground">
-                            {{ images.length }} foto tersedia · klik foto untuk perbesar
+                        <p class="mt-1.5 text-[11px] text-muted-foreground">
+                            {{ images.length }} foto · klik untuk perbesar
                         </p>
                     </div>
                 </div>
@@ -366,7 +373,27 @@ function submitEdit() {
                                     <span v-if="koi.shipping_note"> · {{ koi.shipping_note }}</span>
                                 </dd>
                             </div>
-
+                            <!-- Info Azukari -->
+                            <div v-if="koi.azukari_qty || koi.azukari_price_jpy || koi.azukari_period"
+                                class="col-span-2 lg:col-span-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 p-3">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400 mb-2">Info Azukari</dt>
+                                <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                                    <div v-if="koi.azukari_period">
+                                        <p class="text-[11px] text-muted-foreground">Periode</p>
+                                        <p class="font-medium text-foreground">{{ koi.azukari_period }}</p>
+                                    </div>
+                                    <div v-if="koi.azukari_qty">
+                                        <p class="text-[11px] text-muted-foreground">Qty Azukari</p>
+                                        <p class="font-medium text-foreground">{{ koi.azukari_qty }} ekor</p>
+                                    </div>
+                                    <div v-if="koi.azukari_price_jpy">
+                                        <p class="text-[11px] text-muted-foreground">Harga Azukari</p>
+                                        <p class="font-medium text-foreground">¥{{ Number(koi.azukari_price_jpy).toLocaleString('ja-JP') }}</p>
+                                        <p v-if="azukariIdrPerEkor" class="text-[11px] text-green-600 dark:text-green-400">≈ {{ fmtIDR(azukariIdrPerEkor) }}/ekor</p>
+                                        <p v-if="azukariTotalIdr" class="text-[11px] font-semibold text-green-700 dark:text-green-300">Total: {{ fmtIDR(azukariTotalIdr) }}</p>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="rounded-lg border border-border p-3">
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee</dt>
                                 <dd class="mt-1 font-medium text-foreground">{{ fmtIDR(koi.fee) }}</dd>

@@ -703,7 +703,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 <InputError :message="form.errors.weight" />
                                             </div>
                                             <div class="grid gap-1">
-                                                <Label class="text-[11px] text-muted-foreground">Total Weight (kg) <span class="opacity-60">auto</span></Label>
+                                                <Label class="text-[11px] text-muted-foreground flex items-center gap-1">Total Wt. (kg) <span class="rounded bg-muted px-1 py-px text-[9px] opacity-60">auto</span></Label>
                                                 <div class="flex h-8 items-center rounded-md border border-border bg-muted/50 px-2 text-sm font-medium text-foreground">
                                                     {{ form.total_weight || '-' }}
                                                 </div>
@@ -1119,7 +1119,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                                 class="h-9 text-sm"
                                             />
                                             <p v-if="modalQty && Number(form.sale_qty) > Number(modalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ modalQty }})</p>
-                                            <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p>
+                                            <!-- <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ modalQty || '?' }} ekor</p> -->
                                             <InputError :message="form.errors.sale_qty" />
                                         </div>
                                     </div>
@@ -1444,7 +1444,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         <Input v-model="editForm.weight" type="number" min="0" step="0.001" placeholder="0" class="h-8 text-sm" />
                                     </div>
                                     <div class="grid gap-1">
-                                        <Label class="text-[11px] text-muted-foreground">Total Weight (kg) <span class="opacity-60">auto</span></Label>
+                                        <Label class="text-[11px] text-muted-foreground flex items-center gap-1">Total Wt. (kg) <span class="rounded bg-muted px-1 py-px text-[9px] opacity-60">auto</span></Label>
                                         <div class="flex h-8 items-center rounded-md border border-border bg-muted/50 px-2 text-sm font-medium text-foreground">
                                             {{ editForm.total_weight || '-' }}
                                         </div>
@@ -1839,7 +1839,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                         class="h-9 text-sm"
                                     />
                                     <p v-if="editModalQty && Number(editForm.sale_qty) > Number(editModalQty)" class="text-[10px] text-red-500">Melebihi qty modal ({{ editModalQty }})</p>
-                                    <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ editModalQty || '?' }} ekor</p>
+                                    <!-- <p v-else class="text-[10px] text-muted-foreground">Bisa 1–{{ editModalQty || '?' }} ekor</p> -->
                                     <InputError :message="editForm.errors.sale_qty" />
                                 </div>
                             </div>

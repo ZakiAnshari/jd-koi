@@ -22,7 +22,8 @@ class KoisController extends Controller
                 'sale_status', 'customer_id', 'created_at',
                 'sale_invoice', 'sale_tanggal', 'sale_shipped_date', 'sale_qty',
                 'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee',
-                'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_batch', 'shipping_date', 'azukari_period',
+                'shipping_cost', 'shipping_qty', 'shipping_note', 'shipping_batch', 'shipping_date',
+                'azukari_period', 'azukari_qty', 'azukari_price_jpy',
             ])
             ->with([
                 'breeder:id,name_breeder',

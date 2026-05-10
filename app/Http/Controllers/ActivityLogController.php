@@ -29,11 +29,12 @@ class ActivityLogController extends Controller
         $actions = ['create', 'update', 'delete', 'login', 'logout', 'export', 'import', 'print'];
 
         $filters = [
-            'module' => $request->query('module', 'all'),
-            'action' => $request->query('action', 'all'),
-            'user_id' => $request->query('user_id', 'all'),
-            'from' => $request->query('from', ''),
-            'to' => $request->query('to', ''),
+            'module'   => $request->query('module', 'all'),
+            'action'   => $request->query('action', 'all'),
+            'user_id'  => $request->query('user_id', 'all'),
+            'from'     => $request->query('from', ''),
+            'to'       => $request->query('to', ''),
+            'per_page' => $request->query('per_page', '25'),
         ];
 
         $query = ActivityLog::with('user')->orderByDesc('created_at');
@@ -58,7 +59,8 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $filters['to']);
         }
 
-        $activityLogs = $query->paginate(5)->withQueryString();
+        $perPage = in_array((int) $filters['per_page'], [5, 10, 25, 50, 100]) ? (int) $filters['per_page'] : 25;
+        $activityLogs = $query->paginate($perPage)->withQueryString();
 
         $users = User::select(['id', 'name'])->orderBy('name')->get();
 

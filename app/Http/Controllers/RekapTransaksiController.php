@@ -95,7 +95,7 @@ class RekapTransaksiController extends Controller
             $query->where('jenis_koi_id', $request->jenis_koi_id);
         }
 
-        $perPage   = in_array((int) $request->per_page, [25, 50, 100]) ? (int) $request->per_page : 50;
+        $perPage   = in_array((int) $request->per_page, [5, 10, 25, 50, 100]) ? (int) $request->per_page : 50;
         $kois      = $query->orderByDesc('sale_tanggal')->orderByDesc('id')->paginate($perPage)->withQueryString();
         $breeders  = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
         $customers = $isAdmin
