@@ -95,8 +95,15 @@ class RekapTransaksiController extends Controller
             $query->where('jenis_koi_id', $request->jenis_koi_id);
         }
 
-        $perPage   = in_array((int) $request->per_page, [5, 10, 25, 50, 100]) ? (int) $request->per_page : 50;
-        $kois      = $query->orderByDesc('sale_tanggal')->orderByDesc('id')->paginate($perPage)->withQueryString();
+        $allowedSorts = [
+            'sale_tanggal', 'sale_invoice', 'code', 'sale_status',
+            'sale_qty', 'unit_price', 'sell_idr',
+        ];
+        $sortBy  = in_array($request->sort_by, $allowedSorts) ? $request->sort_by : 'sale_tanggal';
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+
+        $perPage = in_array((int) $request->per_page, [5, 10, 25, 50, 100]) ? (int) $request->per_page : 50;
+        $kois    = $query->orderBy($sortBy, $sortDir)->orderByDesc('id')->paginate($perPage)->withQueryString();
         $breeders  = Breeder::select(['id', 'name_breeder'])->orderBy('name_breeder')->get();
         $customers = $isAdmin
             ? User::select(['id', 'name'])->where('role_id', 2)->orderBy('name')->get()
@@ -107,7 +114,7 @@ class RekapTransaksiController extends Controller
             'breeders'  => $breeders,
             'customers' => $customers,
             'isAdmin'   => $isAdmin,
-            'filters'   => $request->only(['status', 'code', 'invoice', 'date_from', 'date_to', 'breeder_id', 'customer_id', 'jenis_koi_id', 'per_page']),
+            'filters'   => $request->only(['status', 'code', 'invoice', 'date_from', 'date_to', 'breeder_id', 'customer_id', 'jenis_koi_id', 'per_page', 'sort_by', 'sort_dir']),
         ]);
     }
 

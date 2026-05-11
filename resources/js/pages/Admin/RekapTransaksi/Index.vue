@@ -81,6 +81,23 @@ const fDateTo   = ref(filters.date_to     ?? '')
 const fBreeder  = ref<string|null>(filters.breeder_id  ? filters.breeder_id  : null)
 const fCustomer = ref<string|null>(filters.customer_id ? filters.customer_id : null)
 const fPerPage  = ref(filters.per_page    ?? '50')
+const fSortBy   = ref(filters.sort_by    ?? 'sale_tanggal')
+const fSortDir  = ref(filters.sort_dir   ?? 'desc')
+
+function toggleSort(col: string) {
+    if (fSortBy.value === col) {
+        fSortDir.value = fSortDir.value === 'asc' ? 'desc' : 'asc'
+    } else {
+        fSortBy.value  = col
+        fSortDir.value = 'desc'
+    }
+    applyFilters()
+}
+
+function sortIcon(col: string) {
+    if (fSortBy.value !== col) return '↕'
+    return fSortDir.value === 'asc' ? '↑' : '↓'
+}
 
 // ─── Search filters ───────────────────────────────────────
 const statusSearch   = ref('')
@@ -152,8 +169,12 @@ function applyFilter() {
         breeder_id:  fBreeder.value   || undefined,
         customer_id: fCustomer.value  || undefined,
         per_page:    fPerPage.value   || undefined,
+        sort_by:     fSortBy.value    || undefined,
+        sort_dir:    fSortDir.value   || undefined,
     }, { preserveState: true, replace: true })
 }
+
+const applyFilters = applyFilter
 
 function resetFilter() {
     fStatus.value = null; fCode.value = ''; fInvoice.value = ''
@@ -507,21 +528,21 @@ function shippingGroupColor(koi: KoiRow): string {
                                     <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-4 h-4 rounded border-border" />
                                 </th>
                                 <th v-if="col('foto')"          class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
-                                <th v-if="col('invoice')"       class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</th>
-                                <th v-if="col('kuj_code')"      class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">KUJ CODE</th>
-                                <th v-if="col('sales_date')"    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Date</th>
-                                <th v-if="col('status')"        class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                                <th v-if="col('invoice')"       class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('sale_invoice')">Invoice <span class="ml-0.5 opacity-60">{{ sortIcon('sale_invoice') }}</span></th>
+                                <th v-if="col('kuj_code')"      class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('code')">KUJ CODE <span class="ml-0.5 opacity-60">{{ sortIcon('code') }}</span></th>
+                                <th v-if="col('sales_date')"    class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('sale_tanggal')">Sales Date <span class="ml-0.5 opacity-60">{{ sortIcon('sale_tanggal') }}</span></th>
+                                <th v-if="col('status')"        class="cursor-pointer select-none px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('sale_status')">Status <span class="ml-0.5 opacity-60">{{ sortIcon('sale_status') }}</span></th>
                                 <th v-if="col('shipping_date')"               class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Date</th>
                                 <th v-if="isAdmin && col('shipping_batch')"   class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Batch</th>
                                 <th v-if="isAdmin && col('shipping_note')"    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping Note</th>
-                                <th v-if="isAdmin && col('customer')"  class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
+                                <th v-if="isAdmin && col('customer')"         class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</th>
                                 <th v-if="col('breeder')"       class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
                                 <th v-if="col('description')"   class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</th>
                                 <th v-if="col('age')"           class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age</th>
                                 <th v-if="col('size')"          class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
-                                <th v-if="col('koi_qty')"       class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Koi QTY</th>
-                                <th v-if="col('unit_price')"    class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price (JPY)</th>
-                                <th v-if="col('sales_price')"   class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales Price (JPY)</th>
+                                <th v-if="col('koi_qty')"       class="cursor-pointer select-none px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('sale_qty')">Koi QTY <span class="ml-0.5 opacity-60">{{ sortIcon('sale_qty') }}</span></th>
+                                <th v-if="col('unit_price')"    class="cursor-pointer select-none px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('unit_price')">Unit Price (JPY) <span class="ml-0.5 opacity-60">{{ sortIcon('unit_price') }}</span></th>
+                                <th v-if="col('sales_price')"   class="cursor-pointer select-none px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="toggleSort('sell_idr')">Sales Price (JPY) <span class="ml-0.5 opacity-60">{{ sortIcon('sell_idr') }}</span></th>
                                 <th v-if="col('box_qty')"       class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Box QTY</th>
                                 <th v-if="col('weight')"        class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight (kg)</th>
                                 <th v-if="col('total_weight')"  class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Weight (kg)</th>
