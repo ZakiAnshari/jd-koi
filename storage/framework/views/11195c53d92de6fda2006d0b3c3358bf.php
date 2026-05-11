@@ -191,7 +191,7 @@
         </div>
         <div class="doc-header-right">
             <div style="font-size:10px; color:#555;">
-                Tanggal cetak: <strong><?php echo e(now()->format('d-m-Y H:i')); ?></strong><br>
+                Tanggal cetak: <strong><?php echo e(now()->setTimezone('Asia/Jakarta')->format('d-m-Y H:i')); ?></strong><br>
                 Oleh: <strong><?php echo e($user->name ?? 'Pengguna'); ?></strong>
             </div>
         </div>
@@ -276,7 +276,7 @@
                                 </tr>
                                 <tr>
                                     <td class="lbl">Umur</td>
-                                    <td class="val"><?php echo e($koi->age ? $koi->age . ' bulan' : '-'); ?></td>
+                                    <td class="val"><?php echo e($koi->age ? $koi->age . ' tahun' : '-'); ?></td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Ukuran</td>
@@ -386,8 +386,29 @@
                                         </td>
                                     </tr>
                                     <?php
-                                        $totalHarga = ($salesPriceIdr ?? 0) + ($shippingIdr ?? 0);
+                                        $azuJpy      = $koi->azukari_price_jpy ? (float) $koi->azukari_price_jpy : null;
+                                        $azuQty      = $koi->azukari_qty ? (int) $koi->azukari_qty : null;
+                                        $azuIdrPerEkor = ($azuJpy && $kursVal) ? round($azuJpy * $kursVal) : null;
+                                        $azuTotal    = ($azuIdrPerEkor && $azuQty) ? $azuIdrPerEkor * $azuQty : null;
+                                        $totalHarga  = ($salesPriceIdr ?? 0) + ($shippingIdr ?? 0);
                                     ?>
+                                    <tr>
+                                        <td class="lbl">Azukari</td>
+                                        <td class="val">
+                                            <?php if($azuJpy): ?>
+                                                ¥ <?php echo e(number_format($azuJpy, 0, ',', '.')); ?>
+
+                                                <?php if($koi->azukari_period): ?>
+                                                    <br><span style="font-size:9px; color:#888;"><?php echo e($koi->azukari_period); ?></span>
+                                                <?php endif; ?>
+                                                <?php if($azuTotal): ?>
+                                                    <br><span style="font-size:9px; color:#166534;">Total: Rp <?php echo e(number_format($azuTotal, 0, ',', '.')); ?></span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
                                     <tr style="border-top: 2px solid #c5d3f0;">
                                         <td class="lbl" style="font-weight:bold; color:#2255bb;">Total</td>
                                         <td class="val" style="font-weight:bold; color:#2255bb;">
@@ -411,7 +432,7 @@
 
     <!-- ── Footer ── -->
     <div class="doc-footer">
-        Koi Umeda Data Management System &nbsp;|&nbsp; Dicetak: <?php echo e(now()->format('d/m/Y H:i')); ?> &nbsp;|&nbsp; © <?php echo e(now()->year); ?>
+        Koi Umeda Data Management System &nbsp;|&nbsp; Dicetak: <?php echo e(now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i')); ?> &nbsp;|&nbsp; © <?php echo e(now()->year); ?>
 
     </div>
 
