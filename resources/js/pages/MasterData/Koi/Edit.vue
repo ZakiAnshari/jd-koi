@@ -29,6 +29,7 @@ type Koi = {
     jenis_koi_id: number | null
     code: string
     name: string
+    description: string | null
     age: number | null
     size: number | null
     box_qty: number | null
@@ -107,6 +108,7 @@ const form = useForm({
     jenis_koi_id: koi.jenis_koi_id ? String(koi.jenis_koi_id) : '',
     code:         koi.code,
     name:         koi.name,
+    description:  koi.description ?? '',
     age:          koi.age != null ? String(koi.age) : '',
     size:         koi.size != null ? String(koi.size) : '',
     box_qty:      koi.box_qty != null ? String(koi.box_qty) : '',
@@ -452,6 +454,19 @@ const submit = () => {
                                 <Input id="name" v-model="form.name" placeholder="Nama koi" />
                                 <InputError :message="form.errors.name" />
                             </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="grid gap-2">
+                            <Label for="description">Keterangan / Description</Label>
+                            <textarea
+                                id="description"
+                                v-model="form.description"
+                                rows="3"
+                                placeholder="Catatan atau keterangan tambahan..."
+                                class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            />
+                            <InputError :message="form.errors.description" />
                         </div>
 
                         <!-- Data Fisik -->

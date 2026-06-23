@@ -2,7 +2,7 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type { BreadcrumbItem } from '@/types'
-import { ChevronLeft, ChevronRight, ImageOff, Pencil, X } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Eye, ImageOff, Pencil, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,7 +67,17 @@ type BatchMate = {
     customer: { id: number; name: string } | null
 }
 
-const props = defineProps<{ koi: Koi; batchMates: BatchMate[] }>()
+type ActivityLog = {
+    id: number
+    user?: { id: number; name: string } | null
+    action: string
+    description: string | null
+    old_values?: Record<string, unknown> | null
+    new_values?: Record<string, unknown> | null
+    created_at: string
+}
+
+const props = defineProps<{ koi: Koi; batchMates: BatchMate[]; activityLogs: ActivityLog[] }>()
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Master Data', href: '#' },
@@ -176,6 +186,51 @@ const editForm = useForm({
     kurs: props.koi.kurs != null ? String(Math.round(Number(props.koi.kurs))) : '',
     fee: props.koi.fee != null ? String(Math.round(Number(props.koi.fee))) : '0',
 })
+
+// ─── Log Aktivitas ────────────────────────────────────────
+const selectedLog   = ref<ActivityLog | null>(null)
+const logDetailOpen = ref(false)
+
+function openLogDetail(log: ActivityLog) {
+    selectedLog.value   = log
+    logDetailOpen.value = true
+}
+
+const FIELD_LABELS: Record<string, string> = {
+    code: 'KOI Code', name: 'Nama', breeder_id: 'Breeder', jenis_koi_id: 'Jenis Koi',
+    age: 'Tahun', size: 'Ukuran (cm)', box_qty: 'Box QTY', weight: 'Berat (kg)',
+    total_weight: 'Total Berat (kg)', stock_price: 'Modal Price (JPY)',
+    unit_price: 'Unit Price (JPY)', kurs: 'Kurs (JPY→IDR)', fee: 'Fee (IDR)',
+    sell_idr: 'Sales Price (IDR)', sale_status: 'Status', sale_invoice: 'Invoice',
+    sale_tanggal: 'Sales Date', sale_qty: 'Koi QTY', shipping_date: 'Shipping Date',
+    shipping_cost: 'Biaya Shipping', shipping_qty: 'Shipping QTY',
+    shipping_batch: 'Shipping Batch', shipping_note: 'Catatan Shipping',
+    customer_id: 'Customer', azukari_period: 'Periode Azukari',
+    azukari_qty: 'QTY Azukari', azukari_price_jpy: 'Harga Azukari (JPY)',
+    description: 'Keterangan', sale_shipped_date: 'Shipped Date', buy_jpy: 'Buy JPY',
+}
+
+function fieldLabel(key: string) { return FIELD_LABELS[key] ?? key }
+
+function formatLogDate(value: string) {
+    return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(new Date(value))
+}
+
+function actionBadgeClass(action: string) {
+    const map: Record<string, string> = {
+        create: 'bg-emerald-100 text-emerald-700', update: 'bg-blue-100 text-blue-700',
+        delete: 'bg-red-100 text-red-700',
+    }
+    return map[action] ?? 'bg-muted text-foreground'
+}
+
+function formatVal(v: unknown) {
+    if (v === null || v === undefined || v === '') return '-'
+    return String(v)
+}
 
 function submitEdit() {
     editForm.put(`/master-data/koi/${props.koi.id}?_method=PUT`, {
@@ -460,7 +515,54 @@ function submitEdit() {
                                 }}
                             </dd>
                         </div>
+                        <div v-if="koi.description" class="col-span-2 lg:col-span-3 rounded-lg border border-border p-3">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Keterangan</dt>
+                            <dd class="mt-1 text-foreground whitespace-pre-wrap">{{ koi.description }}</dd>
+                        </div>
                     </dl>
+                </div>
+
+                <!-- Log Aktivitas — full width -->
+                <div class="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-3">
+                    <h2 class="mb-4 text-base font-semibold">Log Aktivitas</h2>
+
+                    <div v-if="activityLogs.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+                        Belum ada riwayat aktivitas untuk koi ini.
+                    </div>
+
+                    <div v-else class="overflow-x-auto rounded-lg border border-border">
+                        <table class="min-w-full divide-y divide-border text-sm">
+                            <thead class="bg-muted">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Waktu</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">User</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aksi</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deskripsi</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border bg-background">
+                                <tr v-for="log in activityLogs" :key="log.id" class="transition-colors hover:bg-muted/50">
+                                    <td class="whitespace-nowrap px-4 py-3 text-foreground">{{ formatLogDate(log.created_at) }}</td>
+                                    <td class="px-4 py-3 text-foreground">{{ log.user?.name ?? 'System' }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="actionBadgeClass(log.action) + ' inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold'">{{ log.action }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-foreground max-w-xs truncate">{{ log.description }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-background p-2 text-foreground shadow-sm hover:bg-muted"
+                                            title="Lihat Detail"
+                                            @click="openLogDetail(log)"
+                                        >
+                                            <Eye :size="15" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -495,6 +597,111 @@ function submitEdit() {
                 </button>
             </div>
         </Transition>
+
+        <!-- ══ Detail Log Aktivitas Modal ══ -->
+        <Dialog v-model:open="logDetailOpen">
+            <DialogContent class="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Detail Log Aktivitas</DialogTitle>
+                    <DialogDescription>Informasi lengkap aktivitas dan perubahan yang tercatat.</DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4 p-1">
+                    <div class="grid gap-4 sm:grid-cols-2 text-sm">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">User</p>
+                            <p class="text-foreground">{{ selectedLog?.user?.name ?? 'System' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Waktu</p>
+                            <p class="text-foreground">{{ selectedLog ? formatLogDate(selectedLog.created_at) : '-' }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Aksi</p>
+                            <span v-if="selectedLog" :class="actionBadgeClass(selectedLog.action) + ' inline-flex mt-1 rounded-full px-2.5 py-0.5 text-xs font-semibold'">{{ selectedLog.action }}</span>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Deskripsi</p>
+                            <p class="text-foreground">{{ selectedLog?.description }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Keterangan perubahan (update) -->
+                    <div v-if="selectedLog?.action === 'update' && selectedLog.old_values && selectedLog.new_values"
+                        class="rounded-xl border border-border bg-muted/50 p-4">
+                        <p class="mb-3 text-sm font-semibold text-foreground">Keterangan Perubahan</p>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-border text-sm">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Field</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sebelum</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sesudah</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border">
+                                    <tr v-for="key in Object.keys(selectedLog.old_values)" :key="key">
+                                        <td class="px-3 py-2 font-medium text-foreground">{{ fieldLabel(key) }}</td>
+                                        <td class="px-3 py-2 text-red-700 dark:text-red-400">{{ formatVal(selectedLog.old_values?.[key]) }}</td>
+                                        <td class="px-3 py-2 text-emerald-700 dark:text-emerald-400">{{ formatVal(selectedLog.new_values?.[key]) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Keterangan create -->
+                    <div v-else-if="selectedLog?.action === 'create' && selectedLog.new_values"
+                        class="rounded-xl border border-border bg-muted/50 p-4">
+                        <p class="mb-3 text-sm font-semibold text-foreground">Data yang Ditambahkan</p>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-border text-sm">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Field</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nilai</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border">
+                                    <tr v-for="(val, key) in selectedLog.new_values" :key="String(key)">
+                                        <td class="px-3 py-2 font-medium text-foreground">{{ fieldLabel(String(key)) }}</td>
+                                        <td class="px-3 py-2 text-foreground">{{ formatVal(val) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Keterangan delete -->
+                    <div v-else-if="selectedLog?.action === 'delete' && selectedLog.old_values"
+                        class="rounded-xl border border-border bg-muted/50 p-4">
+                        <p class="mb-3 text-sm font-semibold text-foreground">Data Sebelum Dihapus</p>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-border text-sm">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Field</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nilai</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border">
+                                    <tr v-for="(val, key) in selectedLog.old_values" :key="String(key)">
+                                        <td class="px-3 py-2 font-medium text-foreground">{{ fieldLabel(String(key)) }}</td>
+                                        <td class="px-3 py-2 text-red-700 dark:text-red-400">{{ formatVal(val) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-sm text-muted-foreground">
+                        Tidak ada detail perubahan yang tercatat untuk aktivitas ini.
+                    </div>
+                </div>
+                <div class="flex justify-end border-t border-border pt-4">
+                    <Button variant="outline" @click="logDetailOpen = false">Tutup</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
 
         <!-- ══ Edit Modal ══ -->
         <Dialog v-model:open="showEditModal">

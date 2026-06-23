@@ -18,7 +18,7 @@ class KoisController extends Controller
     public function index(): Response
     {
         $kois = Koi::select([
-                'id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'age', 'size', 'box_qty', 'weight', 'total_weight',
+                'id', 'breeder_id', 'jenis_koi_id', 'code', 'name', 'description', 'age', 'size', 'box_qty', 'weight', 'total_weight',
                 'sale_status', 'customer_id', 'created_at',
                 'sale_invoice', 'sale_tanggal', 'sale_shipped_date', 'sale_qty',
                 'unit_price', 'buy_jpy', 'kurs', 'sell_idr', 'stock_price', 'fee',
@@ -166,7 +166,11 @@ class KoisController extends Controller
             }
         }
 
-        ActivityLog::log('create', "Menambahkan data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
+        ActivityLog::log('create', "Menambahkan data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois', [
+            'subject_type' => Koi::class,
+            'subject_id'   => $koi->id,
+            'new_values'   => $koi->toArray(),
+        ]);
 
         return redirect()->route('kois.index');
     }
@@ -207,9 +211,18 @@ class KoisController extends Controller
                 ->get(['id', 'code', 'customer_id', 'sale_qty', 'shipping_batch']);
         }
 
+        $activityLogs = ActivityLog::where(function ($q) use ($koi) {
+            $q->where('subject_type', Koi::class)->where('subject_id', $koi->id);
+        })->orWhere(function ($q) use ($koi) {
+            $q->where('module', 'kois')->where('description', 'like', "%(ID: {$koi->id})");
+        })->with('user:id,name')
+            ->orderByDesc('created_at')
+            ->get();
+
         return Inertia::render('MasterData/Koi/Show', [
-            'koi'        => $koi,
-            'batchMates' => $batchMates,
+            'koi'          => $koi,
+            'batchMates'   => $batchMates,
+            'activityLogs' => $activityLogs,
         ]);
     }
 
@@ -252,7 +265,11 @@ class KoisController extends Controller
             'shipping_date'     => 'nullable|date',
         ]);
 
-        $koi->fill($validated)->save();
+        $koi->fill($validated);
+        $dirty     = $koi->getDirty();
+        $oldValues = empty($dirty) ? null : array_intersect_key($koi->getOriginal(), $dirty);
+        $newValues = empty($dirty) ? null : $dirty;
+        $koi->save();
 
         if ($request->has('delete_images') && is_array($request->input('delete_images'))) {
             KoiImage::whereIn('id', $request->input('delete_images'))->delete();
@@ -271,17 +288,27 @@ class KoisController extends Controller
             }
         }
 
-        ActivityLog::log('update', "Mengubah data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois');
+        ActivityLog::log('update', "Mengubah data Koi \"{$koi->code} - {$koi->name}\" (ID: {$koi->id})", 'kois', [
+            'subject_type' => Koi::class,
+            'subject_id'   => $koi->id,
+            'old_values'   => $oldValues,
+            'new_values'   => $newValues,
+        ]);
 
         return redirect()->to('/master-data/koi');
     }
 
     public function destroy(Koi $koi)
     {
-        $name = "{$koi->code} - {$koi->name}";
-        $id   = $koi->id;
+        $name      = "{$koi->code} - {$koi->name}";
+        $id        = $koi->id;
+        $oldValues = $koi->toArray();
         $koi->delete();
-        ActivityLog::log('delete', "Menghapus data Koi \"{$name}\" (ID: {$id})", 'kois');
+        ActivityLog::log('delete', "Menghapus data Koi \"{$name}\" (ID: {$id})", 'kois', [
+            'subject_type' => Koi::class,
+            'subject_id'   => $id,
+            'old_values'   => $oldValues,
+        ]);
 
         return to_route('kois.index');
     }
@@ -292,10 +319,16 @@ class KoisController extends Controller
             'sale_status' => 'required|in:cancel,dead_refund,refund,cancel_refund,pending,shipped,azukari,dead',
         ]);
 
+        $oldStatus        = $koi->sale_status;
         $koi->sale_status = $validated['sale_status'];
         $koi->save();
 
-        ActivityLog::log('update', "Mengubah status Koi \"{$koi->code} - {$koi->name}\" menjadi \"{$validated['sale_status']}\" (ID: {$koi->id})", 'kois');
+        ActivityLog::log('update', "Mengubah status Koi \"{$koi->code} - {$koi->name}\" menjadi \"{$validated['sale_status']}\" (ID: {$koi->id})", 'kois', [
+            'subject_type' => Koi::class,
+            'subject_id'   => $koi->id,
+            'old_values'   => ['sale_status' => $oldStatus],
+            'new_values'   => ['sale_status' => $validated['sale_status']],
+        ]);
 
         return to_route('kois.index');
     }

@@ -52,14 +52,20 @@ class ActivityLog extends Model
         return $query->whereBetween('created_at', [$from, $to]);
     }
 
-    public static function log(string $action, string $description, string $module = 'general'): self
+    public static function log(string $action, string $description, string $module = 'general', array $options = []): self
     {
         $userId = Auth::id();
         return self::create([
-            'user_id' => $userId,
-            'action' => $action,
-            'description' => $description,
-            'module' => $module,
+            'user_id'      => $userId,
+            'action'       => $action,
+            'description'  => $description,
+            'module'       => $module,
+            'subject_type' => $options['subject_type'] ?? null,
+            'subject_id'   => $options['subject_id'] ?? null,
+            'old_values'   => $options['old_values'] ?? null,
+            'new_values'   => $options['new_values'] ?? null,
+            'ip_address'   => $options['ip_address'] ?? request()->ip(),
+            'user_agent'   => $options['user_agent'] ?? request()->userAgent(),
         ]);
     }
 }

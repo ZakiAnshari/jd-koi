@@ -1,5 +1,5 @@
 <?php if($parameters->isNotEmpty()): ?>
-args<?php echo when($parameters->every->optional, '?'); ?>: {
+<?php echo $args; ?><?php echo when($parameters->every->optional, '?'); ?>: {
     <?php $__currentLoopData = $parameters; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $parameter): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <?php echo e($parameter->name); ?><?php echo when($parameter->optional, '?'); ?>: <?php echo $parameter->types; ?>
 
@@ -27,5 +27,5 @@ args<?php echo when($parameters->every->optional, '?'); ?>: {
 <?php endif; ?>
 ,
 <?php endif; ?>
-options?: RouteQueryOptions
+<?php echo $options; ?>?: RouteQueryOptions
 <?php /**PATH C:\laragon\www\koi-umeda-data-management\vendor\laravel\wayfinder\src/../resources/function-arguments.blade.ts ENDPATH**/ ?>
