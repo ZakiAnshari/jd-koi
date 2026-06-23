@@ -217,10 +217,10 @@ function openEditModal(koi: Koi) {
     editForm.name              = koi.name
     editForm.description       = koi.description ?? ''
     editForm.age               = koi.age != null ? String(koi.age) : ''
-    editForm.size              = koi.size != null ? String(koi.size) : ''
+    editForm.size              = koi.size != null ? String(parseFloat(String(koi.size))) : ''
     editForm.box_qty           = koi.box_qty != null ? String(koi.box_qty) : ''
-    editForm.weight            = koi.weight != null ? String(koi.weight) : ''
-    editForm.total_weight      = koi.total_weight != null ? String(koi.total_weight) : ''
+    editForm.weight            = koi.weight != null ? String(parseFloat(String(koi.weight))) : ''
+    editForm.total_weight      = koi.total_weight != null ? String(parseFloat(String(koi.total_weight))) : ''
     editForm.images            = []
     editForm.delete_images     = []
     editForm.customer_id       = koi.customer_id ? String(koi.customer_id) : ''
