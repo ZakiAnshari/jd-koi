@@ -1288,6 +1288,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="kToggleSort('code')">Code <span class="ml-1">{{ kSortIcon('code') }}</span></th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="kToggleSort('name')">Nama <span class="ml-1">{{ kSortIcon('name') }}</span></th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">No. Invoice</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breeder</th>
                                 <th class="cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground" @click="kToggleSort('created_at')">Created <span class="ml-1">{{ kSortIcon('created_at') }}</span></th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
@@ -1296,7 +1297,7 @@ function confirmDeleteKoi(id: number, name: string) {
                         </thead>
                         <tbody class="divide-y divide-border bg-background">
                             <tr v-if="paginatedKois.length === 0">
-                                <td colspan="7" class="px-4 py-8 text-center text-sm text-muted-foreground">{{ kSearch ? 'Tidak ada hasil.' : 'Belum ada data koi.' }}</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-sm text-muted-foreground">{{ kSearch ? 'Tidak ada hasil.' : 'Belum ada data koi.' }}</td>
                             </tr>
                             <tr v-for="koi in paginatedKois" :key="koi.id" class="transition-colors hover:bg-muted/50">
                                 <td class="px-4 py-3">
@@ -1309,6 +1310,7 @@ function confirmDeleteKoi(id: number, name: string) {
                                 </td>
                                 <td class="px-4 py-3 text-sm font-medium">{{ koi.code }}</td>
                                 <td class="px-4 py-3 text-sm">{{ koi.name }}</td>
+                                <td class="px-4 py-3 text-sm">{{ koi.sale_invoice || '-' }}</td>
                                 <td class="px-4 py-3 text-sm">{{ getBreederName(koi) }}</td>
                                 <td class="px-4 py-3 text-sm">{{ fmtDate(koi.created_at) }}</td>
                                 <td class="px-4 py-3 text-center">
