@@ -197,7 +197,8 @@ class RekapTransaksiController extends Controller
             if (!$k->shipping_cost || !$k->shipping_qty) return 0;
             return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
-        // Shipping ditampilkan per sub-row, tidak ditambah ke grand total
+        // Grand total = harga koi + biaya shipping + fee
+        $grandTotal += $totalShipping + $totalFee;
         $pdf = Pdf::loadView('pdf.invoice', [
             'kois'           => $kois,
             'invoiceNumber'  => $invoiceNumber,
@@ -242,7 +243,8 @@ class RekapTransaksiController extends Controller
             if (!$k->shipping_cost || !$k->shipping_qty) return 0;
             return round(floatval($k->shipping_cost) / intval($k->shipping_qty) * intval($k->sale_qty ?? 1));
         });
-        // Shipping sudah ditampilkan per sub-row, tidak ditambah ke grand total Excel
+        // Grand total = harga koi + biaya shipping + fee
+        $grandTotal += $totalShipping + $totalFee;
 
         $safeFilename = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $customerName);
 

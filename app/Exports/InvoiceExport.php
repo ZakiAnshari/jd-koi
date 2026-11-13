@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
@@ -11,7 +12,9 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class InvoiceExport implements WithTitle, WithEvents
+// Laravel Excel 4.x mewajibkan class export mengimplementasikan interface Export.
+// Class ini tidak memakai concern From* karena seluruh sheet dibangun di afterSheet().
+class InvoiceExport implements Export, WithTitle, WithEvents
 {
     use RegistersEventListeners;
 

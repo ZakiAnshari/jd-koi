@@ -126,19 +126,17 @@
     --sidebar: hsl(0 0% 98%);
 }
 
-/* resources/css/app.css */
-
-/* ... kode CSS yang sudah ada di atas ... */
-
-/* Prevent SweetAlert2 from hiding scrollbar */
-body.swal2-shown {
-    overflow-y: scroll !important;
-    padding-right: 0 !important;
+/*
+ * SweetAlert2: jangan kunci scroll halaman saat alert tampil.
+ * Bawaan SweetAlert memberi `overflow: hidden` ke <body>, sehingga scrollbar
+ * kanan hilang-muncul dan konten bergeser. Prefix `html` membuat selector ini
+ * lebih spesifik dari aturan SweetAlert tanpa !important, jadi kunci scroll
+ * Dialog/Dropdown reka-ui (inline style) tetap berfungsi normal.
+ */
+html body.swal2-shown:not(.swal2-no-backdrop, .swal2-toast-shown) {
+    overflow: visible;
 }
 
-body.swal2-height-auto {
-    height: auto !important;
-}
 .dark {
     --background: hsl(0 0% 3.9%);
     --foreground: hsl(0 0% 98%);
@@ -182,11 +180,6 @@ body.swal2-height-auto {
     body {
         @apply bg-background text-foreground;
     }
-}
-
-body.swal2-shown {
-    padding-right: 0 !important;
-    overflow-y: scroll !important;
 }
 
 /* Override nprogress default color */

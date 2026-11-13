@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import Swal from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,7 +62,7 @@ const handleSuccess = (page: any) => {
     const whatsappUrl = page.props.whatsapp_url || ''
     const pesananId = page.props.pesanan?.id || ''
 
-    Swal.fire({
+    useSwal().fire({
         icon: 'success',
         title: 'Pesanan Berhasil!',
         text: 'Pesanan Anda telah disimpan. Anda akan diarahkan ke WhatsApp untuk konfirmasi pembayaran.',

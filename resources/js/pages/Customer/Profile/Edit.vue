@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import InputError from '@/components/InputError.vue'
 import type { BreadcrumbItem } from '@/types'
-import Swal from 'sweetalert2'
+import { useSwal } from '@/composables/useSwal'
 
 type User = {
     id: number
@@ -36,10 +36,10 @@ function submitProfile() {
     profileForm.put('/customer/profile', {
         preserveScroll: true,
         onSuccess: () => {
-            Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Profil berhasil diperbarui.', timer: 2000, showConfirmButton: false })
+            useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Profil berhasil diperbarui.', timer: 2000, showConfirmButton: false })
         },
         onError: () => {
-            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Periksa kembali isian.', timer: 2500, showConfirmButton: false })
+            useSwal().fire({ icon: 'error', title: 'Gagal!', text: 'Periksa kembali isian.', timer: 2500, showConfirmButton: false })
         },
     })
 }
@@ -56,10 +56,10 @@ function submitPassword() {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset()
-            Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Password berhasil diperbarui.', timer: 2000, showConfirmButton: false })
+            useSwal().fire({ icon: 'success', title: 'Berhasil!', text: 'Password berhasil diperbarui.', timer: 2000, showConfirmButton: false })
         },
         onError: () => {
-            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Periksa kembali isian.', timer: 2500, showConfirmButton: false })
+            useSwal().fire({ icon: 'error', title: 'Gagal!', text: 'Periksa kembali isian.', timer: 2500, showConfirmButton: false })
         },
     })
 }
